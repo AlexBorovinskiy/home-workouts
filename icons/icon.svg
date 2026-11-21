@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Мои тренировки">
+<rect width="512" height="512" rx="112" fill="#10192b"/>
+<circle cx="256" cy="256" r="150" fill="#243956"/>
+<g fill="none" stroke="#77c4f7" stroke-width="28" stroke-linecap="round" stroke-linejoin="round">
+<path d="M183 256h146"/>
+<path d="M157 211v90M355 211v90"/>
+<path d="M131 235v42M381 235v42"/>
+</g>
+<path d="M200 337c35 18 77 18 112 0" fill="none" stroke="#a0e5b5" stroke-width="16" stroke-linecap="round"/>
+</svg>
