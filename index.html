@@ -175,7 +175,7 @@ function restAction(action){if(!restState)return;
  const now=Date.now();
  if(action==='finish'){finishRest();view();return}
  if(action==='toggle'){if(!restState.paused){restState.remainingMs=restRemaining();restState.paused=true;restState.pauseStartedAt=now}else{restState.pauseTotalMs+=now-restState.pauseStartedAt;restState.deadlineAt=now+restState.remainingMs;restState.paused=false;restState.pauseStartedAt=null}}
- if(action==='add'){restState.durationMs+=30000;if(restState.paused)restState.remainingMs+=30000;else restState.deadlineAt+=30000;restState.notified=false}
+ if(action==='add'){restState.durationMs+=30000;if(restState.paused)restState.remainingMs+=30000;else restState.deadlineAt=Math.max(restState.deadlineAt,now)+30000;restState.notified=false}
  rememberRest();renderRestDock();
 }
 setInterval(renderRestDock,450);
