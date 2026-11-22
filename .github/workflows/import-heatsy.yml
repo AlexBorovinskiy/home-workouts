@@ -50,6 +50,58 @@ jobs:
           (root/'rig-inspect.json').write_text(json.dumps(data,indent=2,ensure_ascii=False)+'\n')
           print('Bones:',len(joints),'node names:',[nodes[i].get('name') for i in joints])
           PY
+      - name: Inspect bind matrices and skin vertex data
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import pathlib,json,struct
+          root=pathlib.Path('anatomy-rigged/assets')
+          raw=(root/'body_superficial.glb').read_bytes()
+          jlen=struct.unpack_from('<I',raw,12)[0]
+          goff=20+jlen
+          bsize,btype=struct.unpack_from('<I4s',raw,goff)
+          assert btype==b'BIN\\0'
+          binary=raw[goff+8:goff+8+bsize]
+          doc=json.loads(raw[20:20+jlen])
+          access=doc['accessors'];views=doc['bufferViews']
+          comps={5120:('b',1),5121:('B',1),5122:('h',2),5123:('H',2),5125:('I',4),5126:('f',4)}
+          counts={'SCALAR':1,'VEC2':2,'VEC3':3,'VEC4':4,'MAT4':16}
+          def item(i,k):
+            a=access[i];v=views[a['bufferView']]
+            char,n=comps[a['componentType']]
+            width=counts[a['type']]
+            stride=v.get('byteStride',width*n)
+            off=v.get('byteOffset',0)+a.get('byteOffset',0)+stride*k
+            return struct.unpack_from('<'+char*width,binary,off)
+          p=doc['meshes'][0]['primitives'][0]
+          attrs=p['attributes']
+          pos=access[attrs['POSITION']]
+          skin=doc['skins'][0]
+          bm=access[skin['inverseBindMatrices']]
+          ids=skin['joints']
+          matrices=[item(skin['inverseBindMatrices'],i) for i in range(len(ids))]
+          md={
+            'version':1,'extensionsUsed':doc.get('extensionsUsed'),
+            'position':pos,'primitiveAttributes':{k:access[v] for k,v in attrs.items()},
+            'sourceScene':doc.get('scene'),'scenes':doc.get('scenes'),
+            'root':doc['nodes'][doc['scenes'][0]['nodes'][0]],
+            'inverseBindAccessor':bm,
+            'bones':[{
+              'name':doc['nodes'][n].get('name'),
+              'joint':n,
+              'ibmTranslation':list(matrices[i][12:15]),
+              'ibmDiagonal':[matrices[i][0],matrices[i][5],matrices[i][10],matrices[i][15]],
+             } for i,n in enumerate(ids)],
+            'vertices':[{
+              'index':k,
+              'position':list(item(attrs['POSITION'],k)),
+              'joints':list(item(attrs['JOINTS_0'],k)) if 'JOINTS_0' in attrs else None,
+              'weights':list(item(attrs['WEIGHTS_0'],k)) if 'WEIGHTS_0' in attrs else None,
+              } for k in [0,5,150,2000,10000,40000,70000]],
+          }
+          (root/'rig-diagnostics.json').write_text(json.dumps(md,ensure_ascii=False,indent=2)+'\\n')
+          print('Mesh attributes:',list(attrs),'IBM count:',len(matrices))
+          PY
       - name: Commit verified open model and skeleton metadata
         shell: bash
         run: |
