@@ -345,6 +345,7 @@ async function loadModel(){
  }
  try{
    handSkin=await createSkinHandPreview({THREE,GLTFLoader,scene,rig,rest,bodyMesh:mesh});
+   window.__skinPreviewDebug={getState:()=>({enabled:handSkin.isEnabled(),maskedVertices:handSkin.maskedVertices}),setCamera:(opts)=>{zoom=opts.zoom??zoom;panY=opts.panY??panY;panX=opts.panX??panX;yaw=opts.yaw??yaw;pitch=opts.pitch??pitch}};
    const skinToggle=document.getElementById('skinHandsToggle');
    skinToggle.style.display='block';
    skinToggle.textContent='Объёмные кисти · вкл.';
