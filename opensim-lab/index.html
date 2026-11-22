@@ -5,7 +5,7 @@
 main{max-width:1060px;margin:auto;padding:17px 13px 60px}h1{font-size:clamp(26px,4vw,37px);letter-spacing:-.04em;margin:30px 0 9px}h2{font-size:17px;margin:0 0 12px}p{color:#b6ced2;line-height:1.65}header{display:flex;justify-content:space-between;font-size:11px;color:var(--mint);letter-spacing:.1em;font-weight:800}a{color:var(--mint)}
 .wrap{display:grid;grid-template-columns:1.1fr .9fr;gap:14px}.card{background:var(--p);border:1px solid var(--line);padding:18px;border-radius:16px;margin-bottom:14px}
 .actions{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}button,.link{background:#265064;color:#f0fbfb;border:1px solid #5e8891;padding:11px 13px;border-radius:10px;font:inherit;font-weight:700;cursor:pointer;min-height:43px;text-decoration:none}button.primary{background:var(--mint);color:#15303a;border-color:var(--mint)}
-input[type=file]{display:none}textarea{width:100%;background:#112b3a;color:#d8f3ed;border:1px solid var(--line);padding:10px;border-radius:9px;resize:vertical;min-height:64px;font:12px monospace}
+input[type=file]{display:none}select{width:100%;background:#112b3a;color:#e4faf0;border:1px solid var(--line);padding:10px;border-radius:9px}textarea{width:100%;background:#112b3a;color:#d8f3ed;border:1px solid var(--line);padding:10px;border-radius:9px;resize:vertical;min-height:64px;font:12px monospace}
 .status{font-size:12px;line-height:1.6;background:#102e3e;border:1px solid var(--line);border-radius:10px;padding:11px;margin:12px 0;word-break:break-word}.status.warn{color:#ffe2bb;background:#47362a}
 .nums{display:grid;grid-template-columns:1fr 1fr;gap:9px}.num{background:#0d2b3a;border-radius:10px;padding:12px}.num strong{font-size:29px;display:block}.num span{font-size:11px;color:#adcbd0}
 #levels{display:grid;grid-template-columns:1fr 1fr;gap:6px}#levels div{border:1px solid #496673;border-radius:8px;padding:7px;text-align:center;background:#263f4e}#levels div.found{background:#2f756b;border-color:#8de8cf}
@@ -20,7 +20,7 @@ small{color:#adcbd0;line-height:1.6}@media(max-width:760px){.wrap{grid-template-
 <h2>Открыть исходные данные</h2>
 <p>Набор моделей позвоночника и рёбер, адаптированный для OpenSim 4.x (2026): T1–T12, L1–L5, верхние конечности. Исходный архив 39,7 МБ, файлы остаются на устройстве.</p>
 <div class="actions"><a class="link" href="https://zenodo.org/records/18259702" target="_blank" rel="noopener">Перейти к исследованию</a><button id="pick" class="primary">Выбрать .osim / .zip</button></div>
-<input id="file" type="file" accept=".osim,.xml,.zip">
+<input id="file" type="file" accept=".osim,.xml,.zip"><div id="archiveChoice" hidden><label for="models" style="display:block;margin:13px 0 7px">Выбрать модель из архива</label><select id="models"></select></div>
 <div class="actions"><button id="zenodo">Загрузить архив автоматически</button></div>
 <p><small>Если прямую загрузку блокирует браузер, скачай архив через ссылку на исследование и выбери его через «Выбрать .osim / .zip».</small></p>
 <p>Проверка импортёра на официальной модели OpenSim (её позвоночник упрощён):</p>
@@ -45,7 +45,7 @@ const ls=[...Array.from({length:12},(_,i)=>"T"+(i+1)),...Array.from({length:5},(
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const kids=n=>Array.from(n?.children||[]);
 const txt=(n,sel)=>n.querySelector(sel)?.textContent?.trim()||"";
-let current=null;
+let current=null;let currentZip=null;
 function parse(xml,label){
  const d=new DOMParser().parseFromString(xml,"application/xml");
  if(d.querySelector("parsererror"))throw Error("XML содержит ошибку");
@@ -81,14 +81,29 @@ async function zipLoad(bytes,name){
  const files=Object.values(archive.files).filter(f=>!f.dir&&f.name.toLowerCase().endsWith(".osim"));
  if(!files.length)throw Error("В ZIP отсутствуют файлы .osim");
  files.sort((a,b)=>Number(/generic|fullbody|base/i.test(b.name))-Number(/generic|fullbody|base/i.test(a.name))||a.name.length-b.name.length);
- $("#state").textContent="Найдено "+files.length+" файлов .osim, читаю "+files[0].name;
- render(parse(await files[0].async("string"),name+" / "+files[0].name));
+ currentZip={name,files};
+ const sel=$("#models");
+ sel.replaceChildren(...files.map((f,i)=>{
+   const opt=document.createElement("option");opt.value=String(i);opt.textContent=f.name;return opt;
+ }));
+ $("#archiveChoice").hidden=false;
+ await selectZipModel(0);
 }
+async function selectZipModel(index){
+ if(!currentZip)return;
+ const file=currentZip.files[index];
+ if(!file)throw Error("Файл .osim не найден");
+ $("#state").textContent="Читаю "+file.name;
+ render(parse(await file.async("string"),currentZip.name+" / "+file.name));
+}
+$("#models").onchange=()=>selectZipModel(Number($("#models").value)).catch(e=>{
+ $("#state").className="status warn";$("#state").textContent="Ошибка чтения: "+e.message;
+});
 async function process(file){
  if(!file)return;
  $("#state").textContent="Читаю "+file.name;
  try{if(file.name.toLowerCase().endsWith(".zip"))await zipLoad(await file.arrayBuffer(),file.name);
- else render(parse(await file.text(),file.name));}
+ else {currentZip=null;$("#archiveChoice").hidden=true;render(parse(await file.text(),file.name));}}
  catch(e){$("#state").className="status warn";$("#state").textContent="Ошибка: "+e.message;}
 }
 async function download(url){
