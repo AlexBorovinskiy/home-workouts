@@ -1,0 +1,80 @@
+name: QA original MRI thumb kinematics (isolated)
+on:
+  push:
+    paths:
+      - 'anatomy-first/thumb-lab.html'
+      - 'anatomy-first/thumb-mri-rig.js'
+      - 'anatomy-first/assets/thumb-landmarks.json'
+      - '.github/workflows/qa-mri-thumb-lab.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  mobile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Browser automation
+        run: npm install --prefix /tmp/mri-thumb-qa --no-audit --no-fund playwright-core@1.56.1
+      - name: Test CMC / MCP / IP hierarchy with actual MRI meshes
+        shell: bash
+        run: |
+          mkdir -p thumb-qa
+          python3 -m http.server 8765 --bind 127.0.0.1 >/tmp/thumb-http.log 2>&1 &
+          node --input-type=module <<'NODE'
+          import {chromium} from '/tmp/mri-thumb-qa/node_modules/playwright-core/index.mjs';
+          import {writeFileSync} from 'node:fs';
+          const browser=await chromium.launch({channel:'chrome',headless:true,args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+          const page=await browser.newPage({viewport:{width:430,height:932},deviceScaleFactor:1,isMobile:true,hasTouch:true,serviceWorkers:'block'});
+          const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',e=>{if(e.type()==='error')errors.push(e.text())});
+          const d=(a,b)=>Math.hypot(...a.map((v,i)=>v-b[i]));
+          try{
+            await page.goto('http://127.0.0.1:8765/anatomy-first/thumb-lab.html',{waitUntil:'domcontentloaded',timeout:55000});
+            await page.waitForFunction(()=>window.__thumbQA?.ready()||document.querySelector('#error')?.classList.contains('show'),null,{timeout:75000});
+            if(!await page.evaluate(()=>window.__thumbQA?.ready()))throw Error('Scene failed: '+await page.locator('#error').innerText());
+            const qa=await page.evaluate(()=>window.__thumbQA.bones());
+            if(Object.values(qa).some(n=>n<100))throw Error('Bones are not real MRI meshes: '+JSON.stringify(qa));
+            const poses={};
+            for(const name of ['neutral','oppose','grasp']){
+              await page.evaluate(n=>window.__thumbQA.pose(n),name);
+              poses[name]=await page.evaluate(()=>window.__thumbQA.metrics());
+              for(const v of ['palm','side']){
+                await page.evaluate(n=>window.__thumbQA.view(n),v);
+                await page.waitForTimeout(260);
+                await page.locator('canvas').screenshot({path:'thumb-qa/'+name+'-'+v+'.png'});
+              }
+            }
+            if(d(poses.neutral.pivotCMC,poses.grasp.pivotCMC)>.00001)throw Error('CMC root displaced!');
+            if(d(poses.neutral.pivotMCP,poses.grasp.pivotMCP)<.003)throw Error('CMC did not move first metacarpal: '+JSON.stringify(poses));
+            if(d(poses.neutral.pivotIP,poses.grasp.pivotIP)<.008)throw Error('MCP did not move proximal phalanx');
+            if(d(poses.neutral.distalBoneTip,poses.grasp.distalBoneTip)<.014)throw Error('Opposition fails to move bone tip');
+            const before=await page.evaluate(()=>window.__thumbQA.metrics());
+            await page.locator('[data-pose="neutral"]').click();
+            const neutralBefore=await page.evaluate(()=>window.__thumbQA.metrics());
+            await page.locator('input[data-angle="cmcFlex"]').fill('42');
+            const neutralAfter=await page.evaluate(()=>window.__thumbQA.metrics());
+            if(d(neutralBefore.distalBoneTip,neutralAfter.distalBoneTip)<.004)throw Error('CMC slider does nothing');
+            await page.locator('button[data-pose="grasp"]').click();
+            if(await page.locator('input[data-angle="ipFlex"]').inputValue()!=='18')throw Error('Grip preset not loaded');
+            if(errors.length)throw Error('Browser errors: '+errors.join(' | '));
+            const report={bones:qa,poses,
+              cmcMoved:d(poses.neutral.pivotCMC,poses.grasp.pivotCMC),
+              mcpMoved:d(poses.neutral.pivotMCP,poses.grasp.pivotMCP),
+              ipMoved:d(poses.neutral.pivotIP,poses.grasp.pivotIP),
+              tipMoved:d(poses.neutral.distalBoneTip,poses.grasp.distalBoneTip),errors};
+            writeFileSync('thumb-qa/report.json',JSON.stringify(report,null,2));
+            console.log(JSON.stringify({bones:qa,cmc:report.cmcMoved,mcp:report.mcpMoved,ip:report.ipMoved,tip:report.tipMoved,clearance:poses.grasp.tipToShaftMm},null,2));
+            await page.screenshot({path:'thumb-qa/full-mobile-page.png',fullPage:true});
+          }catch(e){writeFileSync('thumb-qa/error.txt',String(e)+'\n'+errors.join('\n'));await page.screenshot({path:'thumb-qa/failure.png',fullPage:true}).catch(()=>{});throw e}
+          finally{await browser.close()}
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: original-mri-thumb-lab
+          path: thumb-qa/
+          retention-days: 5
