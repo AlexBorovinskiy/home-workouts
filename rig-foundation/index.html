@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#091b29">
+<title>Новая основа человека · Home Workouts</title>
+<style>
+:root{color-scheme:dark;--bg:#081a29;--panel:#142e3d;--line:#365565;--mint:#93e4d4;--fg:#e6f5f5;--muted:#b2c9cd}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+main{max-width:1140px;margin:auto;padding:18px 13px 52px}
+header{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:11px;letter-spacing:.08em;color:var(--mint);font-weight:800}
+header a{color:var(--fg);text-decoration:none;border:1px solid var(--line);border-radius:20px;padding:8px 11px;letter-spacing:normal;font-weight:500}
+h1{font-size:clamp(25px,4vw,37px);letter-spacing:-.04em;margin:24px 0 8px}
+.lead{color:var(--muted);font-size:13px;line-height:1.6;margin:0 0 17px;max-width:790px}
+.wrap{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(260px,.8fr);gap:15px}
+.viewer,.panel{border:1px solid var(--line);border-radius:18px;background:var(--panel);overflow:hidden}
+.stage{height:min(70vh,660px);min-height:425px;position:relative;touch-action:none;background:radial-gradient(ellipse at 50% 38%,#244656,#0a1b29 76%)}
+canvas{display:block;width:100%;height:100%;touch-action:none}
+.hud{position:absolute;left:12px;top:12px;max-width:65%;border:1px solid #476675;background:#0b2435d8;border-radius:18px;padding:9px 12px;color:#cbeee4;font-size:11px}
+.hint{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);background:#0b2435d8;border-radius:20px;font-size:11px;padding:8px 12px;white-space:nowrap;color:#c6dadd}
+.error{position:absolute;inset:0;background:#152533f2;display:none;align-items:center;justify-content:center;text-align:center;padding:20px;line-height:1.6}
+.error.show{display:flex}
+.vbottom{padding:12px 15px;display:flex;flex-wrap:wrap;gap:8px}
+button{color:var(--fg);font:inherit;font-size:13px;font-weight:650;min-height:41px;cursor:pointer;background:#203f50;border:1px solid #436373;border-radius:10px;padding:10px 13px}
+button.active{background:var(--mint);border-color:var(--mint);color:#0b2832}
+button:focus-visible{outline:2px solid var(--mint);outline-offset:2px}
+.panel{padding:19px}
+.subheading{font-weight:800;color:var(--mint);font-size:11px;text-transform:uppercase;letter-spacing:.13em;margin:0 0 13px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{padding:12px;border-radius:12px;background:#102738;border:1px solid #2c4e5d}
+.stat strong{display:block;font-size:23px;font-variant-numeric:tabular-nums}
+.stat small{font-size:10px;color:var(--muted)}
+.panel p{line-height:1.65;font-size:12px;color:var(--muted)}
+.rule{height:1px;background:#2f4b5a;margin:21px 0}
+.control-row{display:flex;flex-wrap:wrap;gap:8px}
+.list{font-size:12px;line-height:1.65;margin:8px 0;padding-left:19px;color:#d0e3e4}
+.status{font-size:12px;color:#d2f4e5;font-weight:700;margin:11px 0}
+.notes{font-size:11px;color:var(--muted);line-height:1.6;margin-top:16px}
+.notes a{color:var(--mint)}
+@media(max-width:820px){.wrap{grid-template-columns:1fr}.stage{height:58vh;min-height:390px}.panel{padding:15px}}
+</style>
+</head>
+<body>
+<main>
+<header><span>HOME WORKOUTS / RIG FOUNDATION</span><a href="../index.html">Основное приложение</a></header>
+<h1>Человек · новая анимационная основа</h1>
+<p class="lead">Начинаем не с отдельных костей, а с единой готовой модели MakeHuman: кожа, скелет анимации, суставы кистей, предплечий и всего тела. Пока это проверка основы, а не демонстрация правильной техники упражнения.</p>
+<div class="wrap">
+<section class="viewer">
+<div class="stage" id="stage">
+<canvas id="canvas" aria-label="Трёхмерная модель человека с анимационным ригом"></canvas>
+<div class="hud" id="hud">Загрузка готового рига…</div>
+<div class="hint">Проведи — поворот · двумя пальцами — масштаб</div>
+<div class="error" id="error" role="alert"></div>
+</div>
+<div class="vbottom">
+<button data-view="body" class="active">Весь человек</button>
+<button data-view="right">Правая кисть</button>
+<button data-view="left">Левая кисть</button>
+<button data-view="arm">Правая рука</button>
+</div>
+</section>
+<aside class="panel">
+<div class="subheading">Проверка готового рига</div>
+<div class="stats">
+<div class="stat"><strong id="jointCount">—</strong><small>Суставов в иерархии</small></div>
+<div class="stat"><strong id="skinCount">—</strong><small>Поверхностей со скиннингом</small></div>
+<div class="stat"><strong id="fingerCount">—</strong><small>Суставов пальцев обеих рук</small></div>
+<div class="stat"><strong id="clipCount">—</strong><small>Встроенных анимаций</small></div>
+</div>
+<p class="status" id="status">Проверка соединения костей и кожи…</p>
+<div class="rule"></div>
+<div class="subheading">Слои одной модели</div>
+<div class="control-row">
+<button id="skinToggle" class="active">Кожа</button>
+<button id="rigToggle">Риг / суставы</button>
+</div>
+<p>Риг — это управляющий скелет анимации, а не настоящая анатомическая сетка костей. На следующем этапе именно к нему будем привязывать мышцы и кости.</p>
+<div class="rule"></div>
+<div class="subheading">Тест деформации</div>
+<div class="control-row">
+<button id="neutral" class="active">Нейтрально</button>
+<button id="jointTest">Проверка суставов</button>
+</div>
+<p>Тест меняет несколько суставов для проверки связи с кожей. Это <strong>не</strong> поза отжимания, хвата или медицински проверенная анимация.</p>
+<div class="rule"></div>
+<div class="subheading">Критерии перед упражнениями</div>
+<ul class="list">
+<li>Обе кисти имеют полные цепочки пальцев и большой палец.</li>
+<li>Нет разрывов поверхности между кистями, предплечьями и телом.</li>
+<li>Деформация суставов проверена в 3D с разных сторон.</li>
+<li>Захват и опора на ладони будут отдельными проверенными позами.</li>
+</ul>
+<p class="notes">Источник: <a href="https://www.innerscene.com/tools/library/3d-parts/human-base-mesh-with-editable-53-bone-rig-8e7c8ab1">MakeHuman/MPFB CC0</a>. Файл уже находился в нашем репозитории. Модель предназначена для прототипа, техника упражнений ещё не подтверждена.</p>
+</aside>
+</div>
+</main>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+const $=s=>document.querySelector(s);
+const canvas=$('#canvas'),stage=$('#stage');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true,preserveDrawingBuffer:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.7));
+renderer.setClearColor(0x0d2332,0);
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(38,1,.005,100);
+scene.add(new THREE.HemisphereLight(0xf4faf8,0x52636f,2.7));
+const key=new THREE.DirectionalLight(0xfff1df,3.0);key.position.set(3,5,5);scene.add(key);
+const fill=new THREE.DirectionalLight(0x96d6ef,1.4);fill.position.set(-4,2,-2);scene.add(fill);
+const orbit=new OrbitControls(camera,canvas);
+orbit.enableDamping=true;orbit.dampingFactor=.07;orbit.minDistance=.07;orbit.maxDistance=20;
+let model=null,bones={},rest={},skins=[],helper=null,loaded=false,stats=null,activeView='body';
+let originalBox=null;
+const vec=new THREE.Vector3(),q=new THREE.Quaternion();
+function resize(){const w=stage.clientWidth,h=stage.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/Math.max(h,1);camera.updateProjectionMatrix();}
+new ResizeObserver(resize).observe(stage);resize();
+function frame(target,offset){
+ orbit.target.copy(target);
+ camera.position.copy(target).add(offset);
+ camera.lookAt(target);orbit.update();
+}
+function view(name){
+ if(!loaded)return;
+ activeView=name;
+ model.updateMatrixWorld(true);
+ const bbox=new THREE.Box3().setFromObject(model),sz=bbox.getSize(new THREE.Vector3()),ctr=bbox.getCenter(new THREE.Vector3());
+ if(name==='body'){
+   const distance=Math.max(2,sz.y*1.3,sz.x*2);
+   frame(ctr,new THREE.Vector3(distance*.14,sz.y*.08,distance));
+ }else{
+   const sel=name==='left'?'hand_l':name==='arm'?'lowerarm_r':'hand_r';
+   const b=bones[sel];
+   if(!b)throw Error('Нет сустава '+sel);
+   const at=b.getWorldPosition(new THREE.Vector3());
+   if(name==='arm')frame(at.clone().add(new THREE.Vector3(0,.05,0)),new THREE.Vector3(.35,.22,.48));
+   else frame(at.clone().add(new THREE.Vector3(0,.045,0)),new THREE.Vector3(.16,.15,.27));
+ }
+ for(const b of document.querySelectorAll('[data-view]'))b.classList.toggle('active',b.dataset.view===name);
+}
+function resetPose(){for(const [name,b] of Object.entries(bones)){const r=rest[name];b.quaternion.copy(r.quaternion);b.position.copy(r.position);}}
+function pose(name){
+ if(!loaded)return;
+ resetPose();
+ if(name==='test'){
+   for(const part of ['upperarm_r','lowerarm_r','index_01_r','index_02_r','middle_01_r','middle_02_r','thumb_01_r']){
+     const b=bones[part];if(!b)continue;
+     const angle=part.startsWith('thumb')?0.22:part.startsWith('upperarm')?0.18:part.startsWith('lowerarm')?0.25:0.24;
+     b.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0),angle));
+   }
+ }
+ model.updateMatrixWorld(true);
+ if(helper)helper.updateMatrixWorld(true);
+ $('#neutral').classList.toggle('active',name==='neutral');
+ $('#jointTest').classList.toggle('active',name==='test');
+}
+function showSkin(on){skins.forEach(m=>m.visible=on);$('#skinToggle').classList.toggle('active',on);$('#skinToggle').setAttribute('aria-pressed',String(on));}
+function showRig(on){if(helper)helper.visible=on;$('#rigToggle').classList.toggle('active',on);$('#rigToggle').setAttribute('aria-pressed',String(on));}
+async function load(){
+ const gltf=await new GLTFLoader().loadAsync('../anatomy-rigged/assets/unified-makehuman-cc0.glb');
+ model=gltf.scene;scene.add(model);
+ model.traverse(o=>{
+   if(o.isBone){bones[o.name]=o;rest[o.name]={quaternion:o.quaternion.clone(),position:o.position.clone()};}
+   if(o.isSkinnedMesh){skins.push(o);o.frustumCulled=false;}
+ });
+ const required=['hand_l','hand_r','upperarm_r','lowerarm_r','index_01_r','index_02_r','index_03_r','thumb_01_r','thumb_02_r','thumb_03_r'];
+ const missing=required.filter(n=>!bones[n]);
+ const fingers=Object.keys(bones).filter(n=>/^(index|middle|ring|pinky|thumb)_0[123]_[lr]$/.test(n));
+ if(!skins.length||missing.length)throw Error('Риг не прошёл проверку: '+(missing.join(', ')||'нет skinned mesh'));
+ helper=new THREE.SkeletonHelper(model);helper.visible=false;
+ helper.material.depthTest=false;helper.material.transparent=true;helper.material.opacity=.85;scene.add(helper);
+ stats={bones:Object.keys(bones).length,skinMeshes:skins.length,fingerJoints:fingers.length,clips:gltf.animations.length,
+    missing,source:'unified-makehuman-cc0.glb'};
+ $('#jointCount').textContent=stats.bones;
+ $('#skinCount').textContent=stats.skinMeshes;
+ $('#fingerCount').textContent=stats.fingerJoints;
+ $('#clipCount').textContent=stats.clips;
+ $('#hud').textContent='Цельный риг · '+stats.bones+' суставов';
+ $('#status').textContent='Загружены кожа, обе кисти и суставы пальцев';
+ loaded=true;view('body');pose('neutral');
+ window.__foundationQA={ready:()=>loaded,stats:()=>stats,view,pose,showRig,showSkin,
+    boneNames:()=>Object.keys(bones),skinVisible:()=>skins.every(m=>m.visible),rigVisible:()=>helper.visible};
+}
+for(const el of document.querySelectorAll('[data-view]'))el.addEventListener('click',()=>view(el.dataset.view));
+$('#neutral').addEventListener('click',()=>pose('neutral'));
+$('#jointTest').addEventListener('click',()=>pose('test'));
+$('#skinToggle').addEventListener('click',()=>showSkin(!skins.every(m=>m.visible)));
+$('#rigToggle').addEventListener('click',()=>showRig(!helper?.visible));
+(function render(){requestAnimationFrame(render);orbit.update();renderer.render(scene,camera)})();
+load().catch(e=>{console.error(e);$('#error').classList.add('show');$('#error').textContent='Ошибка загрузки: '+e.message;$('#hud').textContent='Риг не загружен';});
+</script>
+</body>
+</html>
