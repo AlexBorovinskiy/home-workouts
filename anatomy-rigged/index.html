@@ -34,12 +34,12 @@
 <script type="module">
 const $=s=>document.querySelector(s);const ui={box:$('#dragZone'),canvas:$('#scene'),status:$('#status'),error:$('#error'),errorText:$('#errorText'),loading:$('#loading'),loadFill:$('#loadFill'),phase:$('#phase'),time:$('#time'),scrub:$('#scrub'),play:$('#play'),speed:$('#speed'),title:$('#exTitle'),desc:$('#exDesc'),info:$('#anatomyInfo'),joints:$('#joints')};
 if('serviceWorker' in navigator&&location.protocol.startsWith('http')){try{await navigator.serviceWorker.register('./sw.js');await navigator.serviceWorker.ready;if(!navigator.serviceWorker.controller)await Promise.race([new Promise(r=>navigator.serviceWorker.addEventListener('controllerchange',r,{once:true})),new Promise(r=>setTimeout(r,1100))]);}catch(e){console.warn('offline cache:',e)}}
-let THREE,GLTFLoader;
-try{THREE=await import('three');({GLTFLoader}=await import('three/addons/loaders/GLTFLoader.js'));}catch(err){ui.error.classList.add('visible');ui.errorText.textContent='Браузер не загрузил модуль 3D-графики: '+err.message;throw err}
+let THREE,GLTFLoader,fitDumbbellGrip;
+try{THREE=await import('three');({GLTFLoader}=await import('three/addons/loaders/GLTFLoader.js'));({fitDumbbellGrip}=await import('./grip-constraints.js'));}catch(err){ui.error.classList.add('visible');ui.errorText.textContent='Браузер не загрузил модуль 3D-графики: '+err.message;throw err}
 const scene=new THREE.Scene(),renderer=new THREE.WebGLRenderer({canvas:ui.canvas,antialias:true,alpha:true,powerPreference:'high-performance'});renderer.setClearColor(0x0c2331,0);renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.65));renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.15;renderer.outputColorSpace=THREE.SRGBColorSpace;
 const camera=new THREE.PerspectiveCamera(33,1,.01,50);scene.add(new THREE.HemisphereLight(0xe2fbff,0x344656,1.7));const key=new THREE.DirectionalLight(0xffe5db,2.3);key.position.set(1.6,4,5);scene.add(key);const back=new THREE.DirectionalLight(0x87e9e3,1.0);back.position.set(-4,1,-2);scene.add(back);
 const floor=new THREE.Mesh(new THREE.CylinderGeometry(.77,.82,.03,64),new THREE.MeshStandardMaterial({color:0x16394a,roughness:1}));floor.position.y=-.035;scene.add(floor);const ring=new THREE.Mesh(new THREE.TorusGeometry(.81,.006,8,90),new THREE.MeshBasicMaterial({color:0x4b8791}));ring.rotation.x=Math.PI/2;ring.position.y=-.017;scene.add(ring);
-let model,rig={},rest={},skeletonHelper=null,muscleMesh=null,partIds=null,tendons=null,partGroups=[],colored=null,active='curl',progress=0,playing=false,speed=1,last=0,zoom=3.9,yaw=.10,pitch=.06,panX=0,panY=0,rigReady=false,frontSign=1;const restFoot={},restPelvis=new THREE.Vector3();let dumbbells=[],trainingEffortUniform=null,exerciseMask=null;const viewerGroup=new THREE.Group(),orientation=new THREE.Group();scene.add(viewerGroup);viewerGroup.add(orientation);
+let model,rig={},rest={},skeletonHelper=null,muscleMesh=null,partIds=null,tendons=null,partGroups=[],colored=null,active='curl',progress=0,playing=false,speed=1,last=0,zoom=3.9,yaw=.10,pitch=.06,panX=0,panY=0,rigReady=false,frontSign=1;const restFoot={},restPelvis=new THREE.Vector3();let dumbbells=[],trainingEffortUniform=null,exerciseMask=null,gripPoseOverride=null;const viewerGroup=new THREE.Group(),orientation=new THREE.Group();scene.add(viewerGroup);viewerGroup.add(orientation);
 const exercises={curl:{title:'Сгибание рук',desc:'Гантели у бёдер. Поднимай их контролируемо примерно до нижней части груди, не забрасывая к плечам. Плечи почти неподвижны, локти рядом с корпусом, запястья прямые.',info:'Оранжевый цвет меняется по фазе подъёма и опускания. Это учебная иллюстрация, а не измерение электромиографии или силы мышцы.',groups:['arms_front','forearms'],phase:'Сгибание в локте'},squat:{title:'Приседание',desc:'Проверяем сгибание тазобедренных и коленных суставов. Стопы должны оставаться на уровне пола; движение пока не используется как образец техники.',info:'Подсветка: квадрицепсы, ягодичные и мышцы корпуса.',groups:['quads','glutes','abs'],phase:'Приседание'},pushup:{title:'Отжимание',desc:'Проверяем плечи, локти и кисти при положении корпуса почти горизонтально. Эта поза — тест геометрии рига, не эталон упражнения.',info:'Подсветка: грудь, задняя поверхность плеча, передние дельтовидные.',groups:['chest','arms_back','shoulders'],phase:'Отжимание'}};
 function setError(err){ui.status.textContent='Ошибка загрузки';ui.loading.style.display='none';ui.error.classList.add('visible');ui.errorText.textContent=err?.message||String(err)}
 function dimensions(){let w=ui.box.clientWidth,h=ui.box.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}window.addEventListener('resize',dimensions);dimensions();
@@ -138,6 +138,13 @@ try{const [gltf,catalog]=await Promise.all([new Promise((resolve,reject)=>new GL
  skeletonHelper=new THREE.SkeletonHelper(model);scene.add(skeletonHelper);skeletonHelper.visible=false;skeletonHelper.material.color.setHex(0x8ef4df);skeletonHelper.material.depthTest=false;skeletonHelper.renderOrder=10;
  addDemoDumbbells();rigReady=true;ui.status.textContent='✓ Реальный риг · '+Object.keys(rig).length+' костей';ui.loading.style.display='none';ui.joints.textContent='Распознано '+Object.keys(rig).length+' суставов. Скелетная анимация — вращение костей с сохранением привязки мышц.';
  updateColors();setExercise('curl');
+ const fit=await fitDumbbellGrip({
+   THREE,rig,dumbbells,initialPose:{},
+   applyPose:testPose=>{gripPoseOverride=testPose;applyPose()}
+ });
+ gripPoseOverride=fit.patch;
+ applyPose();
+ ui.joints.textContent+=' Захват: '+fit.measurements.filter(m=>m.valid).length+'/'+fit.measurements.length+' суставов подогнаны к рукоятке (экспериментально).';
 }catch(e){console.error(e);setError(e)}
 function resetBones(){for(const [name,bone] of Object.entries(rig)){const r=rest[name];bone.position.copy(r.position);bone.quaternion.copy(r.quaternion);bone.scale.copy(r.scale)} orientation.position.set(0,0,0);orientation.rotation.set(0,0,0)}
 function rotateWorld(name,axis,angle){const bone=rig[name];if(!bone)return;const r=rest[name],parentAxis=axis.clone().applyQuaternion(r.parentWorldQ.clone().invert()).normalize();const dq=new THREE.Quaternion().setFromAxisAngle(parentAxis,angle);bone.quaternion.copy(dq.multiply(r.quaternion))}
@@ -167,6 +174,13 @@ function applyPose(){if(!rigReady)return;resetBones();const a=effort(progress);
       // Bring thumb across the handle, then flex the second phalanx toward the grip.
       rotateWorldXYZ('thumb_01.'+side,THREE.MathUtils.degToRad(-15),0,THREE.MathUtils.degToRad(side==='L'?-70:70));
       rotateWorld('thumb_02.'+side,AXIS_X,THREE.MathUtils.degToRad(42));
+      if(gripPoseOverride){
+        for(const [joint,angles] of Object.entries(gripPoseOverride)){
+          if(joint.endsWith('.'+side)){
+            rotateWorldXYZ(joint,...angles.map(deg=>THREE.MathUtils.degToRad(deg)));
+          }
+        }
+      }
     }
    }
  }
