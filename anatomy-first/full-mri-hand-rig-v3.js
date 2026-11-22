@@ -17,7 +17,7 @@ const color={index:0x9ecce1,middle:0x9ecdad,ring:0xc9b6e6,little:0xe4c8a0};
 // The MCP must not close as fast as PIP, or fingertips pass below the shaft.
 const digitAngles={index:[17,69,29],middle:[21,83,39],ring:[14,73,36],little:[6,99,37]};
 
-export function createFullMRIHandRigV2(THREE,gltf,landmarks,jointData){
+export function createFullMRIHandRigV3(THREE,gltf,landmarks,jointData){
   const rig=createMRIThumbRig(THREE,gltf,landmarks);
   const root=rig.root;
   root.updateMatrixWorld(true);
