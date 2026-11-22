@@ -36,6 +36,8 @@
     "thoracic2",
     "thoracic1"
   ],
+  "neckHeadResolution": "combined head_neck body; no separate C1-C7",
+  "handResolution": "one rigid body per hand; no articulated finger segments",
   "frames": [
     {
       "id": "neutral",
@@ -130,6 +132,11 @@
         "sacrum": [
           0.0674221,
           0.0252833,
+          0
+        ],
+        "head_neck": [
+          -0.042166,
+          0.5294492,
           0
         ],
         "sternum": [
@@ -294,6 +301,11 @@
           0.0252833,
           0
         ],
+        "head_neck": [
+          -0.073865,
+          0.5257843,
+          0
+        ],
         "sternum": [
           0.0014953,
           0.5106055,
@@ -454,6 +466,11 @@
         "sacrum": [
           0.0674221,
           0.0252833,
+          0
+        ],
+        "head_neck": [
+          -0.0103441,
+          0.530033,
           0
         ],
         "sternum": [
@@ -618,6 +635,11 @@
           0.0252833,
           0
         ],
+        "head_neck": [
+          -0.0421467,
+          0.5287829,
+          0.0208963
+        ],
         "sternum": [
           0.030107,
           0.4995996,
@@ -780,6 +802,11 @@
           0.0252833,
           0
         ],
+        "head_neck": [
+          -0.0422061,
+          0.5294438,
+          0.0003594
+        ],
         "sternum": [
           0.0324322,
           0.5030317,
@@ -858,6 +885,7 @@
     ],
     "engine": "OpenSim 4.6",
     "citation": "Native kinetic diagnostic extracted from 2026 research model; no source assets redistributed",
-    "note": "These are body frame origins, not anatomical bones or measured exercise motion"
+    "note": "These are body frame origins, not anatomical bones or measured exercise motion",
+    "visualLimitation": "Only body-frame origins; real geometry in original ZIP must be loaded separately"
   }
 }
