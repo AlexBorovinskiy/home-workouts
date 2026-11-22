@@ -1,0 +1,126 @@
+name: Test orientation constrained anatomical dumbbell grips
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/test-grip-oriented.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  retarget-grip:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout Home Workouts
+        uses: actions/checkout@v4
+      - name: Verify our existing anatomy asset
+        run: |
+          echo 'ce9859de013c2ee9713dbe3158275208b57be1b4ff31957eca87195b991c0ab1  anatomy-rigged/assets/body_superficial.glb' | sha256sum --check
+      - name: Prepare Node and Python
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Generate real dumbbell as separate mesh
+        shell: bash
+        run: |
+          python -m pip install --disable-pip-version-check --quiet numpy trimesh
+          mkdir -p grip-prototype
+          python - <<'PY'
+          import trimesh, numpy as np
+          shapes=[]
+          def x_cylinder(radius, length, center):
+              mesh=trimesh.creation.cylinder(radius=radius,height=length,sections=32)
+              m=trimesh.transformations.rotation_matrix(np.pi/2,[0,1,0])
+              mesh.apply_transform(m);mesh.apply_translation([center,0,0])
+              shapes.append(mesh)
+          x_cylinder(.012,.178,0)
+          for pos in (-.074,.074):
+              x_cylinder(.046,.020,pos)
+          for pos in (-.092,.092):
+              x_cylinder(.018,.009,pos)
+          mesh=trimesh.util.concatenate(shapes)
+          mesh.export('grip-prototype/dumbbell.glb')
+          print('Dumbbell mesh exported: ',len(mesh.vertices),'vertices')
+          PY
+      - name: Get open-source Handhold (pinned MIT release)
+        shell: bash
+        run: |
+          git clone --quiet https://github.com/Ozbrett/handhold.git external-handhold
+          cd external-handhold
+          git checkout --detach 270b74ee4d5c64f8e7d7ac19aea760115d3aba59
+          npm ci --no-audit --no-fund
+      - name: Prefer stable grips with all five fingers and palm contact
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('external-handhold/scripts/try-models.mjs')
+          s=p.read_text()
+          marker="    console.log(`  GRIPS (${Date.now() - t0} ms):`, JSON.stringify(grips));"
+          patch="""    // Prefer a real holding grip with all fingers and palm engaged.
+              // Selection is part of this isolated integration test, not an upstream change.
+              const chosen = await page.evaluate(() => {
+                const hh = window.__handhold;
+                const options=hh.grasps.map((g,i)=>({i,holds:g.stable,all5:g.fingersTouching===5&&g.thumbTouching,palm:g.palmTouching,robustness:g.robustness,segments:g.segmentsTouching}));
+                options.sort((a,b)=>(Number(b.holds)-Number(a.holds))||(Number(b.all5)-Number(a.all5))||(Number(b.palm)-Number(a.palm))||(b.robustness-a.robustness)||(b.segments-a.segments));
+                const best=options[0];
+                if(best?.holds)hh.actions.selectGrasp(best.i);
+                return best;
+              });
+              console.log('  CHOSEN STABLE GRIP:',JSON.stringify(chosen));
+          """
+          assert s.count(marker)==1,'Expected Handhold selection point changed'
+          p.write_text(s.replace(marker,marker+'\n'+patch))
+          PY
+          node --check external-handhold/scripts/try-models.mjs
+      - name: Test available Chrome for headless grip fitting
+        shell: bash
+        run: |
+          google-chrome --version || chromium --version || true
+      - name: Fit and export both grips, preserving raw diagnostics
+        shell: bash
+        env:
+          E2E_CHANNEL: chrome
+        run: |
+          set +e
+          set -o pipefail
+          for side in right left; do
+            echo "::group::Handhold / $side hand"
+            node external-handhold/scripts/handhold.mjs \
+              --hand "$GITHUB_WORKSPACE/anatomy-rigged/assets/body_superficial.glb" \
+              --object "$GITHUB_WORKSPACE/grip-prototype/dumbbell.glb" \
+              --at 0,0,0 --fingers 0,-1,0 --thumb 1,0,0 --pick "$side" --arm none \
+              --unreviewed --out "$GITHUB_WORKSPACE/grip-prototype/$side" \
+              --name "dumbbell-$side" 2>&1 | tee "grip-prototype/$side.log"
+            echo "${PIPESTATUS[0]}" > "grip-prototype/$side-exit.txt"
+            echo "::endgroup::"
+          done
+          python - <<'PY'
+          import json,pathlib
+          root=pathlib.Path('grip-prototype')
+          summary={'source':'Ozbrett/handhold (MIT), pinned 270b74e',
+                   'asset':'Heatsy body_superficial.glb, CC BY-SA 4.0',
+                   'status':'Experimental independent compatibility check; not approved for teaching'}
+          for side in ('left','right'):
+              path=root/side/'summary.json'
+              exit_code=int((root/f'{side}-exit.txt').read_text().strip())
+              if path.exists():
+                  obj=json.loads(path.read_text())
+                  summary[side]={'exit_code':exit_code,'holds':obj.get('holds'),
+                      'grips':len(obj.get('grips',[])),'problems':obj.get('problems',[])}
+              else:
+                  summary[side]={'exit_code':exit_code,'error':'No summary.json'}
+          (root/'result.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2))
+          print(json.dumps(summary,ensure_ascii=False,indent=2))
+          PY
+          test "$(cat grip-prototype/left-exit.txt)" = 0 && test "$(cat grip-prototype/right-exit.txt)" = 0
+      - name: Upload results and images for independent review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: anatomical-dumbbell-grip-prototype
+          path: grip-prototype/
+          retention-days: 14
