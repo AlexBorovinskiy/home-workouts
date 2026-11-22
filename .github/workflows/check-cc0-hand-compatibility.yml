@@ -1,0 +1,54 @@
+name: Inspect CC0 skinned replacement hand
+on:
+  push:
+    paths:
+      - '.github/workflows/check-cc0-hand-compatibility.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch CC0 rigged hand sample
+        run: |
+          mkdir -p hand-prototype
+          curl --fail --location --retry 3 --max-time 40 \
+            'https://files.innerscene.com/library/posable-anatomical-right-hand-f6098b4f/c28ad5ff8fafd424275f/hand-posable.glb' \
+            -o hand-prototype/hand-posable.glb
+          file hand-prototype/hand-posable.glb
+          sha256sum hand-prototype/hand-posable.glb > hand-prototype/checksum.txt
+      - name: Inspect source glTF rig and dimensions
+        run: |
+          python - <<'PY'
+          import json,struct,pathlib
+          root=pathlib.Path('hand-prototype')
+          raw=(root/'hand-posable.glb').read_bytes()
+          magic,ver,size=struct.unpack_from('<III',raw,0)
+          assert magic==0x46546C67 and ver==2 and size==len(raw),(magic,ver,size,len(raw))
+          jlen=struct.unpack_from('<I',raw,12)[0]
+          scene=json.loads(raw[20:20+jlen])
+          nodes=scene['nodes']
+          parents={j:i for i,n in enumerate(nodes) for j in n.get('children',[])}
+          mesh_nodes=[{'index':i,'name':n.get('name'),'mesh':n.get('mesh'),'skin':n.get('skin'),'rotation':n.get('rotation'),'translation':n.get('translation')} for i,n in enumerate(nodes) if n.get('mesh') is not None]
+          skins=[{'joints':[{'index':k,'name':nodes[k].get('name'),'rotation':nodes[k].get('rotation'),'translation':nodes[k].get('translation'),'parent':parents.get(k)} for k in s.get('joints',[])],'skeleton':s.get('skeleton'),'inverseBindMatrices':s.get('inverseBindMatrices')} for s in scene.get('skins',[])]
+          meta={'asset':scene.get('asset'),'mesh_nodes':mesh_nodes,'skins':skins,
+             'meshes':scene.get('meshes'),'scenes':scene.get('scenes'),'scene':scene.get('scene'),
+             'accessors':[{'count':a.get('count'),'type':a.get('type'),'componentType':a.get('componentType'),'min':a.get('min'),'max':a.get('max')} for a in scene['accessors']],
+             'roots':[{'index':i,'name':n.get('name'),'children':n.get('children'),'translation':n.get('translation'),'rotation':n.get('rotation'),'scale':n.get('scale')} for i,n in enumerate(nodes) if i not in parents]}
+          (root/'rig-meta.json').write_text(json.dumps(meta,indent=2))
+          print('Skins',len(skins),'mesh nodes',len(mesh_nodes),'root nodes',len(meta['roots']))
+          print('Joint names:',[[n['name'] for n in s['joints']] for s in skins])
+          PY
+      - name: Include source and licensing evidence
+        run: |
+          printf '%s\n' 'Skinned hand: Innerscene CC0 model, adapted from MakeHuman/MPFB core assets' 'Source https://www.innerscene.com/tools/library/3d-parts/posable-anatomical-right-hand-f6098b4f' 'Source CC0 public domain dedication, see above URL' > hand-prototype/LICENSE-NOTICE.txt
+      - name: Upload compatibility data
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cc0-hand-rig-compatibility
+          path: hand-prototype/
+          retention-days: 14
