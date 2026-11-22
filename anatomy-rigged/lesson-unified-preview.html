@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#081321">
+<title>Тест единого скелета — 3D-техника | Home Workouts</title>
+<link rel="icon" href="data:,">
+<link rel="manifest" href="./manifest.webmanifest">
+<style>
+:root{color-scheme:dark;--bg:#081321;--panel:#112637;--stroke:#2b4a5b;--muted:#9cb5c3;--text:#eaf5f5;--accent:#87e1d3;--orange:#f5a176;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 35% 0%,#19384b,var(--bg) 58%);color:var(--text)}main{max-width:1140px;margin:auto;padding:17px 13px calc(135px + env(safe-area-inset-bottom,0px))}button,input,select{font:inherit}button{cursor:pointer}button:disabled{opacity:.35;cursor:default}button,a{touch-action:manipulation}a{color:var(--accent)}.top{display:flex;align-items:center;justify-content:space-between;gap:12px}.eyebrow{font-size:11px;letter-spacing:1.2px;color:var(--accent);font-weight:750}.back{text-decoration:none;color:#cde6e9;border:1px solid #416272;border-radius:50px;padding:9px 13px;font-size:12px}h1{font-size:clamp(26px,4vw,35px);line-height:1.13;letter-spacing:-.8px;margin:13px 0 6px}.lead{font-size:13px;line-height:1.6;color:#bbd1d8;max-width:850px;margin:0 0 14px}.warning{background:#332c2a;color:#f6d5b4;border:1px solid #725342;border-radius:13px;padding:11px 13px;font-size:12px;line-height:1.55;margin-bottom:13px}.cols{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(310px,.9fr);gap:14px}.panel{background:var(--panel);border:1px solid var(--stroke);border-radius:19px;overflow:hidden}.scene{height:490px;position:relative;touch-action:none;background:radial-gradient(ellipse at 50% 36%,#1b4956,#0b1c29 67%)}.scene canvas{width:100%;height:100%;display:block;touch-action:none}.skin-toggle{position:absolute;left:11px;top:53px;z-index:2;background:#2b5049ea;color:#dffcf2;border:1px solid #86c3b2;border-radius:9px;padding:8px 10px;font-size:11px;font-weight:700;max-width:42%}.compare-grip{position:absolute;left:11px;top:11px;z-index:1;background:#214c59e8;border:1px solid #7dc6bb;color:#f0fffa;border-radius:9px;padding:8px 10px;font-size:11px;font-weight:700;max-width:38%}.status{position:absolute;left:11px;top:11px;background:#0b2332e8;border:1px solid #3d606c;border-radius:50px;color:#b4f5df;padding:7px 11px;font-size:11px;max-width:65%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.views{position:absolute;right:10px;top:10px;display:flex;gap:4px;max-width:calc(100% - 20px);flex-wrap:wrap;justify-content:flex-end}.views button{background:#1e3847db;border:1px solid #3f6071;border-radius:9px;padding:7px 8px;color:#dceeee;font-size:11px}.hint{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);background:#0b2332cc;border:1px solid #3a5a68;border-radius:25px;padding:6px 9px;font-size:10px;color:#c9dbe3;white-space:nowrap;pointer-events:none}.error{display:none;position:absolute;inset:0;z-index:2;background:#081522ef;padding:30px;align-items:center;justify-content:center;text-align:center;line-height:1.5}.error.show{display:flex}.bottom{padding:14px}.row{display:flex;align-items:center;justify-content:space-between;gap:9px}.buttons{display:flex;flex-wrap:wrap;gap:7px}.btn{border:1px solid #3b5d6f;border-radius:10px;padding:10px 12px;background:#1c394b;color:#e9f6f4;font-weight:650;font-size:12px;min-height:40px}.btn.main{background:var(--accent);border-color:var(--accent);color:#0b2830}.btn.selected{border-color:#91e4d6;background:#28535b;color:#f5ffff}.btn.warn{color:#ffcfbe}.btn.small{padding:8px 9px;min-height:34px}input[type=range]{width:100%;accent-color:var(--accent);height:27px}input[type=text],select{background:#0c1e2c;border:1px solid #39576a;border-radius:10px;color:#f1f8f9;min-height:42px;padding:8px 10px;max-width:100%;width:100%;font-size:13px}.field{display:block;margin:12px 0}.field span,.field-label{display:block;font-size:11px;color:var(--muted);margin-bottom:5px;font-weight:650}.box{padding:15px;border-bottom:1px solid #28485b}.box:last-child{border:0}.tag{font-size:10px;text-transform:uppercase;letter-spacing:1.4px;color:#a2d9d3;font-weight:800}.box h2{margin:8px 0 12px;font-size:17px;letter-spacing:-.3px}.note{font-size:11px;line-height:1.55;color:#a8c1c9}.pair{display:grid;grid-template-columns:1fr 1fr;gap:9px}.axis{display:grid;grid-template-columns:24px 1fr 53px;align-items:center;gap:8px;padding:5px 0}.axis strong{font-size:12px;color:#d9eae7}.axis output{font-size:11px;text-align:right;color:#adf1dd;font-variant-numeric:tabular-nums}.frame-buttons{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.frame-buttons button{min-width:0}.frame-buttons strong{display:block}.frame-buttons span{display:block;font-size:10px;opacity:.75;margin-top:3px}.check{display:flex;gap:8px;align-items:center;font-size:12px;color:#d8edf0}.check input{accent-color:var(--accent);width:18px;height:18px}.fieldrow{display:flex;align-items:center;justify-content:space-between;gap:8px}.fieldrow span{color:var(--muted);font-size:11px}.right{padding:0}.fine{font-size:10px;color:#a1b5c2;line-height:1.5}.filename{font-size:11px;color:#a0d5cf;overflow-wrap:anywhere}#jsonFile{display:none}.divider{border-top:1px solid #305269;margin:12px 0}.hide{display:none}@media(max-width:850px){.cols{grid-template-columns:1fr}.scene{height:min(61vh,500px)}}@media(max-width:520px){main{padding:15px 10px 40px}.scene{height:430px}.views button{padding:6px}.box{padding:12px}.buttons{gap:6px}.btn{padding:9px 10px}.axis{grid-template-columns:17px 1fr 47px}}
+.right{display:none}
+.lesson{padding:17px;overflow:visible}.lesson h2{font-size:18px;margin:4px 0 10px}
+.lesson h3{font-size:13px;margin:13px 0 5px;color:var(--accent)}
+.lesson p,.lesson li{font-size:13px;line-height:1.6;color:#d1e4e8}
+.lesson ul{padding-left:19px}.lesson li{margin:6px 0}
+.lesson .muscle{display:flex;align-items:center;gap:9px;font-size:12px;margin:8px 0}
+.lesson .spot{width:9px;height:9px;border-radius:50%;display:inline-block;flex:none}
+.live-cue{border:1px solid #48716b;background:#1b3c46;padding:10px 12px;border-radius:11px;color:#e4fcf6;line-height:1.5;font-size:12px;margin-top:10px;min-height:55px}
+.lesson .source-links a{display:block;margin:10px 0;font-size:12px;overflow-wrap:anywhere}
+.lesson .disclaimer{font-size:11px;color:#a3b7c1;background:#172b38;border-radius:10px;padding:10px}
+@media(max-width:850px){.lesson{padding:14px}}
+</style>
+</head>
+<body><main>
+<div class="top"><div class="eyebrow">HOME WORKOUTS / 3D-ТЕХНИКА</div><a class="back" href="../">← Журнал</a></div>
+<h1>Тест единого скелета кистей</h1>
+<p class="lead">Учебная анимация: вращай мужскую анатомическую модель, меняй скорость и останавливай движение в нужной точке. Настраивать суставы самостоятельно не требуется.</p>
+
+<div class="warning"><strong>Экспериментальная версия, не учебный образец.</strong> Геометрия кожи кистей перенесена на основной скелет человека. Перед использованием требуется визуальная проверка сгибания, контакта пальцев и перехода запястий.</div><div class="cols">
+<section class="panel">
+ <div class="scene" id="touchScene">
+  <canvas id="canvas" aria-label="Анатомическая 3D-модель для редактирования движений"></canvas>
+  <div class="status" id="status">Загрузка анатомии…</div>
+  <div class="views"><button data-view="front">Фас</button><button data-view="side">Профиль</button><button data-view="back">Спина</button><button id="resetCam" title="Вернуть всю фигуру в кадр" aria-label="Показать всю фигуру">⤢ Вся фигура</button></div>
+  <div class="hint">Проведи: вращение · 2 пальца: масштаб / сдвиг</div>
+  <div class="error" id="error"><div><strong>Не удалось загрузить модель</strong><p id="errorText"></p><button class="btn" onclick="location.reload()">Повторить</button></div></div>
+ </div>
+ <div class="bottom">
+  <div class="row"><strong id="currentPhase" style="font-size:13px">Исходная поза</strong><span id="timeLabel" class="note">00:00 / 00:06</span></div>
+  <input id="timeline" type="range" min="0" max="1000" value="0" aria-label="Просмотр движения">
+  <div class="buttons"><button class="btn main" id="play">▶ Воспроизвести</button><button class="btn" id="restart">↺ Сначала</button><select id="lessonSpeed" aria-label="Скорость" style="width:auto"><option value="1" selected>1×</option><option value="0.75">0,75×</option><option value="0.5">0,5×</option><option value="0.25">0,25×</option></select><button class="btn" id="restorePose">Начало</button><button class="btn" id="focusHands" title="Приблизить обе кисти и гантели">✋ Кисти крупно</button></div>
+  <div class="live-cue" id="lessonCue" role="status" aria-live="off">Старт: стой устойчиво, локти возле корпуса, запястья прямые.</div><p id="gripStatus" class="note" role="status" aria-live="polite">Загрузка и проверка положения пальцев…</p>
+ </div>
+</section>
+<section class="panel right">
+ <div class="box">
+  <div class="tag">01 · Упражнение</div>
+  <label class="field"><span>Название</span><input id="exerciseName" type="text" value="Сгибание рук с гантелями" maxlength="100"></label>
+  <div class="pair">
+   <label class="field"><span>Оборудование</span><select id="equipment"><option value="dumbbells">Гантели</option><option value="none">Без оборудования</option></select></label>
+   <label class="field"><span>Целевые мышцы</span><select id="muscle"><option value="arms_front">Бицепсы</option><option value="chest">Грудь</option><option value="shoulders">Плечи</option><option value="quads">Квадрицепсы</option><option value="glutes">Ягодичные</option><option value="hamstrings">Задняя поверхность бедра</option><option value="abs">Пресс</option><option value="upper_back">Верх спины</option><option value="forearms">Предплечья</option></select></label>
+  </div>
+  <div class="pair">
+   <label class="field"><span>Вспомогательные мышцы</span><select id="secondary"><option value="">Не указаны</option><option value="forearms">Предплечья</option><option value="arms_front">Бицепсы</option><option value="arms_back">Трицепсы</option><option value="shoulders">Плечи</option><option value="chest">Грудь</option><option value="upper_back">Спина</option><option value="glutes">Ягодичные</option><option value="hamstrings">Задняя поверхность бедра</option></select></label>
+   <label class="field"><span>Стабилизирующие мышцы</span><select id="stabilizer"><option value="">Не указаны</option><option value="abs">Пресс</option><option value="lower_back">Поясница</option><option value="shoulders">Плечи</option><option value="forearms">Предплечья</option><option value="glutes">Ягодичные</option><option value="upper_back">Спина</option></select></label>
+  </div>
+  <div class="buttons"><button id="loadDemo" class="btn">↺ Пример сгибания</button><button id="neutral" class="btn">Нейтральная поза</button><button id="gripPreset" class="btn">✋ Захват для всех поз</button></div>
+  <p class="note">Красный — основные, золотистый — вспомогательные, бирюзовый — стабилизирующие мышцы. Роли задаются вручную.</p>
+ </div>
+ <div class="box">
+  <div class="tag">02 · Ключевые позы</div><h2>Три этапа повторения</h2>
+  <div class="frame-buttons" id="frames">
+   <button class="btn selected" data-frame="0"><strong>1 · Старт</strong><span>начало</span></button>
+   <button class="btn" data-frame="1"><strong>2 · Пик</strong><span>усилие</span></button>
+   <button class="btn" data-frame="2"><strong>3 · Возврат</strong><span>конец</span></button>
+  </div>
+  <div class="buttons" style="margin-top:9px"><button id="saveFrame" class="btn main">Записать позу</button><button id="copyPrevious" class="btn">Скопировать предыдущую</button></div>
+  <p class="note">Выбери этап, выставь суставы и нажми «Записать позу». Изменения видны сразу, а кнопка сохраняет их в текущий этап.</p>
+ </div>
+ <div class="box">
+  <div class="tag">03 · Положение тела</div><h2>Управление суставами</h2>
+  <label class="field"><span>Сустав</span><select id="joint"></select></label>
+  <label class="check"><input id="mirror" type="checkbox" checked>Менять левую и правую сторону симметрично</label>
+  <div class="divider"></div>
+  <div class="axis"><strong>X</strong><input id="angleX" type="range" min="-150" max="150" value="0"><output id="outX">0°</output></div>
+  <div class="axis"><strong>Y</strong><input id="angleY" type="range" min="-150" max="150" value="0"><output id="outY">0°</output></div>
+  <div class="axis"><strong>Z</strong><input id="angleZ" type="range" min="-150" max="150" value="0"><output id="outZ">0°</output></div>
+  <div class="buttons"><button id="jointReset" class="btn">Сбросить сустав</button><label class="check"><input id="showSkeleton" type="checkbox">Показать скелет</label></div>
+  <p class="note">Углы задают поворот относительно исходной позы; это не абсолютные медицинские углы суставов.</p>
+ </div>
+ <div class="box">
+  <div class="tag">04 · Сохранение</div><h2>Библиотека движений</h2>
+  <div class="buttons">
+   <button class="btn main" id="saveLocal">Сохранить на iPhone</button>
+   <button class="btn" id="export">Экспорт JSON</button>
+   <button class="btn" id="import">Импорт JSON</button>
+   <button class="btn warn" id="clear">Очистить</button>
+  </div>
+  <input type="file" id="jsonFile" accept=".json,application/json">
+  <div id="saveState" class="note" role="status" aria-live="polite" style="margin-top:10px">Данные хранятся локально в браузере. Для переноса между устройствами экспортируй JSON.</div>
+ </div>
+</section>
+<aside class="panel lesson">
+  <div class="tag">Пошаговая техника</div>
+  <h2>Что делать в каждом положении</h2>
+  <p class="note">Подсказки к текущей фазе появляются прямо под анимацией. Ниже — полное описание техники.</p>
+  <h3>1 · Исходная позиция</h3><p>Стой устойчиво, колени слегка расслаблены. Плечи опущены, локти близко к туловищу, запястья не согнуты.</p>
+  <h3>2 · Подъём</h3><p>Поднимай гантели, сгибая локти. Постепенно поворачивай ладони вверх. Не раскачивай корпус и не поднимай плечи к ушам.</p>
+  <h3>3 · Верхняя точка</h3><p>Заверши движение в комфортной амплитуде, пока плечи остаются стабильными. Гантели не должны обязательно касаться плеч.</p>
+  <h3>4 · Опускание</h3><p>Опускай гантели плавно, не отпускай вес вниз. Сохраняй линию предплечья и запястья.</p>
+  <div class="divider"></div>
+  <h2>Какие мышцы работают</h2>
+  <div class="muscle"><i class="spot" style="background:#f07855"></i><span>Основные — бицепсы плеча, помогают сгибать локоть и поворачивать предплечье</span></div>
+  <div class="muscle"><i class="spot" style="background:#edbb68"></i><span>Вспомогательные — плечевая, плечелучевая и мышцы предплечья</span></div>
+  <div class="muscle"><i class="spot" style="background:#638f8f"></i><span>Стабилизаторы — мышцы корпуса; показаны приглушённо, поскольку их активность здесь не измеряется</span></div>
+  <div class="divider"></div>
+  <h2>Избегай этих ошибок</h2>
+  <ul><li>Раскачивание корпуса и прогиб спины для подъёма веса</li><li>Рывки и падение гантелей на опускании</li><li>Заломы кистей и слишком сильный захват</li><li>Сильное выведение локтей вперёд ради большей высоты</li></ul>
+  <div class="disclaimer">Динамическая подсветка — иллюстрация мышечных групп, не измерение сокращения или нагрузки. Амплитуда адаптируется к анатомии и комфорту; при боли прекращай упражнение.</div>
+  <div class="divider"></div>
+  <div class="tag">Источники рекомендаций</div>
+  <div class="source-links">
+    <a href="https://www.acefitness.org/resources/everyone/exercise-library/184/seated-biceps-curl/" target="_blank" rel="noopener">ACE — хват, линия запястья и неподвижность корпуса</a>
+    <a href="https://www.nasm.org/resource-center/exercise-library/barbell-bicep-curl" target="_blank" rel="noopener">NASM — сгибание локтей и контроль опускания</a>
+    <a href="https://www.acefitness.org/resources/pros/expert-articles/9033/building-better-biceps-evidence-based-exercises-for-strength-and-function/" target="_blank" rel="noopener">ACE — анатомия бицепса и супинация</a>
+  </div>
+  <a href="./editor.html" class="back" style="display:inline-block;margin-top:8px">Редактор — для настройки модели</a>
+</aside></div>
+<p class="fine">Источник анатомии: <a href="https://github.com/heatsy-app/heatsy-body-model">Heatsy Body Model</a> (DDDEV LTD, CC BY-SA 4.0), на основе Z-Anatomy и BodyParts3D. Используется оригинальная скелетная привязка. Анимации и интерфейс редактора созданы отдельно. Офлайн-доступ после первой загрузки зависит от кеша браузера.</p>
+</main>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import {createSkinHandPreview} from './unified-hands.js';
+// Finger-grip quaternions are imported from independently generated Handhold output.
+const $=s=>document.querySelector(s);
+const ui={box:$('#touchScene'),canvas:$('#canvas'),status:$('#status'),error:$('#error'),errorText:$('#errorText'),time:$('#timeLabel'),timeline:$('#timeline'),play:$('#play'),phase:$('#currentPhase'),name:$('#exerciseName'),equip:$('#equipment'),muscle:$('#muscle'),joint:$('#joint'),mirror:$('#mirror'),saveState:$('#saveState')};
+const STORAGE='home-workouts-motion-editor-v1',DURATION=6,rad=Math.PI/180;let playbackSpeed=1;
+const copy=x=>JSON.parse(JSON.stringify(x));
+const defaultFrames=()=>[{}, {}, {}];
+let frames=defaultFrames(),pose={},selected=0,playing=false,playhead=0,lastTime=0,loaded=false,rig={},rest={},mesh=null,dumbbells=[],skel=null,part=null,groups=[],vertexColors=null;
+let handholdGrips=null,handSkin=null;
+let yaw=.15,pitch=.06,zoom=3.75,panX=0,panY=0,activeName='Сгибание рук с гантелями',targetGroup='arms_front';
+const scene=new THREE.Scene(),cam=new THREE.PerspectiveCamera(34,1,.02,80),renderer=new THREE.WebGLRenderer({canvas:ui.canvas,antialias:true,alpha:true,powerPreference:'high-performance'});
+renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.7));renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.15;renderer.setClearColor(0x081928,0);
+scene.add(new THREE.HemisphereLight(0xeafafa,0x2e4556,1.8));
+const light=new THREE.DirectionalLight(0xffede2,2.5);light.position.set(2,4,4);scene.add(light);
+const rim=new THREE.DirectionalLight(0x96dfe0,.9);rim.position.set(-3,2,-3);scene.add(rim);
+const ground=new THREE.Mesh(new THREE.CylinderGeometry(.77,.82,.025,76),new THREE.MeshStandardMaterial({color:0x153b4b,roughness:1}));
+ground.position.y=-.022;scene.add(ground);
+const ring=new THREE.Mesh(new THREE.TorusGeometry(.80,.007,8,80),new THREE.MeshBasicMaterial({color:0x4a8991}));
+ring.rotation.x=Math.PI/2;ring.position.y=-.009;scene.add(ring);
+const orientation=new THREE.Group();scene.add(orientation);
+function showError(e){ui.error.classList.add('show');ui.errorText.textContent=e?.message||String(e);ui.status.textContent='Ошибка загрузки';}
+function resize(){const w=ui.box.clientWidth,h=ui.box.clientHeight;renderer.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix()}resize();window.addEventListener('resize',resize);
+function angle(axis){return Number($('#angle'+axis).value)||0}
+function equipUpdate(){const show=ui.equip.value==='dumbbells';for(const d of dumbbells)d.visible=show}
+function addDumbbells(){
+ const barMat=new THREE.MeshStandardMaterial({color:0x3c4955,metalness:.42,roughness:.4});
+ const discMat=new THREE.MeshStandardMaterial({color:0x9faebd,metalness:.7,roughness:.28});
+ for(const side of ['L','R']){
+   const hand=rig['hand.'+side];if(!hand)continue;
+   const g=new THREE.Group();g.position.set(0,.063,.006);
+   const handle=new THREE.Mesh(new THREE.CylinderGeometry(.010,.010,.18,14),barMat);
+   handle.rotation.z=Math.PI/2;g.add(handle);
+   for(const x of [-.074,.074]){
+      const disc=new THREE.Mesh(new THREE.CylinderGeometry(.052,.052,.022,20),discMat);
+      disc.rotation.z=Math.PI/2;disc.position.x=x;g.add(disc);
+   }
+   hand.add(g);dumbbells.push(g);
+ }
+ equipUpdate();
+}
+const JLIST=[
+ ['Корпус','pelvis','Таз'],['Корпус','spine_01','Поясница'],['Корпус','spine_02','Грудной отдел'],['Корпус','spine_03','Верх спины'],['Корпус','neck','Шея'],['Корпус','head','Голова'],
+ ['Руки','clavicle.L','Ключица · левая'],['Руки','upperarm.L','Плечо · левое'],['Руки','forearm.L','Локоть · левый'],['Руки','forearm_twist.L','Поворот предплечья · левое'],['Руки','hand.L','Кисть · левая'],
+ ['Руки','clavicle.R','Ключица · правая'],['Руки','upperarm.R','Плечо · правое'],['Руки','forearm.R','Локоть · правый'],['Руки','forearm_twist.R','Поворот предплечья · правое'],['Руки','hand.R','Кисть · правая'],
+ ['Ноги','thigh.L','Тазобедренный · левый'],['Ноги','shin.L','Колено · левое'],['Ноги','foot.L','Голеностоп · левый'],['Ноги','thigh.R','Тазобедренный · правый'],['Ноги','shin.R','Колено · правое'],['Ноги','foot.R','Голеностоп · правый'],
+ ['Пальцы','thumb_01.L','Большой палец · левый'],['Пальцы','index_01.L','Указательный · левый'],['Пальцы','middle_01.L','Средний · левый'],['Пальцы','ring_01.L','Безымянный · левый'],['Пальцы','pinky_01.L','Мизинец · левый'],
+ ['Пальцы','thumb_01.R','Большой палец · правый'],['Пальцы','index_01.R','Указательный · правый'],['Пальцы','middle_01.R','Средний · правый'],['Пальцы','ring_01.R','Безымянный · правый'],['Пальцы','pinky_01.R','Мизинец · правый']
+];
+function populateJoints(){
+ ui.joint.replaceChildren();let category='',optgroup=null;
+ for(const [cat,name,title] of JLIST){
+   if(!rig[name])continue;
+   if(cat!==category){category=cat;optgroup=document.createElement('optgroup');optgroup.label=cat;ui.joint.append(optgroup)}
+   const option=document.createElement('option');option.value=name;option.textContent=title;optgroup.append(option);
+ }
+ ui.joint.value='forearm.L';
+}
+function mirrorOf(name){if(name.endsWith('.L'))return name.slice(0,-2)+'.R';if(name.endsWith('.R'))return name.slice(0,-2)+'.L';return null}
+function getAngles(joint){return pose[joint]||[0,0,0]}
+function applyAngles(){
+ if(!loaded)return;
+ const worldDelta=new THREE.Quaternion(),localDelta=new THREE.Quaternion(),pWorld=new THREE.Quaternion();
+ for(const [name,bone] of Object.entries(rig)){
+   const base=rest[name],r=pose[name]||[0,0,0];
+   const euler=new THREE.Euler(r[0]*rad,r[1]*rad,r[2]*rad,'XYZ');
+   worldDelta.setFromEuler(euler);
+   pWorld.copy(base.parentWorldQ);
+   localDelta.copy(pWorld).invert().multiply(worldDelta).multiply(pWorld);
+   bone.quaternion.copy(localDelta.multiply(base.quat));
+   bone.position.copy(base.pos);
+ }
+ if(handholdGrips){
+   for(const hand of Object.values(handholdGrips.hands)){
+     for(const [name,q] of Object.entries(hand.bones)){
+       if(rig[name])rig[name].quaternion.fromArray(q).normalize();
+     }
+   }
+ }
+ scene.updateMatrixWorld(true);
+ if(handSkin)handSkin.update();
+ if(skel)skel.updateMatrixWorld(true);
+}
+function positionDumbbellsForGrip(){
+  for(let i=0;i<dumbbells.length;i++){
+    const g=dumbbells[i],saved=handholdGrips?.hands[i===0?'L':'R']?.dumbbell;
+    if(!saved)throw Error('Отсутствует положение гантели');
+    g.position.fromArray(saved.position);
+    g.quaternion.fromArray(saved.quaternion).normalize();
+    g.scale.fromArray(saved.scale);
+  }
+}
+function drawAxes(){const a=getAngles(ui.joint.value);for(let i=0;i<3;i++){const n=['X','Y','Z'][i];$('#angle'+n).value=a[i];$('#out'+n).textContent=Math.round(a[i])+'°'}}
+function applySlider(){
+ const name=ui.joint.value;if(!name||!loaded)return;
+ const vals=['X','Y','Z'].map(angle);pose[name]=vals;
+ if(ui.mirror.checked){const other=mirrorOf(name);if(other&&rig[other])pose[other]=[vals[0],-vals[1],-vals[2]]}
+ drawAxes();playing=false;ui.play.textContent='▶ Воспроизвести';applyAngles();
+ ui.saveState.textContent='Поза изменена, но ещё не записана в этап. Нажми «Записать позу».';
+}
+function selectFrame(index){
+ playing=false;ui.play.textContent='▶ Воспроизвести';
+ selected=index;pose=copy(frames[index]);for(const b of document.querySelectorAll('[data-frame]'))b.classList.toggle('selected',Number(b.dataset.frame)===index);
+ drawAxes();applyAngles();ui.phase.textContent=['Старт','Пик','Возврат'][index];playhead=index/2;ui.timeline.value=Math.round(playhead*1000);
+}
+function setPoseValue(joint,xyz){pose[joint]=xyz;const other=mirrorOf(joint);if(other&&rig[other])pose[other]=[xyz[0],-xyz[1],-xyz[2]]}
+function addGripPreset(poseTarget){
+ // Reusable dumbbell finger-grip preset for both hands (still visually experimental).
+ for(const side of ['L','R']){
+   for(const name of ['index','middle','ring','pinky']){
+     for(const [partIndex,angle] of [[1,-49],[2,-54],[3,-30]]){
+       const joint=name+'_0'+partIndex+'.'+side;
+       if(rig[joint])poseTarget[joint]=[angle,0,0];
+     }
+   }
+   if(rig['thumb_01.'+side])poseTarget['thumb_01.'+side]=[0,0,side==='L'?14:-14];
+   if(rig['thumb_02.'+side])poseTarget['thumb_02.'+side]=[-36,0,0];
+ }
+}
+function demo(){
+ activeName='Сгибание рук с гантелями';ui.name.value=activeName;ui.equip.value='dumbbells';ui.muscle.value='arms_front';$('#secondary').value='forearms';$('#stabilizer').value='abs';
+ const start={},top={};pose={};setPoseValue('upperarm.L',[-3,0,0]);
+ setPoseValue('forearm.L',[0,0,0]);setPoseValue('forearm_twist.L',[0,0,0]);
+ const first=copy(pose);
+ pose=copy(first);setPoseValue('forearm.L',[-92,0,0]);
+ setPoseValue('forearm_twist.L',[0,27,0]);const middle=copy(pose);
+ frames=[first,middle,copy(first)];frames.forEach(addGripPreset);
+ selectFrame(0);equipUpdate();recolor();
+ ui.saveState.textContent='Пример загружен: на его основе можно создать собственное упражнение.';
+}
+function recolor(){
+ if(!vertexColors||!part||!mesh)return;
+ const selected=ui.muscle.value,aux=$('#secondary').value,stable=$('#stabilizer').value;
+ const col=mesh.geometry.getAttribute('color');
+ for(let i=0;i<part.count;i++){
+   const id=Math.round(part.getX(i));
+   const key=id>0?groups[Math.floor((id-1)/2)]:null;
+   const active=key===selected,assists=key===aux,stabilizes=key===stable;
+   let r=.49,g=.24,b=.29;
+   if(active){r=1;g=.34;b=.14}
+   else if(assists){r=.94;g=.68;b=.27}
+   else if(stabilizes){r=.34;g=.47;b=.47} // subdued: stabilization is not measured activation
+   if(!id){r=.65;g=.63;b=.59}
+   const n=i*3;vertexColors[n]=r;vertexColors[n+1]=g;vertexColors[n+2]=b;
+ }
+ col.needsUpdate=true;
+}
+async function loadModel(){
+ const [gltf,catalog]=await Promise.all([
+  new GLTFLoader().loadAsync('./assets/body_superficial.glb'),
+  fetch('./assets/muscles.json').then(r=>{if(!r.ok)throw Error('Каталог мышц недоступен');return r.json()})
+ ]);
+ const model=gltf.scene;orientation.add(model);model.updateMatrixWorld(true);
+ model.traverse(o=>{if(o.isSkinnedMesh)mesh=o});
+ if(!mesh||!mesh.skeleton)throw Error('В GLB нет анимируемого скелета');
+ const original=gltf.parser.json,skin=original.skins.find(x=>x.joints.length===mesh.skeleton.bones.length);
+ if(!skin)throw Error('Не удаётся сопоставить кости скелета');
+ skin.joints.forEach((nodeIndex,i)=>{
+   const bone=mesh.skeleton.bones[i],name=original.nodes[nodeIndex]?.name||bone.name;
+   rig[name]=bone;
+ });
+ if(!rig['forearm.L']||!rig['hand.L'])throw Error('В модели не найдены суставы рук');
+ // Critical: preserve quantized SHORT positions; inverse bind matrices already scale to metres.
+ for(const [name,bone] of Object.entries(rig)){
+   rest[name]={quat:bone.quaternion.clone(),pos:bone.position.clone(),parentWorldQ:bone.parent.getWorldQuaternion(new THREE.Quaternion())};
+ }
+ part=mesh.geometry.getAttribute('_PART_ID')||mesh.geometry.getAttribute('_part_id');
+ groups=catalog.parts.map(p=>catalog.muscles.find(m=>m.id===p.muscle)?.group||'other');
+ if(part){
+   vertexColors=new Float32Array(mesh.geometry.getAttribute('position').count*3);
+   mesh.geometry.setAttribute('color',new THREE.BufferAttribute(vertexColors,3));
+   mesh.material=mesh.material.clone();mesh.material.vertexColors=true;
+   mesh.material.color.setRGB(1,1,1);mesh.material.side=THREE.DoubleSide;
+   mesh.material.roughness=.9;mesh.material.metalness=0;
+ }
+ const box=new THREE.Box3().setFromObject(model),size=new THREE.Vector3(),center=new THREE.Vector3();
+ box.getSize(size);box.getCenter(center);
+ if(!size.y||!Number.isFinite(size.y))throw Error('Неправильная геометрия модели');
+ model.position.set(-center.x,-box.min.y,-center.z);
+ orientation.scale.setScalar(1.76/size.y);
+ skel=new THREE.SkeletonHelper(model);scene.add(skel);skel.visible=false;skel.material.color.setHex(0x8de5d6);skel.material.depthTest=false;skel.renderOrder=9;
+ populateJoints();addDumbbells();loaded=true;
+ const response=await fetch('./exercises/dumbbell-curl.json?v=22');
+ if(!response.ok)throw Error('Не удалось загрузить сценарий упражнения');
+ restoreDocument(await response.json(),false);
+ const status=document.getElementById('gripStatus');
+ ui.status.textContent='Загрузка положения пальцев…';
+ const gripResponse=await fetch('./assets/ergonomic-dumbbell-grip.json?v=2');
+ if(!gripResponse.ok)throw Error('Не удалось загрузить положение кистей');
+ const gripData=await gripResponse.json();
+ if(gripData.format!=='home-workouts-handhold'||gripData.version!==1)throw Error('Неподдерживаемая версия позы кистей');
+ for(const side of ['L','R']){
+   const hand=gripData.hands?.[side];
+   if(!hand?.stable||hand.handBone!=='hand.'+side||Object.keys(hand.bones||{}).length!==15)
+     throw Error('Для кисти '+side+' не найден полный захват');
+   if(!Object.entries(hand.bones).every(([name,q])=>rig[name]&&Array.isArray(q)&&q.length===4&&q.every(Number.isFinite)))
+     throw Error('Несовместимость скелета кисти '+side);
+   if(!hand.dumbbell?.position||!hand.dumbbell?.quaternion||!hand.dumbbell?.scale)
+     throw Error('Нет положения гантели для '+side);
+ }
+ handholdGrips=gripData;
+ positionDumbbellsForGrip();
+ try{
+   handSkin=await createSkinHandPreview({THREE,GLTFLoader,scene,rig,rest,bodyMesh:mesh});
+   // Hidden diagnostic hook: no experimental grip controls in the user interface.
+   window.__skinPreviewDebug={
+     getState:()=>({enabled:handSkin.isEnabled(),maskedVertices:handSkin.maskedVertices}),
+     setCamera:(opts)=>{zoom=opts.zoom??zoom;panY=opts.panY??panY;panX=opts.panX??panX;yaw=opts.yaw??yaw;pitch=opts.pitch??pitch}
+   };
+   handSkin.setEnabled(true);
+   status.textContent='Объёмная модель кистей и захват гантелей загружены. Положение пальцев остаётся экспериментальным и уточняется.';
+ }catch(err){
+   status.textContent='Не удалось загрузить объёмные кисти: '+err.message;
+ }
+ selectFrame(0);
+ ui.saveState.textContent='Готовое учебное упражнение с экспериментальной объёмной моделью кистей.';
+ ui.status.textContent='✓ Модель загружена';ui.status.style.display='none';fitWholeBody();
+}
+const clamp=(x,a,b)=>Math.min(b,Math.max(a,x));
+// Restore the known-good original default framing; user intentionally zooms in to inspect hands.
+function fitWholeBody(){zoom=3.75;panX=0;panY=0;pitch=.06}
+function validateDocument(data){
+ if(!data||data.version!==1||!Array.isArray(data.frames)||data.frames.length!==3)throw Error('Неподдерживаемый формат упражнения');
+ for(const frame of data.frames){
+   if(!frame||typeof frame!=='object'||Array.isArray(frame))throw Error('Некорректная ключевая поза');
+   for(const [joint,angles] of Object.entries(frame)){
+     if(!rig[joint]||!Array.isArray(angles)||angles.length!==3||!angles.every(v=>Number.isFinite(v)&&Math.abs(v)<=150))throw Error('Неверное положение сустава: '+joint);
+   }
+ }
+ return data;
+}
+function documentData(){
+ return {version:1,format:'home-workouts-motion',name:ui.name.value.trim()||'Новое упражнение',
+   equipment:ui.equip.value,muscle:ui.muscle.value,secondary:$('#secondary').value,stabilizer:$('#stabilizer').value,frames:copy(frames),
+   source:'Heatsy Body Model, CC BY-SA 4.0',createdBy:'Home Workouts editor',updatedAt:new Date().toISOString()};
+}
+function restoreDocument(raw,notify=true){
+ const d=validateDocument(raw);
+ frames=copy(d.frames);ui.name.value=String(d.name||'Упражнение').slice(0,100);
+ ui.equip.value=d.equipment==='dumbbells'?'dumbbells':'none';
+ if(Array.from(ui.muscle.options).some(x=>x.value===d.muscle))ui.muscle.value=d.muscle;
+ for(const role of ['secondary','stabilizer'])if(Array.from($('#'+role).options).some(x=>x.value===d[role]))$('#'+role).value=d[role];else $('#'+role).value='';
+ selected=0;selectFrame(0);recolor();equipUpdate();
+ if(notify)ui.saveState.textContent='Проект загружен: '+ui.name.value;
+}
+function poseAt(t){
+ if(t<=0)return copy(frames[0]);if(t>=1)return copy(frames[2]);
+ const frame=t<.5?0:1,raw=t<.5?t*2:(t-.5)*2;
+ const ease=raw*raw*(3-2*raw);const start=frames[frame],end=frames[frame+1];
+ const poseOut={};const keys=new Set([...Object.keys(start),...Object.keys(end)]);
+ for(const key of keys){
+   const a=start[key]||[0,0,0],b=end[key]||[0,0,0];
+   poseOut[key]=a.map((v,i)=>v+(b[i]-v)*ease);
+ }
+ return poseOut;
+}
+function frameLoop(ts){
+ if(playing&&lastTime){
+   playhead+=playbackSpeed*(ts-lastTime)/(DURATION*1000);
+   if(playhead>=1)playhead=playhead%1;
+   pose=poseAt(playhead);applyAngles();drawAxes();
+ }
+ lastTime=ts;
+ ui.timeline.value=Math.round(playhead*1000);
+ ui.time.textContent='00:'+String(Math.floor(playhead*DURATION)).padStart(2,'0')+' / 00:06';
+ const cue=document.getElementById('lessonCue');
+ const phaseText=playhead<.07?'Старт: стой устойчиво, плечи опущены и локти возле корпуса.':
+   playhead<.46?'Подъём: сгибай локти без раскачивания. Ладони постепенно поворачиваются вверх.':
+   playhead<.55?'Верхняя точка: не забрасывай вес к плечам и держи запястья прямыми.':
+   playhead<.94?'Опускание: контролируй движение, не отпускай гантели вниз.':
+   'Возврат: восстанови исходное положение.';
+ if(cue.textContent!==phaseText)cue.textContent=phaseText;
+ if(playing)ui.phase.textContent=playhead<.5?'Подъём':'Опускание';
+ const target=new THREE.Vector3(panX,.88+panY,0);
+ cam.position.set(target.x+zoom*Math.sin(yaw)*Math.cos(pitch),target.y+zoom*Math.sin(pitch),target.z+zoom*Math.cos(yaw)*Math.cos(pitch));
+ cam.lookAt(target);renderer.render(scene,cam);requestAnimationFrame(frameLoop);
+}
+requestAnimationFrame(frameLoop);
+for(const axis of ['X','Y','Z'])$('#angle'+axis).addEventListener('input',applySlider);
+ui.joint.addEventListener('change',drawAxes);
+ui.mirror.addEventListener('change',drawAxes);
+for(const b of document.querySelectorAll('[data-frame]'))b.onclick=()=>selectFrame(Number(b.dataset.frame));
+$('#saveFrame').onclick=()=>{
+ if(!loaded)return;
+ frames[selected]=copy(pose);ui.saveState.textContent='Поза сохранена в этап '+(selected+1)+'. Теперь можно выбрать следующий.';
+};
+$('#copyPrevious').onclick=()=>{const index=selected===0?2:selected-1;pose=copy(frames[index]);drawAxes();applyAngles();ui.saveState.textContent='Поза скопирована из этапа '+(index+1)+'. Нажми «Записать позу».'};
+$('#jointReset').onclick=()=>{const n=ui.joint.value;delete pose[n];const m=mirrorOf(n);if(ui.mirror.checked&&m)delete pose[m];drawAxes();applyAngles()};
+$('#neutral').onclick=()=>{pose={};drawAxes();applyAngles();ui.saveState.textContent='Нейтральная поза открыта; её можно записать в выбранный этап.'};
+$('#restorePose').onclick=()=>selectFrame(selected);
+$('#loadDemo').onclick=()=>{if(confirm('Заменить текущие позы на пример сгибания рук?'))demo()};
+$('#gripPreset').onclick=()=>{
+ if(!loaded)return;
+ frames[selected]=copy(pose); // Preserve unsaved work on the selected keyframe.
+ for(const frame of frames)addGripPreset(frame);
+ ui.equip.value='dumbbells';selectFrame(selected);equipUpdate();
+ ui.saveState.textContent='Захват гантели применён к трём позам. Проверь пальцы на модели.';
+};
+$('#showSkeleton').onchange=e=>{if(skel)skel.visible=e.target.checked};
+ui.equip.onchange=equipUpdate;ui.muscle.onchange=recolor;$('#secondary').onchange=recolor;$('#stabilizer').onchange=recolor;
+$('#saveLocal').onclick=()=>{if(!loaded)return;try{localStorage.setItem(STORAGE,JSON.stringify(documentData()));ui.saveState.textContent='Сохранено локально на этом устройстве.'}catch(e){ui.saveState.textContent='Не удалось сохранить: '+e.message}};
+$('#export').onclick=()=>{
+ if(!loaded)return;
+ const data=documentData(),blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+ const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='home-workouts-motion.json';
+ document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),5000);
+ ui.saveState.textContent='JSON экспортирован. Его можно отправить в ChatGPT для дальнейших правок.';
+};
+$('#import').onclick=()=>$('#jsonFile').click();
+$('#jsonFile').addEventListener('change',async e=>{
+ const file=e.target.files[0];if(!file)return;
+ try{restoreDocument(JSON.parse(await file.text()));ui.saveState.textContent='Импорт завершён: '+file.name}
+ catch(err){alert('Не удалось прочитать упражнение: '+err.message)}
+ e.target.value='';
+});
+$('#clear').onclick=()=>{if(!confirm('Удалить локальную копию и сбросить редактор к примеру?'))return;localStorage.removeItem(STORAGE);demo();ui.saveState.textContent='Локальная копия удалена. Пример открыт заново.'};
+ui.timeline.addEventListener('input',()=>{playing=false;ui.play.textContent='▶ Воспроизвести';playhead=Number(ui.timeline.value)/1000;pose=poseAt(playhead);drawAxes();applyAngles();ui.phase.textContent='Просмотр позы'});
+ui.play.onclick=()=>{if(!loaded)return;playing=!playing;ui.play.textContent=playing?'Ⅱ Пауза':'▶ Воспроизвести'};
+$('#lessonSpeed').onchange=e=>playbackSpeed=Number(e.target.value)||1;
+$('#restart').onclick=()=>{playing=false;ui.play.textContent='▶ Воспроизвести';playhead=0;pose=poseAt(0);drawAxes();applyAngles()};
+$('#resetCam').onclick=fitWholeBody;
+ $('#focusHands').onclick=()=>{yaw=0;pitch=.04;zoom=1.65;panX=0;panY=.09;};
+for(const b of document.querySelectorAll('[data-view]'))b.onclick=()=>{yaw={front:0,side:Math.PI/2,back:Math.PI}[b.dataset.view];pitch=.06};
+let pointers=new Map(),lastPoint=null,pinchDist=null,pinchCenter=null;
+ui.box.addEventListener('pointerdown',e=>{
+ if(e.target.closest('button'))return;
+ ui.box.setPointerCapture(e.pointerId);pointers.set(e.pointerId,[e.clientX,e.clientY]);
+ lastPoint=[e.clientX,e.clientY];pinchDist=null;pinchCenter=null;
+});
+ui.box.addEventListener('pointermove',e=>{
+ if(!pointers.has(e.pointerId))return;pointers.set(e.pointerId,[e.clientX,e.clientY]);
+ const vals=[...pointers.values()];
+ if(vals.length===2){
+   const dist=Math.hypot(vals[0][0]-vals[1][0],vals[0][1]-vals[1][1]);
+   const center=[(vals[0][0]+vals[1][0])/2,(vals[0][1]+vals[1][1])/2];
+   if(pinchDist&&dist>5)zoom=clamp(zoom*pinchDist/dist,1.05,7.5);
+   if(pinchCenter){const factor=(zoom*2*Math.tan(34*Math.PI/360))/Math.max(220,ui.box.clientHeight);panX=clamp(panX-(center[0]-pinchCenter[0])*factor,-1.4,1.4);panY=clamp(panY+(center[1]-pinchCenter[1])*factor,-1.2,1.2)}
+   pinchDist=dist;pinchCenter=center;lastPoint=null;
+ }else if(lastPoint){
+   yaw+=(e.clientX-lastPoint[0])*.01;pitch=clamp(pitch+(e.clientY-lastPoint[1])*.004,-.25,1.1);lastPoint=[e.clientX,e.clientY];
+ }
+});
+for(const ev of ['pointerup','pointercancel','lostpointercapture'])ui.box.addEventListener(ev,e=>{pointers.delete(e.pointerId);lastPoint=null;pinchCenter=null;pinchDist=null});
+ui.box.addEventListener('wheel',e=>{e.preventDefault();zoom=clamp(zoom*(1+e.deltaY*.001),2,7.5)},{passive:false});
+if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
+loadModel().catch(showError);
+</script></body></html>
