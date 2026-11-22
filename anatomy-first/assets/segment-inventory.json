@@ -1,0 +1,1962 @@
+{
+  "source_triangles": 387692,
+  "unique_vertex_coordinates": 194806,
+  "connected_components": 480,
+  "segments": [
+    {
+      "rank": 1,
+      "triangles": 35148,
+      "file": "segment_01.stl"
+    },
+    {
+      "rank": 2,
+      "triangles": 33212,
+      "file": "segment_02.stl"
+    },
+    {
+      "rank": 3,
+      "triangles": 28216,
+      "file": "segment_03.stl"
+    },
+    {
+      "rank": 4,
+      "triangles": 23408,
+      "file": "segment_04.stl"
+    },
+    {
+      "rank": 5,
+      "triangles": 20640,
+      "file": "segment_05.stl"
+    },
+    {
+      "rank": 6,
+      "triangles": 19348,
+      "file": "segment_06.stl"
+    },
+    {
+      "rank": 7,
+      "triangles": 19160,
+      "file": "segment_07.stl"
+    },
+    {
+      "rank": 8,
+      "triangles": 19036,
+      "file": "segment_08.stl"
+    },
+    {
+      "rank": 9,
+      "triangles": 16980,
+      "file": "segment_09.stl"
+    },
+    {
+      "rank": 10,
+      "triangles": 15920,
+      "file": "segment_10.stl"
+    },
+    {
+      "rank": 11,
+      "triangles": 15312,
+      "file": "segment_11.stl"
+    },
+    {
+      "rank": 12,
+      "triangles": 14816,
+      "file": "segment_12.stl"
+    },
+    {
+      "rank": 13,
+      "triangles": 12532,
+      "file": "segment_13.stl"
+    },
+    {
+      "rank": 14,
+      "triangles": 10472,
+      "file": "segment_14.stl"
+    },
+    {
+      "rank": 15,
+      "triangles": 10100,
+      "file": "segment_15.stl"
+    },
+    {
+      "rank": 16,
+      "triangles": 9384,
+      "file": "segment_16.stl"
+    },
+    {
+      "rank": 17,
+      "triangles": 9252,
+      "file": "segment_17.stl"
+    },
+    {
+      "rank": 18,
+      "triangles": 8980,
+      "file": "segment_18.stl"
+    },
+    {
+      "rank": 19,
+      "triangles": 8368,
+      "file": "segment_19.stl"
+    },
+    {
+      "rank": 20,
+      "triangles": 7824,
+      "file": "segment_20.stl"
+    },
+    {
+      "rank": 21,
+      "triangles": 7272,
+      "file": "segment_21.stl"
+    },
+    {
+      "rank": 22,
+      "triangles": 6680,
+      "file": "segment_22.stl"
+    },
+    {
+      "rank": 23,
+      "triangles": 6504,
+      "file": "segment_23.stl"
+    },
+    {
+      "rank": 24,
+      "triangles": 6392,
+      "file": "segment_24.stl"
+    },
+    {
+      "rank": 25,
+      "triangles": 4328,
+      "file": "segment_25.stl"
+    },
+    {
+      "rank": 26,
+      "triangles": 4180,
+      "file": "segment_26.stl"
+    },
+    {
+      "rank": 27,
+      "triangles": 3912,
+      "file": "segment_27.stl"
+    },
+    {
+      "rank": 28,
+      "triangles": 3292,
+      "file": "segment_28.stl"
+    },
+    {
+      "rank": 29,
+      "triangles": 236,
+      "file": "segment_29.stl"
+    },
+    {
+      "rank": 30,
+      "triangles": 192,
+      "file": "segment_30.stl"
+    },
+    {
+      "rank": 31,
+      "triangles": 164,
+      "file": "segment_31.stl"
+    },
+    {
+      "rank": 32,
+      "triangles": 132,
+      "file": "segment_32.stl"
+    },
+    {
+      "rank": 33,
+      "triangles": 108,
+      "file": "segment_33.stl"
+    },
+    {
+      "rank": 34,
+      "triangles": 100,
+      "file": "segment_34.stl"
+    },
+    {
+      "rank": 35,
+      "triangles": 76
+    },
+    {
+      "rank": 36,
+      "triangles": 72
+    },
+    {
+      "rank": 37,
+      "triangles": 68
+    },
+    {
+      "rank": 38,
+      "triangles": 64
+    },
+    {
+      "rank": 39,
+      "triangles": 60
+    },
+    {
+      "rank": 40,
+      "triangles": 56
+    },
+    {
+      "rank": 41,
+      "triangles": 56
+    },
+    {
+      "rank": 42,
+      "triangles": 56
+    },
+    {
+      "rank": 43,
+      "triangles": 56
+    },
+    {
+      "rank": 44,
+      "triangles": 56
+    },
+    {
+      "rank": 45,
+      "triangles": 56
+    },
+    {
+      "rank": 46,
+      "triangles": 52
+    },
+    {
+      "rank": 47,
+      "triangles": 48
+    },
+    {
+      "rank": 48,
+      "triangles": 48
+    },
+    {
+      "rank": 49,
+      "triangles": 40
+    },
+    {
+      "rank": 50,
+      "triangles": 40
+    },
+    {
+      "rank": 51,
+      "triangles": 40
+    },
+    {
+      "rank": 52,
+      "triangles": 40
+    },
+    {
+      "rank": 53,
+      "triangles": 40
+    },
+    {
+      "rank": 54,
+      "triangles": 40
+    },
+    {
+      "rank": 55,
+      "triangles": 40
+    },
+    {
+      "rank": 56,
+      "triangles": 36
+    },
+    {
+      "rank": 57,
+      "triangles": 36
+    },
+    {
+      "rank": 58,
+      "triangles": 36
+    },
+    {
+      "rank": 59,
+      "triangles": 36
+    },
+    {
+      "rank": 60,
+      "triangles": 36
+    },
+    {
+      "rank": 61,
+      "triangles": 32
+    },
+    {
+      "rank": 62,
+      "triangles": 32
+    },
+    {
+      "rank": 63,
+      "triangles": 32
+    },
+    {
+      "rank": 64,
+      "triangles": 32
+    },
+    {
+      "rank": 65,
+      "triangles": 32
+    },
+    {
+      "rank": 66,
+      "triangles": 32
+    },
+    {
+      "rank": 67,
+      "triangles": 32
+    },
+    {
+      "rank": 68,
+      "triangles": 32
+    },
+    {
+      "rank": 69,
+      "triangles": 32
+    },
+    {
+      "rank": 70,
+      "triangles": 32
+    },
+    {
+      "rank": 71,
+      "triangles": 32
+    },
+    {
+      "rank": 72,
+      "triangles": 32
+    },
+    {
+      "rank": 73,
+      "triangles": 32
+    },
+    {
+      "rank": 74,
+      "triangles": 32
+    },
+    {
+      "rank": 75,
+      "triangles": 32
+    },
+    {
+      "rank": 76,
+      "triangles": 32
+    },
+    {
+      "rank": 77,
+      "triangles": 28
+    },
+    {
+      "rank": 78,
+      "triangles": 28
+    },
+    {
+      "rank": 79,
+      "triangles": 28
+    },
+    {
+      "rank": 80,
+      "triangles": 24
+    },
+    {
+      "rank": 81,
+      "triangles": 24
+    },
+    {
+      "rank": 82,
+      "triangles": 24
+    },
+    {
+      "rank": 83,
+      "triangles": 24
+    },
+    {
+      "rank": 84,
+      "triangles": 24
+    },
+    {
+      "rank": 85,
+      "triangles": 24
+    },
+    {
+      "rank": 86,
+      "triangles": 24
+    },
+    {
+      "rank": 87,
+      "triangles": 24
+    },
+    {
+      "rank": 88,
+      "triangles": 24
+    },
+    {
+      "rank": 89,
+      "triangles": 24
+    },
+    {
+      "rank": 90,
+      "triangles": 24
+    },
+    {
+      "rank": 91,
+      "triangles": 24
+    },
+    {
+      "rank": 92,
+      "triangles": 24
+    },
+    {
+      "rank": 93,
+      "triangles": 24
+    },
+    {
+      "rank": 94,
+      "triangles": 24
+    },
+    {
+      "rank": 95,
+      "triangles": 24
+    },
+    {
+      "rank": 96,
+      "triangles": 24
+    },
+    {
+      "rank": 97,
+      "triangles": 24
+    },
+    {
+      "rank": 98,
+      "triangles": 24
+    },
+    {
+      "rank": 99,
+      "triangles": 24
+    },
+    {
+      "rank": 100,
+      "triangles": 24
+    },
+    {
+      "rank": 101,
+      "triangles": 24
+    },
+    {
+      "rank": 102,
+      "triangles": 20
+    },
+    {
+      "rank": 103,
+      "triangles": 20
+    },
+    {
+      "rank": 104,
+      "triangles": 20
+    },
+    {
+      "rank": 105,
+      "triangles": 20
+    },
+    {
+      "rank": 106,
+      "triangles": 20
+    },
+    {
+      "rank": 107,
+      "triangles": 16
+    },
+    {
+      "rank": 108,
+      "triangles": 16
+    },
+    {
+      "rank": 109,
+      "triangles": 16
+    },
+    {
+      "rank": 110,
+      "triangles": 16
+    },
+    {
+      "rank": 111,
+      "triangles": 16
+    },
+    {
+      "rank": 112,
+      "triangles": 16
+    },
+    {
+      "rank": 113,
+      "triangles": 16
+    },
+    {
+      "rank": 114,
+      "triangles": 16
+    },
+    {
+      "rank": 115,
+      "triangles": 16
+    },
+    {
+      "rank": 116,
+      "triangles": 16
+    },
+    {
+      "rank": 117,
+      "triangles": 16
+    },
+    {
+      "rank": 118,
+      "triangles": 16
+    },
+    {
+      "rank": 119,
+      "triangles": 16
+    },
+    {
+      "rank": 120,
+      "triangles": 16
+    },
+    {
+      "rank": 121,
+      "triangles": 16
+    },
+    {
+      "rank": 122,
+      "triangles": 16
+    },
+    {
+      "rank": 123,
+      "triangles": 16
+    },
+    {
+      "rank": 124,
+      "triangles": 16
+    },
+    {
+      "rank": 125,
+      "triangles": 16
+    },
+    {
+      "rank": 126,
+      "triangles": 16
+    },
+    {
+      "rank": 127,
+      "triangles": 16
+    },
+    {
+      "rank": 128,
+      "triangles": 16
+    },
+    {
+      "rank": 129,
+      "triangles": 16
+    },
+    {
+      "rank": 130,
+      "triangles": 16
+    },
+    {
+      "rank": 131,
+      "triangles": 16
+    },
+    {
+      "rank": 132,
+      "triangles": 16
+    },
+    {
+      "rank": 133,
+      "triangles": 16
+    },
+    {
+      "rank": 134,
+      "triangles": 16
+    },
+    {
+      "rank": 135,
+      "triangles": 16
+    },
+    {
+      "rank": 136,
+      "triangles": 16
+    },
+    {
+      "rank": 137,
+      "triangles": 16
+    },
+    {
+      "rank": 138,
+      "triangles": 16
+    },
+    {
+      "rank": 139,
+      "triangles": 16
+    },
+    {
+      "rank": 140,
+      "triangles": 16
+    },
+    {
+      "rank": 141,
+      "triangles": 16
+    },
+    {
+      "rank": 142,
+      "triangles": 16
+    },
+    {
+      "rank": 143,
+      "triangles": 16
+    },
+    {
+      "rank": 144,
+      "triangles": 16
+    },
+    {
+      "rank": 145,
+      "triangles": 16
+    },
+    {
+      "rank": 146,
+      "triangles": 16
+    },
+    {
+      "rank": 147,
+      "triangles": 16
+    },
+    {
+      "rank": 148,
+      "triangles": 16
+    },
+    {
+      "rank": 149,
+      "triangles": 16
+    },
+    {
+      "rank": 150,
+      "triangles": 16
+    },
+    {
+      "rank": 151,
+      "triangles": 16
+    },
+    {
+      "rank": 152,
+      "triangles": 16
+    },
+    {
+      "rank": 153,
+      "triangles": 16
+    },
+    {
+      "rank": 154,
+      "triangles": 16
+    },
+    {
+      "rank": 155,
+      "triangles": 16
+    },
+    {
+      "rank": 156,
+      "triangles": 16
+    },
+    {
+      "rank": 157,
+      "triangles": 16
+    },
+    {
+      "rank": 158,
+      "triangles": 16
+    },
+    {
+      "rank": 159,
+      "triangles": 16
+    },
+    {
+      "rank": 160,
+      "triangles": 16
+    },
+    {
+      "rank": 161,
+      "triangles": 16
+    },
+    {
+      "rank": 162,
+      "triangles": 16
+    },
+    {
+      "rank": 163,
+      "triangles": 16
+    },
+    {
+      "rank": 164,
+      "triangles": 16
+    },
+    {
+      "rank": 165,
+      "triangles": 16
+    },
+    {
+      "rank": 166,
+      "triangles": 16
+    },
+    {
+      "rank": 167,
+      "triangles": 16
+    },
+    {
+      "rank": 168,
+      "triangles": 16
+    },
+    {
+      "rank": 169,
+      "triangles": 16
+    },
+    {
+      "rank": 170,
+      "triangles": 16
+    },
+    {
+      "rank": 171,
+      "triangles": 16
+    },
+    {
+      "rank": 172,
+      "triangles": 16
+    },
+    {
+      "rank": 173,
+      "triangles": 16
+    },
+    {
+      "rank": 174,
+      "triangles": 16
+    },
+    {
+      "rank": 175,
+      "triangles": 16
+    },
+    {
+      "rank": 176,
+      "triangles": 16
+    },
+    {
+      "rank": 177,
+      "triangles": 16
+    },
+    {
+      "rank": 178,
+      "triangles": 16
+    },
+    {
+      "rank": 179,
+      "triangles": 16
+    },
+    {
+      "rank": 180,
+      "triangles": 16
+    },
+    {
+      "rank": 181,
+      "triangles": 8
+    },
+    {
+      "rank": 182,
+      "triangles": 8
+    },
+    {
+      "rank": 183,
+      "triangles": 8
+    },
+    {
+      "rank": 184,
+      "triangles": 8
+    },
+    {
+      "rank": 185,
+      "triangles": 8
+    },
+    {
+      "rank": 186,
+      "triangles": 8
+    },
+    {
+      "rank": 187,
+      "triangles": 8
+    },
+    {
+      "rank": 188,
+      "triangles": 8
+    },
+    {
+      "rank": 189,
+      "triangles": 8
+    },
+    {
+      "rank": 190,
+      "triangles": 8
+    },
+    {
+      "rank": 191,
+      "triangles": 8
+    },
+    {
+      "rank": 192,
+      "triangles": 8
+    },
+    {
+      "rank": 193,
+      "triangles": 8
+    },
+    {
+      "rank": 194,
+      "triangles": 8
+    },
+    {
+      "rank": 195,
+      "triangles": 8
+    },
+    {
+      "rank": 196,
+      "triangles": 8
+    },
+    {
+      "rank": 197,
+      "triangles": 8
+    },
+    {
+      "rank": 198,
+      "triangles": 8
+    },
+    {
+      "rank": 199,
+      "triangles": 8
+    },
+    {
+      "rank": 200,
+      "triangles": 8
+    },
+    {
+      "rank": 201,
+      "triangles": 8
+    },
+    {
+      "rank": 202,
+      "triangles": 8
+    },
+    {
+      "rank": 203,
+      "triangles": 8
+    },
+    {
+      "rank": 204,
+      "triangles": 8
+    },
+    {
+      "rank": 205,
+      "triangles": 8
+    },
+    {
+      "rank": 206,
+      "triangles": 8
+    },
+    {
+      "rank": 207,
+      "triangles": 8
+    },
+    {
+      "rank": 208,
+      "triangles": 8
+    },
+    {
+      "rank": 209,
+      "triangles": 8
+    },
+    {
+      "rank": 210,
+      "triangles": 8
+    },
+    {
+      "rank": 211,
+      "triangles": 8
+    },
+    {
+      "rank": 212,
+      "triangles": 8
+    },
+    {
+      "rank": 213,
+      "triangles": 8
+    },
+    {
+      "rank": 214,
+      "triangles": 8
+    },
+    {
+      "rank": 215,
+      "triangles": 8
+    },
+    {
+      "rank": 216,
+      "triangles": 8
+    },
+    {
+      "rank": 217,
+      "triangles": 8
+    },
+    {
+      "rank": 218,
+      "triangles": 8
+    },
+    {
+      "rank": 219,
+      "triangles": 8
+    },
+    {
+      "rank": 220,
+      "triangles": 8
+    },
+    {
+      "rank": 221,
+      "triangles": 8
+    },
+    {
+      "rank": 222,
+      "triangles": 8
+    },
+    {
+      "rank": 223,
+      "triangles": 8
+    },
+    {
+      "rank": 224,
+      "triangles": 8
+    },
+    {
+      "rank": 225,
+      "triangles": 8
+    },
+    {
+      "rank": 226,
+      "triangles": 8
+    },
+    {
+      "rank": 227,
+      "triangles": 8
+    },
+    {
+      "rank": 228,
+      "triangles": 8
+    },
+    {
+      "rank": 229,
+      "triangles": 8
+    },
+    {
+      "rank": 230,
+      "triangles": 8
+    },
+    {
+      "rank": 231,
+      "triangles": 8
+    },
+    {
+      "rank": 232,
+      "triangles": 8
+    },
+    {
+      "rank": 233,
+      "triangles": 8
+    },
+    {
+      "rank": 234,
+      "triangles": 8
+    },
+    {
+      "rank": 235,
+      "triangles": 8
+    },
+    {
+      "rank": 236,
+      "triangles": 8
+    },
+    {
+      "rank": 237,
+      "triangles": 8
+    },
+    {
+      "rank": 238,
+      "triangles": 8
+    },
+    {
+      "rank": 239,
+      "triangles": 8
+    },
+    {
+      "rank": 240,
+      "triangles": 8
+    },
+    {
+      "rank": 241,
+      "triangles": 8
+    },
+    {
+      "rank": 242,
+      "triangles": 8
+    },
+    {
+      "rank": 243,
+      "triangles": 8
+    },
+    {
+      "rank": 244,
+      "triangles": 8
+    },
+    {
+      "rank": 245,
+      "triangles": 8
+    },
+    {
+      "rank": 246,
+      "triangles": 8
+    },
+    {
+      "rank": 247,
+      "triangles": 8
+    },
+    {
+      "rank": 248,
+      "triangles": 8
+    },
+    {
+      "rank": 249,
+      "triangles": 8
+    },
+    {
+      "rank": 250,
+      "triangles": 8
+    },
+    {
+      "rank": 251,
+      "triangles": 8
+    },
+    {
+      "rank": 252,
+      "triangles": 8
+    },
+    {
+      "rank": 253,
+      "triangles": 8
+    },
+    {
+      "rank": 254,
+      "triangles": 8
+    },
+    {
+      "rank": 255,
+      "triangles": 8
+    },
+    {
+      "rank": 256,
+      "triangles": 8
+    },
+    {
+      "rank": 257,
+      "triangles": 8
+    },
+    {
+      "rank": 258,
+      "triangles": 8
+    },
+    {
+      "rank": 259,
+      "triangles": 8
+    },
+    {
+      "rank": 260,
+      "triangles": 8
+    },
+    {
+      "rank": 261,
+      "triangles": 8
+    },
+    {
+      "rank": 262,
+      "triangles": 8
+    },
+    {
+      "rank": 263,
+      "triangles": 8
+    },
+    {
+      "rank": 264,
+      "triangles": 8
+    },
+    {
+      "rank": 265,
+      "triangles": 8
+    },
+    {
+      "rank": 266,
+      "triangles": 8
+    },
+    {
+      "rank": 267,
+      "triangles": 8
+    },
+    {
+      "rank": 268,
+      "triangles": 8
+    },
+    {
+      "rank": 269,
+      "triangles": 8
+    },
+    {
+      "rank": 270,
+      "triangles": 8
+    },
+    {
+      "rank": 271,
+      "triangles": 8
+    },
+    {
+      "rank": 272,
+      "triangles": 8
+    },
+    {
+      "rank": 273,
+      "triangles": 8
+    },
+    {
+      "rank": 274,
+      "triangles": 8
+    },
+    {
+      "rank": 275,
+      "triangles": 8
+    },
+    {
+      "rank": 276,
+      "triangles": 8
+    },
+    {
+      "rank": 277,
+      "triangles": 8
+    },
+    {
+      "rank": 278,
+      "triangles": 8
+    },
+    {
+      "rank": 279,
+      "triangles": 8
+    },
+    {
+      "rank": 280,
+      "triangles": 8
+    },
+    {
+      "rank": 281,
+      "triangles": 8
+    },
+    {
+      "rank": 282,
+      "triangles": 8
+    },
+    {
+      "rank": 283,
+      "triangles": 8
+    },
+    {
+      "rank": 284,
+      "triangles": 8
+    },
+    {
+      "rank": 285,
+      "triangles": 8
+    },
+    {
+      "rank": 286,
+      "triangles": 8
+    },
+    {
+      "rank": 287,
+      "triangles": 8
+    },
+    {
+      "rank": 288,
+      "triangles": 8
+    },
+    {
+      "rank": 289,
+      "triangles": 8
+    },
+    {
+      "rank": 290,
+      "triangles": 8
+    },
+    {
+      "rank": 291,
+      "triangles": 8
+    },
+    {
+      "rank": 292,
+      "triangles": 8
+    },
+    {
+      "rank": 293,
+      "triangles": 8
+    },
+    {
+      "rank": 294,
+      "triangles": 8
+    },
+    {
+      "rank": 295,
+      "triangles": 8
+    },
+    {
+      "rank": 296,
+      "triangles": 8
+    },
+    {
+      "rank": 297,
+      "triangles": 8
+    },
+    {
+      "rank": 298,
+      "triangles": 8
+    },
+    {
+      "rank": 299,
+      "triangles": 8
+    },
+    {
+      "rank": 300,
+      "triangles": 8
+    },
+    {
+      "rank": 301,
+      "triangles": 8
+    },
+    {
+      "rank": 302,
+      "triangles": 8
+    },
+    {
+      "rank": 303,
+      "triangles": 8
+    },
+    {
+      "rank": 304,
+      "triangles": 8
+    },
+    {
+      "rank": 305,
+      "triangles": 8
+    },
+    {
+      "rank": 306,
+      "triangles": 8
+    },
+    {
+      "rank": 307,
+      "triangles": 8
+    },
+    {
+      "rank": 308,
+      "triangles": 8
+    },
+    {
+      "rank": 309,
+      "triangles": 8
+    },
+    {
+      "rank": 310,
+      "triangles": 8
+    },
+    {
+      "rank": 311,
+      "triangles": 8
+    },
+    {
+      "rank": 312,
+      "triangles": 8
+    },
+    {
+      "rank": 313,
+      "triangles": 8
+    },
+    {
+      "rank": 314,
+      "triangles": 8
+    },
+    {
+      "rank": 315,
+      "triangles": 8
+    },
+    {
+      "rank": 316,
+      "triangles": 8
+    },
+    {
+      "rank": 317,
+      "triangles": 8
+    },
+    {
+      "rank": 318,
+      "triangles": 8
+    },
+    {
+      "rank": 319,
+      "triangles": 8
+    },
+    {
+      "rank": 320,
+      "triangles": 8
+    },
+    {
+      "rank": 321,
+      "triangles": 8
+    },
+    {
+      "rank": 322,
+      "triangles": 8
+    },
+    {
+      "rank": 323,
+      "triangles": 8
+    },
+    {
+      "rank": 324,
+      "triangles": 8
+    },
+    {
+      "rank": 325,
+      "triangles": 8
+    },
+    {
+      "rank": 326,
+      "triangles": 8
+    },
+    {
+      "rank": 327,
+      "triangles": 8
+    },
+    {
+      "rank": 328,
+      "triangles": 8
+    },
+    {
+      "rank": 329,
+      "triangles": 8
+    },
+    {
+      "rank": 330,
+      "triangles": 8
+    },
+    {
+      "rank": 331,
+      "triangles": 8
+    },
+    {
+      "rank": 332,
+      "triangles": 8
+    },
+    {
+      "rank": 333,
+      "triangles": 8
+    },
+    {
+      "rank": 334,
+      "triangles": 8
+    },
+    {
+      "rank": 335,
+      "triangles": 8
+    },
+    {
+      "rank": 336,
+      "triangles": 8
+    },
+    {
+      "rank": 337,
+      "triangles": 8
+    },
+    {
+      "rank": 338,
+      "triangles": 8
+    },
+    {
+      "rank": 339,
+      "triangles": 8
+    },
+    {
+      "rank": 340,
+      "triangles": 8
+    },
+    {
+      "rank": 341,
+      "triangles": 8
+    },
+    {
+      "rank": 342,
+      "triangles": 8
+    },
+    {
+      "rank": 343,
+      "triangles": 8
+    },
+    {
+      "rank": 344,
+      "triangles": 8
+    },
+    {
+      "rank": 345,
+      "triangles": 8
+    },
+    {
+      "rank": 346,
+      "triangles": 8
+    },
+    {
+      "rank": 347,
+      "triangles": 8
+    },
+    {
+      "rank": 348,
+      "triangles": 8
+    },
+    {
+      "rank": 349,
+      "triangles": 8
+    },
+    {
+      "rank": 350,
+      "triangles": 8
+    },
+    {
+      "rank": 351,
+      "triangles": 8
+    },
+    {
+      "rank": 352,
+      "triangles": 8
+    },
+    {
+      "rank": 353,
+      "triangles": 8
+    },
+    {
+      "rank": 354,
+      "triangles": 8
+    },
+    {
+      "rank": 355,
+      "triangles": 8
+    },
+    {
+      "rank": 356,
+      "triangles": 8
+    },
+    {
+      "rank": 357,
+      "triangles": 8
+    },
+    {
+      "rank": 358,
+      "triangles": 8
+    },
+    {
+      "rank": 359,
+      "triangles": 8
+    },
+    {
+      "rank": 360,
+      "triangles": 8
+    },
+    {
+      "rank": 361,
+      "triangles": 8
+    },
+    {
+      "rank": 362,
+      "triangles": 8
+    },
+    {
+      "rank": 363,
+      "triangles": 8
+    },
+    {
+      "rank": 364,
+      "triangles": 8
+    },
+    {
+      "rank": 365,
+      "triangles": 8
+    },
+    {
+      "rank": 366,
+      "triangles": 8
+    },
+    {
+      "rank": 367,
+      "triangles": 8
+    },
+    {
+      "rank": 368,
+      "triangles": 8
+    },
+    {
+      "rank": 369,
+      "triangles": 8
+    },
+    {
+      "rank": 370,
+      "triangles": 8
+    },
+    {
+      "rank": 371,
+      "triangles": 8
+    },
+    {
+      "rank": 372,
+      "triangles": 8
+    },
+    {
+      "rank": 373,
+      "triangles": 8
+    },
+    {
+      "rank": 374,
+      "triangles": 8
+    },
+    {
+      "rank": 375,
+      "triangles": 8
+    },
+    {
+      "rank": 376,
+      "triangles": 8
+    },
+    {
+      "rank": 377,
+      "triangles": 8
+    },
+    {
+      "rank": 378,
+      "triangles": 8
+    },
+    {
+      "rank": 379,
+      "triangles": 8
+    },
+    {
+      "rank": 380,
+      "triangles": 8
+    },
+    {
+      "rank": 381,
+      "triangles": 8
+    },
+    {
+      "rank": 382,
+      "triangles": 8
+    },
+    {
+      "rank": 383,
+      "triangles": 8
+    },
+    {
+      "rank": 384,
+      "triangles": 8
+    },
+    {
+      "rank": 385,
+      "triangles": 8
+    },
+    {
+      "rank": 386,
+      "triangles": 8
+    },
+    {
+      "rank": 387,
+      "triangles": 8
+    },
+    {
+      "rank": 388,
+      "triangles": 8
+    },
+    {
+      "rank": 389,
+      "triangles": 8
+    },
+    {
+      "rank": 390,
+      "triangles": 8
+    },
+    {
+      "rank": 391,
+      "triangles": 8
+    },
+    {
+      "rank": 392,
+      "triangles": 8
+    },
+    {
+      "rank": 393,
+      "triangles": 8
+    },
+    {
+      "rank": 394,
+      "triangles": 8
+    },
+    {
+      "rank": 395,
+      "triangles": 8
+    },
+    {
+      "rank": 396,
+      "triangles": 8
+    },
+    {
+      "rank": 397,
+      "triangles": 8
+    },
+    {
+      "rank": 398,
+      "triangles": 8
+    },
+    {
+      "rank": 399,
+      "triangles": 8
+    },
+    {
+      "rank": 400,
+      "triangles": 8
+    },
+    {
+      "rank": 401,
+      "triangles": 8
+    },
+    {
+      "rank": 402,
+      "triangles": 8
+    },
+    {
+      "rank": 403,
+      "triangles": 8
+    },
+    {
+      "rank": 404,
+      "triangles": 8
+    },
+    {
+      "rank": 405,
+      "triangles": 8
+    },
+    {
+      "rank": 406,
+      "triangles": 8
+    },
+    {
+      "rank": 407,
+      "triangles": 8
+    },
+    {
+      "rank": 408,
+      "triangles": 8
+    },
+    {
+      "rank": 409,
+      "triangles": 8
+    },
+    {
+      "rank": 410,
+      "triangles": 8
+    },
+    {
+      "rank": 411,
+      "triangles": 8
+    },
+    {
+      "rank": 412,
+      "triangles": 8
+    },
+    {
+      "rank": 413,
+      "triangles": 8
+    },
+    {
+      "rank": 414,
+      "triangles": 8
+    },
+    {
+      "rank": 415,
+      "triangles": 8
+    },
+    {
+      "rank": 416,
+      "triangles": 8
+    },
+    {
+      "rank": 417,
+      "triangles": 8
+    },
+    {
+      "rank": 418,
+      "triangles": 8
+    },
+    {
+      "rank": 419,
+      "triangles": 8
+    },
+    {
+      "rank": 420,
+      "triangles": 8
+    },
+    {
+      "rank": 421,
+      "triangles": 8
+    },
+    {
+      "rank": 422,
+      "triangles": 8
+    },
+    {
+      "rank": 423,
+      "triangles": 8
+    },
+    {
+      "rank": 424,
+      "triangles": 8
+    },
+    {
+      "rank": 425,
+      "triangles": 8
+    },
+    {
+      "rank": 426,
+      "triangles": 8
+    },
+    {
+      "rank": 427,
+      "triangles": 8
+    },
+    {
+      "rank": 428,
+      "triangles": 8
+    },
+    {
+      "rank": 429,
+      "triangles": 8
+    },
+    {
+      "rank": 430,
+      "triangles": 8
+    },
+    {
+      "rank": 431,
+      "triangles": 8
+    },
+    {
+      "rank": 432,
+      "triangles": 8
+    },
+    {
+      "rank": 433,
+      "triangles": 8
+    },
+    {
+      "rank": 434,
+      "triangles": 8
+    },
+    {
+      "rank": 435,
+      "triangles": 8
+    },
+    {
+      "rank": 436,
+      "triangles": 8
+    },
+    {
+      "rank": 437,
+      "triangles": 8
+    },
+    {
+      "rank": 438,
+      "triangles": 8
+    },
+    {
+      "rank": 439,
+      "triangles": 8
+    },
+    {
+      "rank": 440,
+      "triangles": 8
+    },
+    {
+      "rank": 441,
+      "triangles": 8
+    },
+    {
+      "rank": 442,
+      "triangles": 8
+    },
+    {
+      "rank": 443,
+      "triangles": 8
+    },
+    {
+      "rank": 444,
+      "triangles": 8
+    },
+    {
+      "rank": 445,
+      "triangles": 8
+    },
+    {
+      "rank": 446,
+      "triangles": 8
+    },
+    {
+      "rank": 447,
+      "triangles": 8
+    },
+    {
+      "rank": 448,
+      "triangles": 8
+    },
+    {
+      "rank": 449,
+      "triangles": 8
+    },
+    {
+      "rank": 450,
+      "triangles": 8
+    },
+    {
+      "rank": 451,
+      "triangles": 8
+    },
+    {
+      "rank": 452,
+      "triangles": 8
+    },
+    {
+      "rank": 453,
+      "triangles": 8
+    },
+    {
+      "rank": 454,
+      "triangles": 8
+    },
+    {
+      "rank": 455,
+      "triangles": 8
+    },
+    {
+      "rank": 456,
+      "triangles": 8
+    },
+    {
+      "rank": 457,
+      "triangles": 8
+    },
+    {
+      "rank": 458,
+      "triangles": 8
+    },
+    {
+      "rank": 459,
+      "triangles": 8
+    },
+    {
+      "rank": 460,
+      "triangles": 8
+    },
+    {
+      "rank": 461,
+      "triangles": 8
+    },
+    {
+      "rank": 462,
+      "triangles": 8
+    },
+    {
+      "rank": 463,
+      "triangles": 8
+    },
+    {
+      "rank": 464,
+      "triangles": 8
+    },
+    {
+      "rank": 465,
+      "triangles": 8
+    },
+    {
+      "rank": 466,
+      "triangles": 8
+    },
+    {
+      "rank": 467,
+      "triangles": 8
+    },
+    {
+      "rank": 468,
+      "triangles": 8
+    },
+    {
+      "rank": 469,
+      "triangles": 8
+    },
+    {
+      "rank": 470,
+      "triangles": 8
+    },
+    {
+      "rank": 471,
+      "triangles": 8
+    },
+    {
+      "rank": 472,
+      "triangles": 8
+    },
+    {
+      "rank": 473,
+      "triangles": 8
+    },
+    {
+      "rank": 474,
+      "triangles": 8
+    },
+    {
+      "rank": 475,
+      "triangles": 8
+    },
+    {
+      "rank": 476,
+      "triangles": 8
+    },
+    {
+      "rank": 477,
+      "triangles": 8
+    },
+    {
+      "rank": 478,
+      "triangles": 8
+    },
+    {
+      "rank": 479,
+      "triangles": 8
+    },
+    {
+      "rank": 480,
+      "triangles": 8
+    }
+  ],
+  "substantial_segments": 34
+}

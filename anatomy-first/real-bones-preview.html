@@ -1,0 +1,123 @@
+<!doctype html><html lang="ru"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0a1c2b"><link rel="icon" href="data:,">
+<title>Настоящие кости кисти — Anatomy First</title>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color-scheme:dark;--ink:#e9f5f4;--muted:#afc7cb;--line:#2f5266;--teal:#8bddd0}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 5% 0%,#214352,#091929 62%);color:var(--ink)}
+main{padding:17px 13px 55px;max-width:920px;margin:auto}
+header{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.eyebrow{font-size:10px;font-weight:800;letter-spacing:.16em;color:var(--teal)}header a{color:var(--teal);font-size:12px;text-decoration:none}
+h1{font-size:clamp(25px,5vw,37px);margin:22px 0 8px;letter-spacing:-.04em}
+.lead{font-size:13px;line-height:1.65;color:var(--muted);margin:0 0 15px}
+.notice{background:#49372d;border:1px solid #87604c;color:#f3dcca;border-radius:12px;padding:12px;font-size:12px;line-height:1.6;margin-bottom:14px}
+.panel{border:1px solid var(--line);border-radius:18px;overflow:hidden;background:#0f2b3c}
+.stage{height:min(66vh,610px);min-height:350px;position:relative;touch-action:none;background:radial-gradient(ellipse at center,#234859,#091c2c 75%)}
+canvas{width:100%;height:100%;touch-action:none;display:block}
+.status{position:absolute;left:12px;top:12px;border:1px solid #437382;border-radius:22px;background:#0a2c3edb;padding:8px 11px;color:#c6eeeb;font-size:11px;pointer-events:none}
+.tip{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);font-size:10px;background:#0a2536db;border-radius:18px;padding:6px 11px;white-space:nowrap;color:#c0d6db;pointer-events:none}
+.error{display:none;position:absolute;inset:0;align-items:center;justify-content:center;padding:22px;text-align:center;background:#112938ef;line-height:1.6}.error.on{display:flex}
+.controls{padding:13px;display:grid;gap:12px}
+.heading{color:var(--teal);text-transform:uppercase;font-size:11px;font-weight:750;letter-spacing:.11em}
+.buttons{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+button{min-height:43px;padding:8px;border-radius:10px;background:#1a3c4e;color:var(--ink);border:1px solid #40677b;font:inherit;font-weight:650;font-size:12px}
+button.active{background:var(--teal);color:#08252e;border-color:var(--teal)}
+.stats{font-size:12px;line-height:1.55;border:1px solid #2b4b5d;background:#0a2232;padding:12px;border-radius:11px}
+.segment-list{max-height:155px;overflow-y:auto;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:9px}
+.segment-list label{font-size:11px;background:#112c3b;border-radius:8px;padding:7px 8px;display:flex;gap:6px;align-items:center}
+.segment-list input{accent-color:var(--teal)}
+footer{font-size:11px;line-height:1.65;color:var(--muted);padding:18px 1px}footer a{color:var(--teal)}
+@media(min-width:740px){.controls{grid-template-columns:1fr 1fr}}
+</style></head><body><main>
+<header><span class="eyebrow">HOME WORKOUTS / ANATOMY FIRST</span><a href="./hand-lab.html">← Предыдущий эксперимент</a></header>
+<h1>Анатомические кости кисти</h1>
+<p class="lead">Впервые используем геометрию, выделенную из медицинской МРТ-модели, вместо придуманных шаров и цилиндров. Геометрия сохранена; суставы пока не анимируются.</p>
+<div class="notice"><strong>Этап проверки исходных данных.</strong> Сегменты выделены алгоритмом связности сетки. Они пока не названы по костям и не имеют проверенных осей суставов. Это не демонстрация правильного хвата гантели.</div>
+<section class="panel">
+<div class="stage" id="stage"><canvas id="scene"></canvas><div class="status" id="status">Загрузка настоящей 3D-геометрии…</div><div class="tip">Палец — вращение · два — масштаб</div><div class="error" id="error" role="alert"></div></div>
+<div class="controls">
+<div><div class="heading">Положение камеры</div><div class="buttons" style="margin-top:8px">
+<button data-view="front">Спереди</button><button data-view="side">Сбоку</button><button data-view="top">Сверху</button>
+</div></div>
+<div><div class="heading">Геометрия</div><div class="buttons" style="margin-top:8px">
+<button id="explode">Раздвинуть</button><button id="reset">Собрать</button><button id="resetCamera">Вся кисть</button>
+</div></div>
+<div class="stats" id="stats">Проверка сегментов…</div>
+<div><div class="heading">Отдельные поверхности</div><div class="segment-list" id="segments"></div></div>
+</div>
+</section>
+<footer>Исходник: <a href="https://github.com/HegdeUSA/Hand_template">Hegdé et al., Hand Template</a>, построен на основе МРТ 27 рук. Исходный репозиторий помечен MIT, однако для версии NIH 3D указана GPLv3; условия повторного распространения проверяются отдельно. Названия сегментов временные, никаких анатомических меток программа не угадывает.</footer>
+</main>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+const $=sel=>document.querySelector(sel);
+const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(42,1,.0005,100);
+const renderer=new THREE.WebGLRenderer({canvas:$('#scene'),antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.7));renderer.outputColorSpace=THREE.SRGBColorSpace;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.25;
+renderer.setClearColor(0x091d2b,0);
+scene.add(new THREE.HemisphereLight(0xfefcf2,0x37596d,2.25));
+const light=new THREE.DirectionalLight(0xffeccf,2.3);light.position.set(4,7,5);scene.add(light);
+const rim=new THREE.DirectionalLight(0x9fe5e9,1.2);rim.position.set(-4,3,-6);scene.add(rim);
+const control=new OrbitControls(camera,renderer.domElement);control.enableDamping=true;control.dampingFactor=.07;
+let model,meshes=[],center=new THREE.Vector3(),maxSize=.24,exploded=false,ready=false;
+const originalPos=new Map(),originCentres=new Map();
+function resize(){const w=$('#stage').clientWidth,h=$('#stage').clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}
+new ResizeObserver(resize).observe($('#stage'));resize();
+function view(which='front'){
+ if(!ready)return;
+ const offset={front:[0,.2,1],side:[1,.1,0],top:[0,1,.1]}[which]||[0,.2,1];
+ const v=new THREE.Vector3(...offset).normalize().multiplyScalar(maxSize*2.3);
+ camera.position.copy(center).add(v);control.target.copy(center);camera.lookAt(center);control.update();
+}
+function explode(flag){
+ exploded=flag;
+ meshes.forEach(m=>{
+   const c=originCentres.get(m),original=originalPos.get(m);
+   const dir=c.clone().sub(center);
+   if(dir.lengthSq()<1e-9)dir.set(.5,.5,.5);
+   dir.normalize();m.position.copy(original).addScaledVector(dir,flag?maxSize*.20:0);
+ });
+ $('#explode').classList.toggle('active',flag);
+ $('#reset').classList.toggle('active',!flag);
+}
+async function init(){
+ const gltf=await new GLTFLoader().loadAsync('./assets/research-hand-segments.glb');
+ model=gltf.scene;
+ model.traverse(o=>{if(o.isMesh){meshes.push(o);o.frustumCulled=false;
+   o.material=new THREE.MeshStandardMaterial({color:0xdccbb2,roughness:.85,side:THREE.DoubleSide});
+ }});
+ if(meshes.length===0)throw Error('В данных нет поверхностей костей');
+ scene.add(model);model.updateMatrixWorld(true);
+ const b=new THREE.Box3().setFromObject(model);
+ b.getCenter(center);maxSize=b.getSize(new THREE.Vector3()).length();
+ if(!Number.isFinite(maxSize)||maxSize<=0)throw Error('Некорректные размеры 3D-модели');
+ for(const m of meshes){
+   originalPos.set(m,m.position.clone());
+   const localBounds=new THREE.Box3().setFromObject(m);
+   originCentres.set(m,localBounds.getCenter(new THREE.Vector3()));
+ }
+ ready=true;view('front');
+ const id=$('#segments');meshes.sort((a,b)=>a.name.localeCompare(b.name));
+ meshes.forEach((m,i)=>{
+   const label=document.createElement('label');
+   const cb=document.createElement('input');cb.type='checkbox';cb.checked=true;
+   cb.addEventListener('change',()=>{m.visible=cb.checked});
+   const t=document.createElement('span');t.textContent='Сегмент '+String(i+1);
+   label.append(cb,t);id.appendChild(label);
+ });
+ $('#stats').textContent='Реальные поверхности: '+meshes.length+
+   '\\nСвязность вычислена по общим вершинам STL.'+
+   '\\nНазвания костей: ещё не подтверждены.'+
+   '\\nРазмеры модели: '+(maxSize*100).toFixed(1)+' см (диагональ).';
+ $('#status').textContent='МРТ-геометрия · '+meshes.length+' отдельных поверхностей';
+ window.__realBonesQA={ready:()=>ready,count:()=>meshes.length,explode:()=>explode(true),assemble:()=>explode(false),view,bounds:()=>b.getSize(new THREE.Vector3()).toArray()};
+}
+for(const b of document.querySelectorAll('[data-view]'))b.onclick=()=>view(b.dataset.view);
+$('#explode').onclick=()=>explode(true);$('#reset').onclick=()=>explode(false);$('#resetCamera').onclick=()=>view('front');
+(function render(){requestAnimationFrame(render);control.update();renderer.render(scene,camera)})();
+init().catch(e=>{console.error(e);$('#error').classList.add('on');$('#error').textContent=e.message;$('#status').textContent='Ошибка данных'});
+</script></body></html>
