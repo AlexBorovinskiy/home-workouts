@@ -116,8 +116,8 @@ function gripFingers(){
  const rot=new THREE.Quaternion(),axis=new THREE.Vector3(localAxis==='x'?1:0,0,localAxis==='z'?1:0);
  if(axis.lengthSq()===0)throw Error('Unsupported debug axis');
  window.__axisDebugConfig={axis:localAxis,sign,order};
- window.__configureGrip=({factor=1,y=.07657357,z=.03055974,shiftX=0})=>{
-   for(const [digit,angles] of Object.entries(initialBends))bends[digit]=angles.map(v=>v*factor);
+ window.__configureGrip=({factor=1,factors={},y=.07657357,z=.03055974,shiftX=0})=>{
+   for(const [digit,angles] of Object.entries(initialBends))bends[digit]=angles.map(v=>v*(factors[digit]??factor));
    bar.position.set(shiftX,y,z);
    gripFingers();
    return checkContact();
