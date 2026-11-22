@@ -1,0 +1,138 @@
+name: QA finger-specific contact without changing accepted pose
+on:
+  push:
+    paths:
+      - '.github/workflows/qa-finger-fit-bench.yml'
+      - 'anatomy-rigged/finger-fit-workbench.html'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  fit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install headless browser controller
+        run: npm install --prefix /tmp/finger-bench --no-audit --no-fund playwright-core@1.56.1
+      - name: Fit four fingers with thumb kept stable and create mobile screenshots
+        shell: bash
+        run: |
+          mkdir -p results
+          python3 -m http.server 8765 --bind 127.0.0.1 >/tmp/finger-bench-http.log 2>&1 &
+          node --input-type=module <<'NODE'
+          import {chromium} from '/tmp/finger-bench/node_modules/playwright-core/index.mjs';
+          import {writeFileSync} from 'node:fs';
+          const browser=await chromium.launch({channel:'chrome',headless:true,args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+          const context=await browser.newContext({viewport:{width:430,height:932},deviceScaleFactor:1,isMobile:true,hasTouch:true,serviceWorkers:'block'});
+          const page=await context.newPage(),errs=[];
+          page.on('pageerror',e=>errs.push(e.message));
+          page.on('console',msg=>{if(msg.type()==='error')errs.push(msg.text())});
+          try{
+            await page.goto('http://127.0.0.1:8765/anatomy-rigged/finger-fit-workbench.html',{waitUntil:'domcontentloaded',timeout:65000});
+            await page.waitForFunction(()=>window.__unifiedQA?.ready()||document.querySelector('#error')?.classList.contains('on'),null,{timeout:80000});
+            if(!await page.evaluate(()=>window.__unifiedQA?.ready()))throw Error('Rig did not load: '+await page.locator('#error').innerText());
+            const report=await page.evaluate(()=>{
+              const qa=window.__unifiedQA,digits=['index','middle','ring','pinky'];
+              const baseline=qa.getFit(),baselineContact=qa.contacts();
+              const initial=JSON.parse(JSON.stringify(baseline.fingers)),current=JSON.parse(JSON.stringify(baseline.fingers));
+              let center=[...baseline.center],evaluations=0;
+              function digitScore(m,key,angles){
+                const init=initial[key],penalty=angles.reduce((s,a,i)=>s+Math.abs(a-init[i])*.16,0);
+                return Math.min(m.near,90)*2.1-m.inside*35-Math.min(Math.max(m.closest-.002,0),.04)*1100-penalty;
+              }
+              function allScore(res,angles,centerCandidate){
+                const f=digits.reduce((sum,k)=>sum+digitScore(res[k],k,angles[k]),0);
+                const thumb=res.thumb;
+                const thumbPenalty=thumb.inside*45+Math.max(0,baselineContact.thumb.near-thumb.near)*2.5+
+                  Math.max(0,35-thumb.near)*12;
+                const shift=centerCandidate.reduce((sum,v,i)=>sum+Math.abs(v-baseline.center[i]),0)*1100;
+                return f-thumbPenalty-shift;
+              }
+              function metric(p){evaluations++;return qa.configure(p)}
+              let metrics=baselineContact;
+              const history=[];
+              function optimizeFingers(phase){
+                for(const digit of digits){
+                  let best=[...current[digit]],bestMetric=metrics[digit],bestScore=digitScore(bestMetric,digit,best);
+                  const bounds=[[14,85],[25,105],[0,77]];
+                  for(const step of [22,12,6,3]){
+                    let changed=true,iterations=0;
+                    while(changed && iterations++<2){
+                      changed=false;
+                      for(let joint=0;joint<3;joint++){
+                        for(const sign of [-1,1]){
+                          const candidate=[...best];candidate[joint]=Math.max(bounds[joint][0],Math.min(bounds[joint][1],candidate[joint]+sign*step));
+                          if(candidate[joint]===best[joint])continue;
+                          const result=metric({fingers:{[digit]:candidate}});
+                          const score=digitScore(result[digit],digit,candidate);
+                          if(result[digit].inside<=3 && score>bestScore+.01){
+                            best=candidate;bestMetric=result[digit];bestScore=score;changed=true;
+                          }
+                        }
+                        metric({fingers:{[digit]:best}});
+                      }
+                    }
+                  }
+                  current[digit]=best;
+                  metrics=metric({fingers:{[digit]:best}});
+                  history.push({phase,digit,angles:best,near:metrics[digit].near,inside:metrics[digit].inside,score:bestScore});
+                }
+              }
+              optimizeFingers('before-handle');
+              // Tiny bar adjustments only: avoid losing the existing, visually-liked thumb.
+              let bestCenter=[...center],bestStats=metrics,bestOverall=allScore(metrics,current,center);
+              for(const dx of [-.006,-.003,0,.003,.006]){
+                for(const dy of [-.009,-.006,-.003,0,.003,.006,.009]){
+                  for(const dz of [-.009,-.006,-.003,0,.003,.006,.009]){
+                    if(dx===0&&dy===0&&dz===0)continue;
+                    const candidate=[center[0]+dx,center[1]+dy,center[2]+dz];
+                    const r=metric({center:candidate});
+                    if(r.thumb.inside>3||r.thumb.near<35)continue;
+                    const score=allScore(r,current,candidate);
+                    if(score>bestOverall){bestOverall=score;bestStats=r;bestCenter=[...candidate]}
+                  }
+                }
+              }
+              center=bestCenter;
+              metrics=metric({center});
+              optimizeFingers('after-handle');
+              const final=metric({center,fingers:current});
+              const finalScore=allScore(final,current,center);
+              const baseScore=allScore(baselineContact,initial,baseline.center);
+              const passedThumb=final.thumb.near>=35 && final.thumb.inside<=3;
+              const passedPen=digits.every(k=>final[k].inside<=3);
+              const gained=digits.map(k=>final[k].near-baselineContact[k].near);
+              return {baseline,baselineContact,baseScore,final:{center,direction:baseline.direction,fingers:current},finalContact:final,finalScore,passedThumb,passedPen,gained,history,evaluations};
+            });
+            writeFileSync('results/fit-report.json',JSON.stringify(report,null,2));
+            console.log(JSON.stringify({evaluations:report.evaluations,baseScore:report.baseScore,finalScore:report.finalScore,gained:report.gained,passedThumb:report.passedThumb,passedPen:report.passedPen,baseline:report.baselineContact,final:report.finalContact,fit:report.final},null,2));
+            // Preserve before/after images using the exact same camera at every stage.
+            for(const mode of ['baseline','optimized']){
+              const cfg=mode==='baseline'?report.baseline:report.final;
+              await page.evaluate(c=>{
+                window.__unifiedQA.configure({center:c.center,direction:c.direction,fingers:c.fingers});
+              },cfg);
+              for(const stage of [0,1,2]){
+                await page.evaluate(n=>window.__unifiedQA.setStage(n),stage);
+                for(const view of ['palm','thumb','side']){
+                  await page.evaluate(n=>window.__unifiedQA.view(n),view);
+                  await page.waitForTimeout(140);
+                  await page.locator('canvas').screenshot({path:'results/'+mode+'-'+stage+'-'+view+'.png'});
+                }
+              }
+            }
+            if(errs.length)throw Error('Page errors: '+errs.join('; '));
+            if(!report.passedPen||!report.passedThumb)throw Error('Cannot accept fit due to collisions or thumb regression');
+          }catch(e){writeFileSync('results/failure.txt',String(e)+'\n'+errs.join('\n'));throw e;}
+          finally{await browser.close()}
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: individual-finger-fit-review
+          path: results/
+          retention-days: 5
