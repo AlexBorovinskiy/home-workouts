@@ -1,4 +1,4 @@
-const CACHE='home-workouts-rigged-v19';
+const CACHE='home-workouts-rigged-v20';
 const INITIAL=['./','./index.html','./editor.html','./lesson.html','./exercises/dumbbell-curl.json','./manifest.webmanifest','./assets/body_superficial.glb','./assets/muscles.json'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(async c=>{for(const x of INITIAL){try{await c.add(x)}catch(err){console.warn('Anatomy cache:',x,err)}}}).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(Promise.all([self.clients.claim(),caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('home-workouts-rigged-')&&k!==CACHE).map(k=>caches.delete(k))))])));
