@@ -1,0 +1,148 @@
+{
+  "schema": "home-workouts-openSim-scientific-fullbody-candidate-v1",
+  "source": "FHS research dataset 2026 + OpenSim RajagopalLaiUhlrich2023",
+  "data": {
+    "status": "opensim-assembly-only",
+    "engine": "version 4.6-2026-06-22-85aaf64, build date 18:15:35 Jun 22 2026",
+    "sourceSpine": "https://zenodo.org/records/18259702",
+    "sourceLegs": "https://github.com/opensim-org/opensim-models/tree/master/Models/Rajagopal",
+    "originalFhsMusclesPreserved": 552,
+    "bodyCount": 80,
+    "jointCount": 80,
+    "coordinateCount": 171,
+    "vertebrae": 17,
+    "legSegments": 12,
+    "legJoints": 12,
+    "bodyFrameOriginsM": {
+      "pelvis": [
+        0.067422,
+        0.066579,
+        0
+      ],
+      "sacrum": [
+        0.067422,
+        0.025283,
+        0
+      ],
+      "lumbar5": [
+        -0.01517,
+        0.08512,
+        0
+      ],
+      "thoracic1": [
+        -0.039874,
+        0.511565,
+        0
+      ],
+      "femur_r": [
+        0.011146,
+        -0.011911,
+        0.07726
+      ],
+      "tibia_r": [
+        0.014724,
+        -0.418003,
+        0.076997
+      ],
+      "talus_r": [
+        0.004724,
+        -0.818003,
+        0.076997
+      ],
+      "calcn_r": [
+        -0.044046,
+        -0.859953,
+        0.084917
+      ],
+      "toes_r": [
+        0.134754,
+        -0.861953,
+        0.085997
+      ],
+      "femur_l": [
+        0.011146,
+        -0.011911,
+        -0.07726
+      ],
+      "tibia_l": [
+        0.014724,
+        -0.418003,
+        -0.076997
+      ],
+      "talus_l": [
+        0.004724,
+        -0.818003,
+        -0.076997
+      ],
+      "calcn_l": [
+        -0.044046,
+        -0.859953,
+        -0.084917
+      ],
+      "toes_l": [
+        0.134754,
+        -0.861953,
+        -0.085997
+      ],
+      "hand_R": [
+        0.003846,
+        0.026925,
+        0.171303
+      ],
+      "hand_L": [
+        0.003846,
+        0.026926,
+        -0.171307
+      ]
+    },
+    "distancesFromPelvisM": {
+      "toes_l": 0.9349,
+      "toes_r": 0.9349,
+      "hand_R": 0.187,
+      "hand_L": 0.187
+    },
+    "hasHands": true,
+    "hasFeet": true,
+    "hasContactForces": false,
+    "hasMeasuredPushup": false,
+    "massDistributionVerified": false,
+    "jointAlignmentValidated": false,
+    "isSafeExerciseModel": false,
+    "graft": {
+      "donorSegments": [
+        "calcn_l",
+        "calcn_r",
+        "femur_l",
+        "femur_r",
+        "patella_l",
+        "patella_r",
+        "talus_l",
+        "talus_r",
+        "tibia_l",
+        "tibia_r",
+        "toes_l",
+        "toes_r"
+      ],
+      "donorJoints": [
+        "ankle_l",
+        "ankle_r",
+        "hip_l",
+        "hip_r",
+        "mtp_l",
+        "mtp_r",
+        "patellofemoral_l",
+        "patellofemoral_r",
+        "subtalar_l",
+        "subtalar_r",
+        "walker_knee_l",
+        "walker_knee_r"
+      ],
+      "copiedConstraints": [
+        "patellofemoral_knee_angle_r_con",
+        "patellofemoral_knee_angle_l_con"
+      ]
+    }
+  },
+  "warning": "Unvalidated multibody assembly, no pose or load validation; points are body-frame origins, not digitized joints",
+  "units": "m"
+}
