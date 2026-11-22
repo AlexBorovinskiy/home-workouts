@@ -26,6 +26,8 @@ jobs:
           out={'provenance':'https://zenodo.org/records/18259702','archive_sha256':hashlib.sha256(open(p,'rb').read()).hexdigest(),'models':[]}
           with zipfile.ZipFile(p) as z:
             names=[n for n in z.namelist() if n.lower().endswith('.osim')]
+            with open('/tmp/fhs-sample.osim','wb') as sample:
+              sample.write(z.read(names[0]))
             print('OSIM_FILES',len(names),'SAMPLE_NAMES',json.dumps(names[:12]))
             for name in names[:8]:
               root=ET.fromstring(z.read(name))
@@ -49,6 +51,36 @@ jobs:
           with open('qa-spine/research-inventory.json','w') as f:json.dump(out,f,ensure_ascii=False,indent=2)
           print('RESEARCH_SPINE_INVENTORY',json.dumps(out,ensure_ascii=False))
           PY
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser QA
+        run: npm install --prefix /tmp/open-fhs-qa --no-audit --no-fund playwright-core@1.56.1
+      - name: Import 2026 scientific .osim in actual mobile browser
+        shell: bash
+        run: |
+          python3 -m http.server 8789 --bind 127.0.0.1 >/tmp/open-fhs-server.log 2>&1 &
+          node --input-type=module <<'NODE'
+          import {chromium} from '/tmp/open-fhs-qa/node_modules/playwright-core/index.mjs';
+          const browser=await chromium.launch({channel:'chrome',headless:true,args:['--no-sandbox','--use-angle=swiftshader']});
+          try {
+            const page=await browser.newPage({viewport:{width:430,height:932},isMobile:true,hasTouch:true});
+            const errors=[];
+            page.on('pageerror',e=>errors.push(e.message));
+            await page.goto('http://127.0.0.1:8789/opensim-lab/',{waitUntil:'domcontentloaded'});
+            await page.locator('#file').setInputFiles('/tmp/fhs-sample.osim');
+            await page.waitForFunction(()=>window.__osimQA?.get()!=null,null,{timeout:30000});
+            const data=await page.evaluate(()=>window.__osimQA.get());
+            console.log('SCIENTIFIC_IMPORT_QA '+JSON.stringify({
+              bodies:data.bodies,joints:data.joints,coords:data.coordinates,
+              muscles:data.muscles,vertebrae:data.present,intervertebral:data.intervertebral,
+              browserErrors:errors
+            }));
+            if(data.present.length!==17||data.intervertebral<16||data.muscles<500||errors.length)
+              throw Error('Scientific OpenSim model did not pass parser QA');
+            await page.screenshot({path:'qa-spine/scientific-import-mobile.png',fullPage:true});
+          } finally {await browser.close()}
+          NODE
       - uses: actions/upload-artifact@v4
         if: always()
         with:
