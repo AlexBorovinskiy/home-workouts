@@ -19,7 +19,7 @@
 <div class="canvas" id="dragZone"><canvas id="scene" aria-label="Интерактивная трёхмерная анатомическая мужская фигура"></canvas>
 <div class="status" id="status">Загрузка 3D-модели…</div>
 <div class="toolbar" id="viewButtons"><button class="active" data-view="front">Фас</button><button data-view="side">Профиль</button><button data-view="back">Спина</button></div>
-<div class="hint">↔ Вращай · Разведи пальцы для масштаба</div><div class="error" id="error"><div><strong>Не удалось загрузить анатомическую модель.</strong><p id="errorText">При первом открытии нужен интернет. Проверь подключение и перезагрузи страницу.</p><button onclick="location.reload()" style="padding:10px;border-radius:9px">Повторить</button></div></div><div class="loading" id="loading"><i id="loadFill"></i></div></div>
+<div class="hint">↔ Вращай · Двумя пальцами: масштаб и сдвиг</div><div class="error" id="error"><div><strong>Не удалось загрузить анатомическую модель.</strong><p id="errorText">При первом открытии нужен интернет. Проверь подключение и перезагрузи страницу.</p><button onclick="location.reload()" style="padding:10px;border-radius:9px">Повторить</button></div></div><div class="loading" id="loading"><i id="loadFill"></i></div></div>
 <div class="controls"><div class="phase"><strong id="phase">Исходное положение</strong><span class="time" id="time">00:00 / 00:20</span></div><input class="track" id="scrub" aria-label="Положение в упражнении" type="range" min="0" max="1000" value="0">
 <div class="actions"><button class="primary" id="play">▶ Запустить</button><button id="restart">↺ Сначала</button><button id="hold">Стоп-кадр</button><select id="speed" aria-label="Скорость"><option value="0.25" selected>0,25×</option><option value="0.5">0,5×</option><option value="0.75">0,75×</option><option value="1">1×</option></select></div></div></div>
 <div class="panel section"><div class="kicker">Проверка скелетной анимации</div><h2 id="exTitle">Сгибание рук</h2><p id="exDesc">Сгибание в локте: предплечья следуют за локтевыми суставами, кисти — за предплечьями. Проверь, не отделяются ли мышцы рук.</p>
@@ -36,10 +36,10 @@ const $=s=>document.querySelector(s);const ui={box:$('#dragZone'),canvas:$('#sce
 if('serviceWorker' in navigator&&location.protocol.startsWith('http')){try{await navigator.serviceWorker.register('./sw.js');await navigator.serviceWorker.ready;if(!navigator.serviceWorker.controller)await Promise.race([new Promise(r=>navigator.serviceWorker.addEventListener('controllerchange',r,{once:true})),new Promise(r=>setTimeout(r,1100))]);}catch(e){console.warn('offline cache:',e)}}
 let THREE,GLTFLoader;
 try{THREE=await import('three');({GLTFLoader}=await import('three/addons/loaders/GLTFLoader.js'));}catch(err){ui.error.classList.add('visible');ui.errorText.textContent='Браузер не загрузил модуль 3D-графики: '+err.message;throw err}
-const scene=new THREE.Scene(),renderer=new THREE.WebGLRenderer({canvas:ui.canvas,antialias:true,alpha:true,powerPreference:'high-performance'});renderer.setClearColor(0x0c2331,0);renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.65));renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.6;renderer.outputColorSpace=THREE.SRGBColorSpace;
-const camera=new THREE.PerspectiveCamera(33,1,.01,50);scene.add(new THREE.HemisphereLight(0xe2fbff,0x344656,2.8));const key=new THREE.DirectionalLight(0xffe5db,3.2);key.position.set(1.6,4,5);scene.add(key);const back=new THREE.DirectionalLight(0x87e9e3,1.7);back.position.set(-4,1,-2);scene.add(back);
+const scene=new THREE.Scene(),renderer=new THREE.WebGLRenderer({canvas:ui.canvas,antialias:true,alpha:true,powerPreference:'high-performance'});renderer.setClearColor(0x0c2331,0);renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.65));renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.15;renderer.outputColorSpace=THREE.SRGBColorSpace;
+const camera=new THREE.PerspectiveCamera(33,1,.01,50);scene.add(new THREE.HemisphereLight(0xe2fbff,0x344656,1.7));const key=new THREE.DirectionalLight(0xffe5db,2.3);key.position.set(1.6,4,5);scene.add(key);const back=new THREE.DirectionalLight(0x87e9e3,1.0);back.position.set(-4,1,-2);scene.add(back);
 const floor=new THREE.Mesh(new THREE.CylinderGeometry(.77,.82,.03,64),new THREE.MeshStandardMaterial({color:0x16394a,roughness:1}));floor.position.y=-.035;scene.add(floor);const ring=new THREE.Mesh(new THREE.TorusGeometry(.81,.006,8,90),new THREE.MeshBasicMaterial({color:0x4b8791}));ring.rotation.x=Math.PI/2;ring.position.y=-.017;scene.add(ring);
-let model,rig={},rest={},skeletonHelper=null,muscleMesh=null,partIds=null,tendons=null,partGroups=[],colored=null,active='curl',progress=0,playing=false,speed=.25,last=0,zoom=3.9,yaw=.10,pitch=.06,rigReady=false,frontSign=1;const restFoot={},restPelvis=new THREE.Vector3();const viewerGroup=new THREE.Group(),orientation=new THREE.Group();scene.add(viewerGroup);viewerGroup.add(orientation);
+let model,rig={},rest={},skeletonHelper=null,muscleMesh=null,partIds=null,tendons=null,partGroups=[],colored=null,active='curl',progress=0,playing=false,speed=.25,last=0,zoom=3.9,yaw=.10,pitch=.06,panX=0,panY=0,rigReady=false,frontSign=1;const restFoot={},restPelvis=new THREE.Vector3();const viewerGroup=new THREE.Group(),orientation=new THREE.Group();scene.add(viewerGroup);viewerGroup.add(orientation);
 const exercises={curl:{title:'Сгибание рук',desc:'Согни локти и проверь: мышцы плеча, предплечья, кисти и пальцы должны оставаться соединёнными на протяжении движения.',info:'Подсветка: передние мышцы плеча и предплечья. Это области приложения усилия, не расчёт активации.',groups:['arms_front','forearms'],phase:'Сгибание в локте'},squat:{title:'Приседание',desc:'Проверяем сгибание тазобедренных и коленных суставов. Стопы должны оставаться на уровне пола; движение пока не используется как образец техники.',info:'Подсветка: квадрицепсы, ягодичные и мышцы корпуса.',groups:['quads','glutes','abs'],phase:'Приседание'},pushup:{title:'Отжимание',desc:'Проверяем плечи, локти и кисти при положении корпуса почти горизонтально. Эта поза — тест геометрии рига, не эталон упражнения.',info:'Подсветка: грудь, задняя поверхность плеча, передние дельтовидные.',groups:['chest','arms_back','shoulders'],phase:'Отжимание'}};
 function setError(err){ui.status.textContent='Ошибка загрузки';ui.loading.style.display='none';ui.error.classList.add('visible');ui.errorText.textContent=err?.message||String(err)}
 function dimensions(){let w=ui.box.clientWidth,h=ui.box.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}window.addEventListener('resize',dimensions);dimensions();
@@ -115,15 +115,44 @@ function applyPose(){if(!rigReady)return;resetBones();const a=effort(progress);
  scene.updateMatrixWorld(true);if(skeletonHelper)skeletonHelper.updateMatrixWorld(true);}
 function updateColors(){if(!colored||!partIds)return;const groups=exercises[active].groups,enabled=$('#highlight').checked;const color=muscleMesh.geometry.attributes.color;for(let i=0;i<partIds.count;i++){
   const id=Math.round(partIds.getX(i)),idx=Math.floor((id-1)/2),group=id>0?partGroups[idx]:null,t=tendons?tendons.getX(i):0;
-  let r=.61,g=.26,b=.26;if(!id){r=.69;g=.65;b=.58} if(enabled && groups.includes(group)){r=1;g=.47;b=.26}else if(enabled&&id){r=.45;g=.26;b=.29}
+  let r=.59,g=.24,b=.27;if(!id){r=.67;g=.61;b=.55} if(enabled && groups.includes(group)){r=1;g=.39;b=.14}else if(enabled&&id){r=.45;g=.20;b=.25}
   const blend=Math.min(1,Math.max(0,t))*0.68;r=r*(1-blend)+.88*blend;g=g*(1-blend)+.84*blend;b=b*(1-blend)+.75*blend;
   colored[i*3]=r;colored[i*3+1]=g;colored[i*3+2]=b;
  }color.needsUpdate=true;}
-function setExercise(name){active=name;progress=0;playing=false;ui.play.textContent='▶ Запустить';ui.title.textContent=exercises[name].title;ui.desc.textContent=exercises[name].desc;ui.info.textContent=exercises[name].info;document.querySelectorAll('[data-ex]').forEach(b=>b.classList.toggle('active',b.dataset.ex===name));updateColors();applyPose();setView(name==='pushup'?'side':'front')}
-function setView(view){yaw=({front:0,side:Math.PI/2,back:Math.PI})[view];pitch=.06;document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===view))}
-function tick(ts){if(playing&&last)progress=(progress+(ts-last)*speed/9000)%1;last=ts;const b=effort(progress),f=progress<.1?'Исходное положение':progress<.45?'Сгибание':progress<.58?'Контроль позиции':progress<.93?'Разгибание':'Исходное положение';ui.phase.textContent=(active==='pushup'&&b>.85?'Нижняя точка':f);ui.scrub.value=Math.round(progress*1000);const dur=9/speed,fmt=s=>String(Math.floor(s/60)).padStart(2,'0')+':'+String(Math.floor(s%60)).padStart(2,'0');ui.time.textContent=fmt(dur*progress)+' / '+fmt(dur);if(rigReady)applyPose();const target=new THREE.Vector3(0,active==='pushup'?.65:.88,0);camera.position.set(target.x+zoom*Math.sin(yaw)*Math.cos(pitch),target.y+zoom*Math.sin(pitch),target.z+zoom*Math.cos(yaw)*Math.cos(pitch));camera.lookAt(target);renderer.render(scene,camera);requestAnimationFrame(tick)}requestAnimationFrame(tick);
+function setExercise(name){active=name;progress=0;playing=false;panX=0;panY=0;ui.play.textContent='▶ Запустить';ui.title.textContent=exercises[name].title;ui.desc.textContent=exercises[name].desc;ui.info.textContent=exercises[name].info;document.querySelectorAll('[data-ex]').forEach(b=>b.classList.toggle('active',b.dataset.ex===name));updateColors();applyPose();setView(name==='pushup'?'side':'front')}
+function setView(view){yaw=({front:0,side:Math.PI/2,back:Math.PI})[view];pitch=.06;panX=0;panY=0;document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===view))}
+function tick(ts){if(playing&&last)progress=(progress+(ts-last)*speed/9000)%1;last=ts;const b=effort(progress),f=progress<.1?'Исходное положение':progress<.45?'Сгибание':progress<.58?'Контроль позиции':progress<.93?'Разгибание':'Исходное положение';ui.phase.textContent=(active==='pushup'&&b>.85?'Нижняя точка':f);ui.scrub.value=Math.round(progress*1000);const dur=9/speed,fmt=s=>String(Math.floor(s/60)).padStart(2,'0')+':'+String(Math.floor(s%60)).padStart(2,'0');ui.time.textContent=fmt(dur*progress)+' / '+fmt(dur);if(rigReady)applyPose();const target=new THREE.Vector3(panX,(active==='pushup'?.65:.88)+panY,0);camera.position.set(target.x+zoom*Math.sin(yaw)*Math.cos(pitch),target.y+zoom*Math.sin(pitch),target.z+zoom*Math.cos(yaw)*Math.cos(pitch));camera.lookAt(target);renderer.render(scene,camera);requestAnimationFrame(tick)}requestAnimationFrame(tick);
 $('#play').onclick=()=>{playing=!playing;ui.play.textContent=playing?'Ⅱ Пауза':'▶ Запустить'};$('#restart').onclick=()=>{progress=0;playing=false;ui.play.textContent='▶ Запустить';applyPose()};$('#hold').onclick=()=>{progress=.51;playing=false;ui.play.textContent='▶ Запустить';applyPose()};ui.scrub.addEventListener('input',()=>{progress=+ui.scrub.value/1000;playing=false;ui.play.textContent='▶ Запустить';applyPose()});ui.speed.onchange=()=>speed=+ui.speed.value;
 document.querySelectorAll('[data-ex]').forEach(b=>b.onclick=()=>setExercise(b.dataset.ex));document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>setView(b.dataset.view));$('#highlight').onchange=updateColors;$('#skeleton').onchange=e=>{if(skeletonHelper)skeletonHelper.visible=e.target.checked};
-const pointers=new Map();let previous=null,pinch=null;ui.box.addEventListener('pointerdown',e=>{if(e.target.closest('button'))return;ui.box.setPointerCapture(e.pointerId);pointers.set(e.pointerId,[e.clientX,e.clientY]);previous=[e.clientX,e.clientY]});ui.box.addEventListener('pointermove',e=>{if(!pointers.has(e.pointerId))return;pointers.set(e.pointerId,[e.clientX,e.clientY]);const p=[...pointers.values()];if(p.length===2){const d=Math.hypot(p[0][0]-p[1][0],p[0][1]-p[1][1]);if(pinch)zoom=Math.min(7,Math.max(2.2,zoom*pinch/d));pinch=d;}else if(previous){yaw+=(e.clientX-previous[0])*.01;pitch=Math.min(.95,Math.max(-.25,pitch+(e.clientY-previous[1])*.004));document.querySelectorAll('[data-view]').forEach(b=>b.classList.remove('active'));previous=[e.clientX,e.clientY]}});for(const ev of ['pointerup','pointercancel','lostpointercapture'])ui.box.addEventListener(ev,e=>{pointers.delete(e.pointerId);previous=null;pinch=null});ui.box.addEventListener('wheel',e=>{e.preventDefault();zoom=Math.max(2,Math.min(7,zoom*(1+e.deltaY*.001)))},{passive:false});
+const pointers=new Map();let previous=null,pinch=null,pinchCenter=null;
+ui.box.addEventListener('pointerdown',e=>{
+ if(e.target.closest('button'))return;
+ ui.box.setPointerCapture(e.pointerId);
+ pointers.set(e.pointerId,[e.clientX,e.clientY]);
+ previous=[e.clientX,e.clientY];pinch=null;pinchCenter=null;
+});
+ui.box.addEventListener('pointermove',e=>{
+ if(!pointers.has(e.pointerId))return;
+ pointers.set(e.pointerId,[e.clientX,e.clientY]);
+ const p=[...pointers.values()];
+ if(p.length===2){
+   const d=Math.hypot(p[0][0]-p[1][0],p[0][1]-p[1][1]);
+   const center=[(p[0][0]+p[1][0])/2,(p[0][1]+p[1][1])/2];
+   if(pinch && d>5)zoom=Math.min(7,Math.max(2.2,zoom*pinch/d));
+   if(pinchCenter){
+      const factor=(zoom*2*Math.tan(33*Math.PI/360))/Math.max(220,ui.box.clientHeight);
+      panX=Math.max(-1.5,Math.min(1.5,panX-(center[0]-pinchCenter[0])*factor));
+      panY=Math.max(-1.3,Math.min(1.3,panY+(center[1]-pinchCenter[1])*factor));
+   }
+   pinch=d;pinchCenter=center;previous=null;
+ }else if(previous){
+   yaw+=(e.clientX-previous[0])*.010;
+   pitch=Math.min(.95,Math.max(-.25,pitch+(e.clientY-previous[1])*.004));
+   document.querySelectorAll('[data-view]').forEach(b=>b.classList.remove('active'));
+   previous=[e.clientX,e.clientY];
+ }
+});
+for(const ev of ['pointerup','pointercancel','lostpointercapture'])ui.box.addEventListener(ev,e=>{pointers.delete(e.pointerId);previous=null;pinch=null;pinchCenter=null});
+ui.box.addEventListener('wheel',e=>{e.preventDefault();zoom=Math.max(2,Math.min(7,zoom*(1+e.deltaY*.001)))},{passive:false});
 </script>
 </body></html>
