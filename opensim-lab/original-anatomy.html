@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="ru">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#071b2a"><link rel="icon" href="data:,"><title>OpenSim · настоящая геометрия кистей и шеи</title>
+<style>
+:root{color-scheme:dark;--bg:#081c29;--panel:#133442;--line:#365d69;--ink:#eaf9f7;--muted:#abc6cb;--mint:#91e1d0}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(145deg,#164251,#081c29 52%);color:var(--ink);font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+main{max-width:1160px;margin:auto;padding:15px 12px 65px}header{display:flex;align-items:center;justify-content:space-between;color:var(--mint);font-size:11px;letter-spacing:.11em;font-weight:800}header a{letter-spacing:normal;border:1px solid var(--line);border-radius:20px;text-decoration:none;color:var(--ink);padding:8px 12px;font-weight:500}
+h1{font-size:clamp(24px,4vw,36px);letter-spacing:-.04em;margin:23px 0 9px}.lead{color:var(--muted);line-height:1.65;max-width:850px;margin:0 0 13px}
+.layout{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(265px,.8fr);gap:13px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:17px;overflow:hidden;margin-bottom:14px}
+.stage{height:min(70vh,700px);min-height:420px;position:relative;touch-action:none;background:radial-gradient(ellipse at 50% 40%,#254e58,#0b2231 72%)}
+canvas{display:block;width:100%;height:100%;touch-action:none}
+.hud{position:absolute;top:11px;left:12px;background:#0c2738dd;border:1px solid #4b7880;color:#c6f2e6;padding:8px 12px;border-radius:18px;font-size:11px;max-width:80%}
+.hint{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);background:#092b3bdc;border-radius:19px;padding:7px 12px;font-size:10px;color:#c2d8d9;white-space:nowrap}
+.toolbar{padding:14px;display:grid;gap:10px}.buttons{display:flex;gap:8px;flex-wrap:wrap}
+button,.action{min-height:40px;padding:10px 12px;border-radius:10px;border:1px solid #49717e;background:#235061;color:var(--ink);font:inherit;font-weight:700;cursor:pointer;text-decoration:none}
+button.primary{background:var(--mint);color:#082c34;border-color:var(--mint)}
+button.on{background:var(--mint);color:#072c33;border-color:var(--mint)}
+input[type=file]{display:none}label{font-weight:750;font-size:12px;color:var(--mint);display:block;margin:10px 0 7px}
+.side{padding:17px}h2{font-size:16px;margin:0 0 13px}p{line-height:1.65;color:var(--muted)}.small{font-size:11px}
+.status{font-size:12px;padding:11px 12px;border:1px solid #4a6b71;background:#0d2a38;border-radius:10px;color:#d9f0ed;line-height:1.55;word-break:break-word}.status.warn{background:#46382d;color:#ffe3bd;border-color:#886447}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:9px}.stat{background:#0b2b3a;border-radius:10px;padding:12px;border:1px solid #355967}
+.stat b{font-size:24px;display:block;font-variant-numeric:tabular-nums}.stat span{color:var(--muted);font-size:10px}
+hr{border:0;border-top:1px solid #355968;margin:17px 0}a{color:var(--mint)}
+.tip{border:1px solid #786149;background:#403229;border-radius:10px;padding:12px;color:#f8d9b5;font-size:12px;line-height:1.65}
+select{width:100%;background:#0d2a38;border:1px solid #4a6b71;color:var(--ink);border-radius:10px;padding:10px}
+@media(max-width:820px){.layout{grid-template-columns:1fr}.stage{height:57vh;min-height:405px}.side{padding:15px}}
+</style></head>
+<body>
+<main>
+<header><span>HOME WORKOUTS / OPEN SIM ORIGINAL</span><a href="./fullbody.html">К полной схеме</a></header>
+<h1>Настоящие поверхности из OpenSim</h1>
+<p class="lead">Просмотр исходных анатомических сеток черепа, шейных позвонков, костей обеих кистей и грудопоясничного отдела. Положение каждого сегмента берётся из OpenSim 4.6, а геометрия читается непосредственно из оригинального архива на твоём устройстве — без повторной публикации исходных 3D-файлов.</p>
+<div class="layout">
+<section class="card">
+<div class="stage" id="stage"><canvas id="sceneCanvas" aria-label="3D-визуализация подлинных костных поверхностей OpenSim"></canvas>
+<div class="hud" id="hud">Ожидаю исходный архив FHS…</div>
+<div class="hint">Проведи — вращение · два пальца — масштаб</div></div>
+<div class="toolbar">
+<div class="buttons"><button class="primary" id="chooseZip">Выбрать FHS ZIP</button><button id="loadRemote">Открыть архив с Zenodo</button></div>
+<input type="file" id="inputZip" accept=".zip,application/zip">
+<div class="buttons"><button data-view="body" class="on">Верхняя часть тела</button><button data-view="head">Череп и шея</button><button data-view="right">Правая кисть</button><button data-view="left">Левая кисть</button></div>
+<div class="buttons"><button id="toggleHand" class="on">Кости кистей</button><button id="toggleHead" class="on">Голова и шея</button><button id="toggleSpine" class="on">Позвоночник</button><button id="toggleShoulder" class="on">Плечи и руки</button></div>
+<div id="status" class="status">Скачай оригинальный архив Framingham с Zenodo и выбери его на этой странице. Можно попробовать автоматическую загрузку — если сайт блокирует её, выбери сохранённый ZIP вручную.</div>
+</div>
+</section>
+<aside>
+<section class="card side">
+<h2>Подлинная анатомия</h2>
+<div class="stats">
+<div class="stat"><b id="meshes">—</b><span>отрисованных поверхностей</span></div>
+<div class="stat"><b id="triangles">—</b><span>треугольников</span></div>
+<div class="stat"><b id="hands">—</b><span>сеток кистей</span></div>
+<div class="stat"><b id="head">—</b><span>сеток головы и шеи</span></div>
+</div>
+<hr>
+<p class="small">Исходник: <a href="https://zenodo.org/records/18259702" target="_blank" rel="noopener">Framingham Heart Study, OpenSim 4.x</a>. Используется конкретная модель, для которой заранее рассчитаны глобальные преобразования каждого сегмента.</p>
+<p class="small">Геометрия строится из VTK PolyData (.vtp), а не из условных цилиндров. Исходные файлы остаются внутри ZIP на твоём устройстве.</p>
+</section>
+<section class="card side">
+<h2>Важное различие</h2>
+<div class="tip"><strong>Видимая кость ≠ независимо двигающийся сустав.</strong> В выбранной научной модели череп и семь шейных позвонков прикреплены к одному сегменту <code>head_neck</code>. Аналогично каждая кисть с фалангами — один сегмент без независимой анимации пальцев. Для точных отжиманий и хвата понадобится отдельная проверенная кинематика.</div>
+<p class="small">Без исходного архива можно видеть только наше старое схематичное отображение. Оригинальный ZIP содержит приблизительно 450 поверхностей и 250 индивидуальных моделей; здесь используется совместимая с рассчитанными координатами модель.</p>
+</section>
+</aside></div></main>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+const $=sel=>document.querySelector(sel);
+const canvas=$('#sceneCanvas'),stage=$('#stage');
+const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(37,1,.006,40);
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true,preserveDrawingBuffer:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.5));
+renderer.setClearColor(0x0a2534,0);renderer.outputColorSpace=THREE.SRGBColorSpace;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+scene.add(new THREE.HemisphereLight(0xdcefe9,0x516778,2.0));
+const sun=new THREE.DirectionalLight(0xffe8ce,2.5);sun.position.set(2,4,4);scene.add(sun);
+const fill=new THREE.DirectionalLight(0x8fcbd6,1.3);fill.position.set(-3,1,-2);scene.add(fill);
+const controls=new OrbitControls(camera,canvas);
+controls.enableDamping=true;controls.minDistance=.07;controls.maxDistance=6;
+const groups={head:new THREE.Group(),hands:new THREE.Group(),spine:new THREE.Group(),shoulder:new THREE.Group()};
+Object.values(groups).forEach(g=>scene.add(g));
+let manifest=null,modelLoaded=false,counters={total:0,hands:0,head:0,triangles:0},lastZip=null,currentView='body';
+const fileMap=new Map();
+const sourceUrl='https://zenodo.org/records/18259702/files/FHS_dataset_4.x.zip?download=1';
+function resize(){renderer.setSize(stage.clientWidth,stage.clientHeight,false);camera.aspect=stage.clientWidth/Math.max(1,stage.clientHeight);camera.updateProjectionMatrix();}
+new ResizeObserver(resize).observe(stage);resize();
+const vec=v=>new THREE.Vector3(...v);
+function status(msg,warn=false){const e=$('#status');e.textContent=msg;e.className='status'+(warn?' warn':'');}
+function category(name){
+ if(name==='head_neck')return 'head';
+ if(name==='hand_R'||name==='hand_L')return 'hands';
+ if(/^(thoracic|lumbar|sacrum)/.test(name))return 'spine';
+ if(/^(humerus|radius|ulna|scapula|clavicle|sternum)/.test(name))return 'shoulder';
+ return null;
+}
+function parseNumbers(node){
+ const s=node?.textContent?.trim();
+ return s?s.split(/\s+/).map(Number):[];
+}
+function parseVtp(text,name){
+ const d=new DOMParser().parseFromString(text,'application/xml');
+ if(d.querySelector('parsererror'))throw Error('Некорректный VTP '+name);
+ const piece=d.querySelector('VTKFile > PolyData > Piece');
+ if(!piece)throw Error('Отсутствует PolyData Piece: '+name);
+ const pts=piece.querySelector('Points > DataArray');
+ const arrays=[...piece.querySelectorAll('Polys > DataArray')];
+ const connectivity=arrays.find(a=>a.getAttribute('Name')==='connectivity')||arrays[0];
+ const offsets=arrays.find(a=>a.getAttribute('Name')==='offsets')||arrays[1];
+ if(!pts||!connectivity||!offsets)throw Error('Не найдены Points/Polys: '+name);
+ if([pts,connectivity,offsets].some(a=>a.getAttribute('format')!=='ascii'))throw Error('Не-ASCII VTP: '+name);
+ const vertices=parseNumbers(pts);
+ const indices=parseNumbers(connectivity),ends=parseNumbers(offsets);
+ if(vertices.length%3!==0)throw Error('Повреждённые координаты '+name);
+ const triangles=[];let start=0;
+ for(const end of ends){
+  if(end<start||end>indices.length)throw Error('Неверная полигональная сетка '+name);
+  if(end-start>=3)for(let k=start+1;k<end-1;k++)triangles.push(indices[start],indices[k],indices[k+1]);
+  start=end;
+ }
+ if(triangles.some(i=>!Number.isInteger(i)||i<0||i>=vertices.length/3))throw Error('Вершины вне диапазона '+name);
+ const geo=new THREE.BufferGeometry();
+ geo.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));
+ geo.setIndex(triangles);geo.computeVertexNormals();
+ return {geo,triangles:triangles.length/3};
+}
+function fit(view=currentView){
+ if(!modelLoaded)return;
+ currentView=view;
+ const selected=view==='right'?[...groups.hands.children].filter(m=>m.userData.body==='hand_R'):
+  view==='left'?[...groups.hands.children].filter(m=>m.userData.body==='hand_L'):
+  view==='head'?groups.head.children:[...Object.values(groups)].flatMap(g=>g.children);
+ if(!selected.length)return;
+ const bbox=new THREE.Box3();selected.forEach(obj=>bbox.expandByObject(obj));
+ if(bbox.isEmpty())return;
+ const size=bbox.getSize(new THREE.Vector3()),center=bbox.getCenter(new THREE.Vector3());
+ const aspect=Math.max(.3,camera.aspect);
+ const dist=1.32*Math.max(size.y/(2*Math.tan(THREE.MathUtils.degToRad(camera.fov/2))),
+   size.x/(2*Math.tan(THREE.MathUtils.degToRad(camera.fov/2))*aspect),
+   size.z/(2*Math.tan(THREE.MathUtils.degToRad(camera.fov/2))*aspect),.08);
+ controls.target.copy(center);camera.position.copy(center).add(new THREE.Vector3(.18*dist,.13*dist,dist));
+ camera.lookAt(center);controls.update();
+ document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('on',b.dataset.view===view));
+}
+function resetGroups(){
+ for(const g of Object.values(groups)){
+  for(const m of [...g.children]){g.remove(m);m.geometry.dispose();m.material.dispose()}
+ }
+ counters={total:0,hands:0,head:0,triangles:0};
+}
+function emitStats(){
+ for(const [id,value] of [['meshes',counters.total],['hands',counters.hands],['head',counters.head],['triangles',counters.triangles]])$('#'+id).textContent=value.toLocaleString('ru-RU');
+}
+async function loadZip(bytes){
+ if(!manifest)throw Error('Манифест OpenSim ещё не загружен');
+ if(!window.JSZip)throw Error('Библиотека JSZip не доступна');
+ status('Открываю исходный архив, проверяю геометрию…');
+ const zip=await JSZip.loadAsync(bytes);
+ const chosen=manifest.archiveRelativeOsimPath;
+ if(!zip.file(chosen))throw Error('В ZIP нет нужной модели '+chosen);
+ // Deterministic, unambiguous paths avoid mixing subjects or coordinate systems.
+ const base=chosen.slice(0,chosen.lastIndexOf('/Male/'));
+ const prefix=base+'/Geometry/';
+ const byCategory={head:0,hands:0,spine:0,shoulder:0};
+ resetGroups();modelLoaded=false;
+ const entries=Object.entries(manifest.anatomyMeshes).filter(([body])=>category(body));
+ let seen=0;
+ for(const [body,meshes] of entries){
+  const group=groups[category(body)],frame=manifest.bodyFrames[body];
+  if(!frame)throw Error('Отсутствует положение для '+body);
+  const rot=new THREE.Matrix4().makeBasis(...frame.basisColumns.map(vec));
+  const quat=new THREE.Quaternion().setFromRotationMatrix(rot);
+  for(const entry of meshes){
+   const fullPath=prefix+entry.file;
+   const file=zip.file(fullPath);
+   if(!file)throw Error('Отсутствует поверхность '+fullPath);
+   const {geo,triangles}=parseVtp(await file.async('string'),entry.file);
+   const color=body==='head_neck'?0xd8d9c5:body.startsWith('hand')?0x92d5d4:
+     /^(lumbar|sacrum)/.test(body)?0xe5b98c:/^thoracic/.test(body)?0x9ed4c9:0xc1b6e0;
+   const material=new THREE.MeshStandardMaterial({color,roughness:.65,metalness:.02,side:THREE.DoubleSide});
+   const m=new THREE.Mesh(geo,material);
+   m.position.copy(vec(frame.origin));m.quaternion.copy(quat);m.scale.set(...entry.scaleFactors);
+   m.userData={body,meshFile:entry.file};
+   group.add(m);
+   counters.total++;counters.triangles+=triangles;byCategory[category(body)]++;
+   if(body==='head_neck')counters.head++;
+   if(body==='hand_R'||body==='hand_L')counters.hands++;
+   if(++seen%12===0){status('Читаю поверхности: '+seen+'…');await new Promise(r=>setTimeout(r,0))}
+  }
+ }
+ if(!counters.head||counters.hands<30)throw Error('Недостаточно оригинальных поверхностей');
+ modelLoaded=true;emitStats();fit('body');
+ status('Загружены исходные сетки OpenSim: '+counters.total+' поверхностей, '+counters.hands+' кистей, '+counters.head+' черепа/шеи. Это оригинальные кости, а не 3D-заменители.');
+ $('#hud').textContent='Подлинная геометрия FHS · '+counters.total+' поверхностей';
+ window.__fhsGeometryQA={ready:()=>true,stats:()=>({...counters,categories:byCategory}),view:fit,box:(key)=>{
+  const box=new THREE.Box3().setFromObject(groups[key]);const center=box.getCenter(new THREE.Vector3()),size=box.getSize(new THREE.Vector3());
+  return {center:center.toArray(),size:size.toArray()};
+ },meshNames:()=>Object.values(groups).flatMap(g=>g.children.map(x=>x.userData.meshFile))};
+}
+$('#chooseZip').onclick=()=>$('#inputZip').click();
+$('#inputZip').onchange=async()=>{const file=$('#inputZip').files[0];if(!file)return;try{await loadZip(await file.arrayBuffer())}catch(e){console.error(e);status('Ошибка: '+e.message,true)}};
+$('#loadRemote').onclick=async()=>{
+ try{status('Получаю исходный ZIP с Zenodo…');const response=await fetch(sourceUrl);
+  if(!response.ok)throw Error('HTTP '+response.status);
+  await loadZip(await response.arrayBuffer());
+ }catch(e){status('Автозагрузка недоступна ('+e.message+'). Скачай ZIP с Zenodo и выбери его вручную.',true);}
+};
+document.querySelectorAll('[data-view]').forEach(e=>e.onclick=()=>fit(e.dataset.view));
+for(const [id,key] of [['toggleHand','hands'],['toggleHead','head'],['toggleSpine','spine'],['toggleShoulder','shoulder']]){
+ $('#'+id).onclick=()=>{groups[key].visible=!groups[key].visible;$('#'+id).classList.toggle('on',groups[key].visible)};
+}
+(function tick(){requestAnimationFrame(tick);controls.update();renderer.render(scene,camera)})();
+fetch('./assets/fhs-original-frames.json').then(r=>{if(!r.ok)throw Error('Нет манифеста координат OpenSim');return r.json()})
+.then(m=>{if(m.kind!=='fhs-opensim-body-frames-v1'||!m.bodyFrames.hand_R)throw Error('Ошибочный манифест');
+ manifest=m;$('#hud').textContent='Модель OpenSim выбрана · ZIP ещё не открыт';
+ window.__fhsGeometryQA={ready:()=>false,manifest:()=>manifest,parser:parseVtp};
+}).catch(e=>{status('Ошибка подготовки: '+e.message,true)});
+</script></body></html>
