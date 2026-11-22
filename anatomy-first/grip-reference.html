@@ -1,7 +1,7 @@
 <!doctype html><html lang="ru"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0a1d2b"><link rel="icon" href="data:,">
-<title>Grip Reference · МРТ-кисть · v5</title>
+<title>Grip Reference · МРТ-кисть · v6</title>
 <style>
 :root{color-scheme:dark;--bg:#091c2b;--panel:#112d3e;--line:#35586a;--mint:#83ddd0;--text:#ecf7f5;--muted:#afcbd0}
 *{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 15% 2%,#1e4150,var(--bg) 62%);color:var(--text);font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
@@ -102,8 +102,8 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--mint);outline-o
 <div class="section-label">Техническая настройка положения рукояти</div>
 <div class="ranges">
 <label class="range">Поперечное смещение <output id="out-x">10 мм</output><input data-haxis="x" id="h-x" type="range" min="-25" max="25" value="10" step="1"></label>
-<label class="range">Глубина от ладони <output id="out-y">-65 мм</output><input data-haxis="y" id="h-y" type="range" min="-90" max="15" value="-65" step="1"></label>
-<label class="range">Вдоль пальцев <output id="out-z">-20 мм</output><input data-haxis="z" id="h-z" type="range" min="-40" max="65" value="-20" step="1"></label>
+<label class="range">Глубина от ладони <output id="out-y">-22 мм</output><input data-haxis="y" id="h-y" type="range" min="-90" max="15" value="-22" step="1"></label>
+<label class="range">Вдоль пальцев <output id="out-z">5 мм</output><input data-haxis="z" id="h-z" type="range" min="-40" max="65" value="5" step="1"></label>
 </div>
 <button id="fit-handle" style="width:100%;margin:13px 0 9px">Техническая проверка другого положения рукояти</button>
 <div class="audit" id="audit">Проверка появится после загрузки МРТ-костей.</div>
@@ -149,7 +149,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--mint);outline-o
 import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
-import {createFullMRIHandRigV5} from './full-mri-hand-rig-v5.js';
+import {createFullMRIHandRigV6} from './full-mri-hand-rig-v6.js';
 const $=s=>document.querySelector(s);
 const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(37,1,.001,10);
 const renderer=new THREE.WebGLRenderer({canvas:$('#canvas'),antialias:true,alpha:true,preserveDrawingBuffer:true});
@@ -238,7 +238,7 @@ function fitHandle(){
  showHandle();auditHandle();
 }
 function prepareHandle(){
- rig.handle.position.set(.010,-.065,-.020);
+ rig.handle.position.set(.010,-.022,.005);
  for(const part of rig.handle.children){
   if(!part.isMesh)continue;
   const shaft=part.geometry?.parameters?.radiusTop===.011;
@@ -344,7 +344,7 @@ async function init(){
   fetch('./assets/thumb-landmarks.json').then(r=>{if(!r.ok)throw Error('Нет файла суставных ориентиров');return r.json()}),
   fetch('./assets/joint-surface-candidates.json').then(r=>{if(!r.ok)throw Error('Нет ориентиров для остальных пальцев');return r.json()})
  ]);
- rig=createFullMRIHandRigV5(THREE,gltf,landmarks,jointData);
+ rig=createFullMRIHandRigV6(THREE,gltf,landmarks,jointData);
  scene.add(rig.root);
  prepareHandle();scene.updateMatrixWorld(true);
  ready=true;
