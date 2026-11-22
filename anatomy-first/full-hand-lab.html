@@ -57,7 +57,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--mint);outline-o
 <div class="buttons">
 <button data-pose="open">1 · Открытая</button>
 <button data-pose="oppose">2 · Кулак</button>
-<button data-pose="grasp">3 · Обхват</button>
+<button data-pose="grasp">3 · Проба хвата</button>
 </div>
 </section>
 <section>
@@ -192,6 +192,10 @@ function selectPreset(name){
  $('#handleToggle').setAttribute('aria-pressed',String(rig.handle.visible));
  rig.poseFull(name);
  setAngles({});
+ // The open MRI hand is much taller than a curled one.
+ // Center the whole structure on preset changes, not during a user-controlled drag.
+ target.z=name==='open'?.028:.000;
+ view(viewName);
 }
 document.querySelectorAll('[data-pose]').forEach(b=>b.addEventListener('click',()=>selectPreset(b.dataset.pose)));
 document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>view(b.dataset.view)));
