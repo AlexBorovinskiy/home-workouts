@@ -15,6 +15,7 @@ p.note{color:#a8c6c9;font-size:12px;line-height:1.6}.stats{font-size:11px;color:
 <p class="lead">Проверка цельной CC0-модели MakeHuman с собственными суставами пальцев и локтя. На этом этапе тестируем захват, не обучаем технике упражнения.</p>
 <div class="notice">Экспериментальная версия. Приемка хвата, большого пальца и движения локтя не завершена. Основное приложение не меняется.</div>
 <div id="viewer" class="viewer"><canvas id="c"></canvas><div id="hud" class="label">Загрузка цельного рига…</div><div id="error" role="alert"></div></div>
+<div class="buttons"><button data-stage="0">1 · Старт</button><button data-stage="1">2 · Середина</button><button data-stage="2">3 · Пик</button></div>
 <div class="buttons"><button data-view="palm">Ладонь</button><button data-view="thumb">Большой палец</button><button data-view="back">Тыльная сторона</button><button data-view="side">Профиль</button><button data-view="wrist">Запястье</button><button data-view="whole">Вся модель</button></div>
 <p class="note">Вращай одним пальцем, масштабируй двумя. Гантель закреплена относительно кости кисти. Кожа запястья и предплечья принадлежит одной сетке.</p><pre id="info" class="stats">Данные проверки появятся после загрузки.</pre>
 </main>
@@ -33,7 +34,7 @@ const orbit=new OrbitControls(camera,canvas);orbit.enableDamping=true;orbit.damp
 const params=new URLSearchParams(location.search);
 const axis=(params.get('axis')||'x').toLowerCase(),sign=params.get('sign')==='neg'?-1:1;
 const method=params.get('order')==='pre'?'premultiply':'multiply';
-let model=null,skin=null,hand=null,bar=null,ready=false,rest={},jointMap={},poseVersion=0;
+let model=null,skin=null,hand=null,bar=null,ready=false,rest={},jointMap={},poseVersion=0,forearm=null,restElbow=null,elbowDelta=null,stage=0;
 const fingers=['index','middle','ring','pinky','thumb'];
 const baseFlex={index:[48,65,28],middle:[50,63,33],ring:[50,67,34],pinky:[46,59,30],thumb:[12,26,18]};
 const flex=Object.fromEntries(Object.entries(baseFlex).map(([k,v])=>[k,[...v]]));
@@ -62,6 +63,18 @@ function grip(){
    bone.quaternion.copy(q)[method](rot);
  }
  poseVersion++;scene.updateMatrixWorld(true);skin.skeleton.update();
+}
+function setStage(next){
+ if(!ready)return;
+ stage=Number(next);
+ const t=[0,.5,1][stage]??0;
+ const worldRot=new THREE.Quaternion().slerpQuaternions(new THREE.Quaternion(),elbowDelta,t);
+ const parentQ=forearm.parent.getWorldQuaternion(new THREE.Quaternion());
+ const localDelta=parentQ.clone().invert().multiply(worldRot).multiply(parentQ);
+ forearm.quaternion.copy(restElbow).premultiply(localDelta);
+ scene.updateMatrixWorld(true);skin.skeleton.update();view('palm');contacts();
+ for(const btn of document.querySelectorAll('[data-stage]'))btn.classList.toggle('active',Number(btn.dataset.stage)===stage);
+ hud.textContent=['Старт · настоящий локоть','Середина · настоящий локоть','Пик · настоящий локоть'][stage];
 }
 function makeDumbbell(){
  bar=new THREE.Group();bar.name='hand-anchored-dumbbell';
@@ -105,10 +118,16 @@ async function init(){
  model=gltf.scene;scene.add(model);
  model.traverse(o=>{if(o.isSkinnedMesh){skin=o;o.frustumCulled=false;o.material=new THREE.MeshStandardMaterial({color:0xd2b8ac,roughness:.88,metalness:0,side:THREE.DoubleSide})}if(o.isBone){jointMap[o.name]=o;rest[o.name]=o.quaternion.clone()}});
  if(!skin)throw Error('Скиннинг модели отсутствует');
- hand=jointMap.hand_r;if(!hand||!jointMap.lowerarm_r||!jointMap.upperarm_r)throw Error('Недостаточно суставов руки');
+ hand=jointMap.hand_r;forearm=jointMap.lowerarm_r;
+ if(!hand||!forearm||!jointMap.upperarm_r)throw Error('Недостаточно суставов руки');
+ restElbow=forearm.quaternion.clone();
+ scene.updateMatrixWorld(true);
+ const origin=forearm.getWorldPosition(new THREE.Vector3()),wrist=hand.getWorldPosition(new THREE.Vector3());
+ const startDir=wrist.sub(origin).normalize(),targetDir=new THREE.Vector3(-.045,.16,.19).normalize();
+ elbowDelta=new THREE.Quaternion().setFromUnitVectors(startDir,targetDir);
  for(const digit of fingers)for(let j=1;j<=3;j++)if(!jointMap[digit+'_0'+j+'_r'])throw Error('Нет фаланги '+digit+j);
- makeDumbbell();grip();ready=true;view('palm');contacts();
- window.__unifiedQA={ready:()=>ready,view,contacts,configure(options={}){
+ makeDumbbell();grip();ready=true;setStage(0);
+ window.__unifiedQA={ready:()=>ready,view,contacts,setStage,getPose:()=>({stage,elbow:forearm.getWorldPosition(new THREE.Vector3()).toArray(),wrist:hand.getWorldPosition(new THREE.Vector3()).toArray(),bar:bar.getWorldPosition(new THREE.Vector3()).toArray()}),configure(options={}){
   if(options.center){handCenter.fromArray(options.center);bar.position.copy(handCenter)}
   if(options.direction){direction.fromArray(options.direction).normalize();bar.quaternion.setFromUnitVectors(new THREE.Vector3(1,0,0),direction)}
   if(options.factor!==undefined)for(const [digit,angles]of Object.entries(baseFlex))flex[digit]=angles.map((a)=>a*options.factor);
@@ -118,6 +137,7 @@ async function init(){
  },getNodes:()=>Object.keys(jointMap),getArm:()=>({upper:jointMap.upperarm_r.position.toArray(),lower:jointMap.lowerarm_r.position.toArray(),hand:hand.position.toArray()})};
 }
 for(const btn of document.querySelectorAll('[data-view]'))btn.addEventListener('click',()=>view(btn.dataset.view));
+for(const btn of document.querySelectorAll('[data-stage]'))btn.addEventListener('click',()=>setStage(btn.dataset.stage));
 function error(e){console.error(e);$('#error').classList.add('on');$('#error').textContent='Ошибка теста: '+e.message;hud.textContent='Не удалось загрузить риг'}
 (function animate(){requestAnimationFrame(animate);orbit.update();renderer.render(scene,camera)})();
 init().catch(error);
