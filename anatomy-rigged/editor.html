@@ -40,7 +40,12 @@
    <label class="field"><span>Оборудование</span><select id="equipment"><option value="dumbbells">Гантели</option><option value="none">Без оборудования</option></select></label>
    <label class="field"><span>Целевые мышцы</span><select id="muscle"><option value="arms_front">Бицепсы</option><option value="chest">Грудь</option><option value="shoulders">Плечи</option><option value="quads">Квадрицепсы</option><option value="glutes">Ягодичные</option><option value="hamstrings">Задняя поверхность бедра</option><option value="abs">Пресс</option><option value="upper_back">Верх спины</option><option value="forearms">Предплечья</option></select></label>
   </div>
-  <div class="buttons"><button id="loadDemo" class="btn">↺ Пример сгибания</button><button id="neutral" class="btn">Нейтральная поза</button></div>
+  <div class="pair">
+   <label class="field"><span>Вспомогательные мышцы</span><select id="secondary"><option value="">Не указаны</option><option value="forearms">Предплечья</option><option value="arms_front">Бицепсы</option><option value="arms_back">Трицепсы</option><option value="shoulders">Плечи</option><option value="chest">Грудь</option><option value="upper_back">Спина</option><option value="glutes">Ягодичные</option><option value="hamstrings">Задняя поверхность бедра</option></select></label>
+   <label class="field"><span>Стабилизирующие мышцы</span><select id="stabilizer"><option value="">Не указаны</option><option value="abs">Пресс</option><option value="lower_back">Поясница</option><option value="shoulders">Плечи</option><option value="forearms">Предплечья</option><option value="glutes">Ягодичные</option><option value="upper_back">Спина</option></select></label>
+  </div>
+  <div class="buttons"><button id="loadDemo" class="btn">↺ Пример сгибания</button><button id="neutral" class="btn">Нейтральная поза</button><button id="gripPreset" class="btn">✋ Захват для всех поз</button></div>
+  <p class="note">Красный — основные, золотистый — вспомогательные, бирюзовый — стабилизирующие мышцы. Роли задаются вручную.</p>
  </div>
  <div class="box">
   <div class="tag">02 · Ключевые позы</div><h2>Три этапа повторения</h2>
@@ -166,26 +171,42 @@ function selectFrame(index){
  drawAxes();applyAngles();ui.phase.textContent=['Старт','Пик','Возврат'][index];playhead=index/2;ui.timeline.value=Math.round(playhead*1000);
 }
 function setPoseValue(joint,xyz){pose[joint]=xyz;const other=mirrorOf(joint);if(other&&rig[other])pose[other]=[xyz[0],-xyz[1],-xyz[2]]}
+function addGripPreset(poseTarget){
+ // Reusable dumbbell finger-grip preset for both hands (still visually experimental).
+ for(const side of ['L','R']){
+   for(const name of ['index','middle','ring','pinky']){
+     for(const [partIndex,angle] of [[1,-49],[2,-54],[3,-30]]){
+       const joint=name+'_0'+partIndex+'.'+side;
+       if(rig[joint])poseTarget[joint]=[angle,0,0];
+     }
+   }
+   if(rig['thumb_01.'+side])poseTarget['thumb_01.'+side]=[0,0,side==='L'?14:-14];
+   if(rig['thumb_02.'+side])poseTarget['thumb_02.'+side]=[-36,0,0];
+ }
+}
 function demo(){
- activeName='Сгибание рук с гантелями';ui.name.value=activeName;ui.equip.value='dumbbells';ui.muscle.value='arms_front';
+ activeName='Сгибание рук с гантелями';ui.name.value=activeName;ui.equip.value='dumbbells';ui.muscle.value='arms_front';$('#secondary').value='forearms';$('#stabilizer').value='abs';
  const start={},top={};pose={};setPoseValue('upperarm.L',[-3,0,0]);
  setPoseValue('forearm.L',[0,0,0]);setPoseValue('forearm_twist.L',[0,0,0]);
  const first=copy(pose);
  pose=copy(first);setPoseValue('forearm.L',[-92,0,0]);
  setPoseValue('forearm_twist.L',[0,27,0]);const middle=copy(pose);
- frames=[first,middle,copy(first)];
+ frames=[first,middle,copy(first)];frames.forEach(addGripPreset);
  selectFrame(0);equipUpdate();recolor();
  ui.saveState.textContent='Пример загружен: на его основе можно создать собственное упражнение.';
 }
 function recolor(){
  if(!vertexColors||!part||!mesh)return;
- const selected=ui.muscle.value;
+ const selected=ui.muscle.value,aux=$('#secondary').value,stable=$('#stabilizer').value;
  const col=mesh.geometry.getAttribute('color');
  for(let i=0;i<part.count;i++){
    const id=Math.round(part.getX(i));
    const key=id>0?groups[Math.floor((id-1)/2)]:null;
-   const active=key===selected;
-   let r=active?1:.49,g=active?.36:.24,b=active?.18:.29;
+   const active=key===selected,assists=key===aux,stabilizes=key===stable;
+   let r=.49,g=.24,b=.29;
+   if(active){r=1;g=.34;b=.14}
+   else if(assists){r=.94;g=.68;b=.27}
+   else if(stabilizes){r=.27;g=.81;b=.79}
    if(!id){r=.65;g=.63;b=.59}
    const n=i*3;vertexColors[n]=r;vertexColors[n+1]=g;vertexColors[n+2]=b;
  }
@@ -244,7 +265,7 @@ function validateDocument(data){
 }
 function documentData(){
  return {version:1,format:'home-workouts-motion',name:ui.name.value.trim()||'Новое упражнение',
-   equipment:ui.equip.value,muscle:ui.muscle.value,frames:copy(frames),
+   equipment:ui.equip.value,muscle:ui.muscle.value,secondary:$('#secondary').value,stabilizer:$('#stabilizer').value,frames:copy(frames),
    source:'Heatsy Body Model, CC BY-SA 4.0',createdBy:'Home Workouts editor',updatedAt:new Date().toISOString()};
 }
 function restoreDocument(raw,notify=true){
@@ -252,6 +273,7 @@ function restoreDocument(raw,notify=true){
  frames=copy(d.frames);ui.name.value=String(d.name||'Упражнение').slice(0,100);
  ui.equip.value=d.equipment==='dumbbells'?'dumbbells':'none';
  if(Array.from(ui.muscle.options).some(x=>x.value===d.muscle))ui.muscle.value=d.muscle;
+ for(const role of ['secondary','stabilizer'])if(Array.from($('#'+role).options).some(x=>x.value===d[role]))$('#'+role).value=d[role];else $('#'+role).value='';
  selected=0;selectFrame(0);recolor();equipUpdate();
  if(notify)ui.saveState.textContent='Проект загружен: '+ui.name.value;
 }
@@ -294,8 +316,15 @@ $('#jointReset').onclick=()=>{const n=ui.joint.value;delete pose[n];const m=mirr
 $('#neutral').onclick=()=>{pose={};drawAxes();applyAngles();ui.saveState.textContent='Нейтральная поза открыта; её можно записать в выбранный этап.'};
 $('#restorePose').onclick=()=>selectFrame(selected);
 $('#loadDemo').onclick=()=>{if(confirm('Заменить текущие позы на пример сгибания рук?'))demo()};
+$('#gripPreset').onclick=()=>{
+ if(!loaded)return;
+ frames[selected]=copy(pose); // Preserve unsaved work on the selected keyframe.
+ for(const frame of frames)addGripPreset(frame);
+ ui.equip.value='dumbbells';selectFrame(selected);equipUpdate();
+ ui.saveState.textContent='Захват гантели применён к трём позам. Проверь пальцы на модели.';
+};
 $('#showSkeleton').onchange=e=>{if(skel)skel.visible=e.target.checked};
-ui.equip.onchange=equipUpdate;ui.muscle.onchange=recolor;
+ui.equip.onchange=equipUpdate;ui.muscle.onchange=recolor;$('#secondary').onchange=recolor;$('#stabilizer').onchange=recolor;
 $('#saveLocal').onclick=()=>{if(!loaded)return;try{localStorage.setItem(STORAGE,JSON.stringify(documentData()));ui.saveState.textContent='Сохранено локально на этом устройстве.'}catch(e){ui.saveState.textContent='Не удалось сохранить: '+e.message}};
 $('#export').onclick=()=>{
  if(!loaded)return;
