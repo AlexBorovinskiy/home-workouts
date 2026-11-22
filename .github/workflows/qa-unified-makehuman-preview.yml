@@ -1,0 +1,62 @@
+name: QA continuous-body hand grip candidates
+on:
+  push:
+    paths:
+      - '.github/workflows/qa-unified-makehuman-preview.yml'
+      - 'anatomy-rigged/unified-makehuman-preview.html'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  mobile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --prefix /tmp/unified-glb-qa --no-fund --no-audit playwright-core@1.56.1
+      - name: Render browser grip candidates and collect contacts
+        shell: bash
+        run: |
+          mkdir -p results
+          python3 -m http.server 8765 --bind 127.0.0.1 > /tmp/rig-server.log 2>&1 &
+          node --input-type=module <<'NODE'
+          import {chromium} from '/tmp/unified-glb-qa/node_modules/playwright-core/index.mjs';
+          import {writeFileSync} from 'node:fs';
+          const browser=await chromium.launch({channel:'chrome',headless:true,args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+          const cases=[['x-pos-post','x','pos','post'],['x-neg-post','x','neg','post'],['z-pos-post','z','pos','post'],['z-neg-post','z','neg','post'],['x-neg-pre','x','neg','pre'],['z-neg-pre','z','neg','pre']];
+          const reports=[];
+          try{
+           for(const [name,axis,sign,order] of cases){
+            const context=await browser.newContext({viewport:{width:430,height:932},deviceScaleFactor:1,isMobile:true,hasTouch:true,serviceWorkers:'block'});
+            const page=await context.newPage(),errors=[];
+            page.on('pageerror',e=>errors.push(e.message));
+            page.on('console',m=>{if(m.type()==='error')errors.push('console: '+m.text())});
+            try{
+             await page.goto('http://127.0.0.1:8765/anatomy-rigged/unified-makehuman-preview.html?axis='+axis+'&sign='+sign+'&order='+order,{waitUntil:'domcontentloaded',timeout:50000});
+             await page.waitForFunction(()=>window.__unifiedQA?.ready()||document.querySelector('#error')?.classList.contains('on'),null,{timeout:70000});
+             if(!await page.evaluate(()=>window.__unifiedQA?.ready()))throw Error(await page.locator('#error').innerText());
+             for(const view of ['palm','thumb','wrist']){
+              await page.evaluate(v=>window.__unifiedQA.view(v),view);
+              await page.waitForTimeout(280);
+              await page.locator('canvas').screenshot({path:'results/'+name+'-'+view+'.png'});
+             }
+             const c=await page.evaluate(()=>window.__unifiedQA.contacts());
+             reports.push({name,contacts:c,errors});
+             if(errors.length)throw Error(errors.join('; '));
+            }catch(e){reports.push({name,error:String(e),errors})}
+            finally{await context.close()}
+           }
+           writeFileSync('results/report.json',JSON.stringify(reports,null,2));
+           console.log(JSON.stringify(reports,null,2));
+           if(reports.some(r=>r.error||r.errors.length))throw Error('At least one candidate failed');
+          }finally{await browser.close()}
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: unified-body-grip-browser-qa
+          path: results/
+          retention-days: 5
