@@ -1,0 +1,41 @@
+name: Install CC0 skinned hand overlay
+on:
+  push:
+    paths:
+      - '.github/workflows/install-skin-hand-cc0.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify CC0 model from Innerscene
+        run: |
+          set -euo pipefail
+          mkdir -p anatomy-rigged/assets
+          curl --fail --location --retry 3 --max-time 50 \
+            'https://files.innerscene.com/library/posable-anatomical-right-hand-f6098b4f/c28ad5ff8fafd424275f/hand-posable.glb' \
+            -o anatomy-rigged/assets/skin-hand-right.cc0.glb
+          echo '4e9a6219f4147f80fbd29cd4c349e1ae1d59d436d81822a0da8247984cb2d4e9  anatomy-rigged/assets/skin-hand-right.cc0.glb' | sha256sum -c -
+          cat > anatomy-rigged/assets/HAND-CC0-NOTICE.txt <<'EOF'
+          Source: Innerscene, "Posable anatomical right hand"
+          https://www.innerscene.com/tools/library/3d-parts/posable-anatomical-right-hand-f6098b4f
+          Original file: hand-posable.glb, 506696 bytes
+          Source attribution: Built from MakeHuman / MPFB CC0 assets, released by Innerscene under CC0.
+          License: CC0-1.0 Public Domain Dedication (no required attribution).
+          SHA256: 4e9a6219f4147f80fbd29cd4c349e1ae1d59d436d81822a0da8247984cb2d4e9
+          This asset is an experimental glove/hand overlay, not independently evaluated anatomical teaching data.
+          EOF
+      - name: Commit validated binary asset
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add anatomy-rigged/assets/skin-hand-right.cc0.glb anatomy-rigged/assets/HAND-CC0-NOTICE.txt
+          if git diff --cached --quiet; then
+            echo 'No asset updates'
+          else
+            git commit -m "Add verified CC0 rigged skin hand for anatomical grip visualization"
+            git push
+          fi
