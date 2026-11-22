@@ -1,0 +1,74 @@
+name: QA deployed finger-fit preview with unchanged baseline
+on:
+  push:
+    paths:
+      - '.github/workflows/qa-deployed-finger-fit.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  mobile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --prefix /tmp/live-finger-fit --no-audit --no-fund playwright-core@1.56.1
+      - name: Validate deployed page, contact and anatomy movement on mobile
+        shell: bash
+        run: |
+          mkdir -p proof
+          node --input-type=module <<'NODE'
+          import {chromium} from '/tmp/live-finger-fit/node_modules/playwright-core/index.mjs';
+          import {writeFileSync} from 'node:fs';
+          const browser=await chromium.launch({channel:'chrome',headless:true,args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+          const context=await browser.newContext({viewport:{width:430,height:932},deviceScaleFactor:1,isMobile:true,hasTouch:true,serviceWorkers:'block'});
+          const page=await context.newPage(),errors=[];
+          page.on('pageerror',e=>errors.push(e.message));
+          page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+          try {
+            const url='https://alexborovinskiy.github.io/home-workouts/anatomy-rigged/unified-rig-finger-fit.html';
+            const res=await page.goto(url,{waitUntil:'domcontentloaded',timeout:65000});
+            if(res.status()!==200)throw Error('New preview not yet published: '+res.status());
+            await page.waitForFunction(()=>window.__unifiedQA?.ready()||document.querySelector('#error')?.classList.contains('on'),null,{timeout:75000});
+            if(!await page.evaluate(()=>window.__unifiedQA?.ready()))throw Error('GLB failed to load: '+await page.locator('#error').innerText());
+            const stages=[],checks=[];
+            for(const stage of [0,1,2]){
+              await page.evaluate(i=>window.__unifiedQA.setStage(i),stage);
+              const grip=await page.evaluate(()=>window.__unifiedQA.contacts());
+              checks.push(grip);
+              stages.push(await page.evaluate(()=>window.__unifiedQA.getPose()));
+              for(const view of ['palm','thumb']){
+                await page.evaluate(v=>window.__unifiedQA.view(v),view);
+                await page.waitForTimeout(180);
+                await page.locator('canvas').screenshot({path:'proof/stage-'+stage+'-'+view+'.png'});
+              }
+            }
+            const d=(a,b)=>Math.hypot(...a.map((v,i)=>v-b[i]));
+            const shaftAngle=Math.acos(Math.max(-1,Math.min(1,stages[0].shaftDirection.reduce((sum,v,i)=>sum+v*stages[2].shaftDirection[i],0))))*180/Math.PI;
+            const hands=['index','middle','ring','pinky'];
+            for(const g of checks){
+              if(hands.some(name=>g[name].near<10||g[name].inside>0))throw Error('One of the four finger contacts regressed');
+              if(g.thumb.near<50||g.thumb.inside>0)throw Error('Thumb contact regressed');
+            }
+            if(shaftAngle>35)throw Error('Bar rotates too far: '+shaftAngle);
+            if(d(stages[0].elbow,stages[2].elbow)>.001)throw Error('Elbow moved');
+            if(Math.abs(d(stages[0].wrist,stages[0].bar)-d(stages[2].wrist,stages[2].bar))>.002)throw Error('Dumbbell slid in hand');
+            if(stages[0].wristLocalRotation.some((v,i)=>Math.abs(v-stages[2].wristLocalRotation[i])>1e-7))throw Error('Wrist rotated unexpectedly');
+            const report={url,shaftAngle,stages,checks,errors};
+            writeFileSync('proof/report.json',JSON.stringify(report,null,2));
+            console.log(JSON.stringify({shafts:shaftAngle,grip:checks[0],errors},null,2));
+            if(errors.length)throw Error('Browser errors: '+errors.join(' | '));
+          }catch(e){
+            writeFileSync('proof/error.txt',String(e)+'\n'+errors.join('\n'));
+            throw e;
+          }finally{await browser.close()}
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: published-four-finger-fit
+          path: proof/
+          retention-days: 3
