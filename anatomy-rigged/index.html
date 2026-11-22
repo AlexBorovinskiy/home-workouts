@@ -43,6 +43,8 @@ let model,rig={},rest={},skeletonHelper=null,muscleMesh=null,partIds=null,tendon
 const exercises={curl:{title:'Сгибание рук',desc:'Согни локти и проверь: мышцы плеча, предплечья, кисти и пальцы должны оставаться соединёнными на протяжении движения.',info:'Подсветка: передние мышцы плеча и предплечья. Это области приложения усилия, не расчёт активации.',groups:['arms_front','forearms'],phase:'Сгибание в локте'},squat:{title:'Приседание',desc:'Проверяем сгибание тазобедренных и коленных суставов. Стопы должны оставаться на уровне пола; движение пока не используется как образец техники.',info:'Подсветка: квадрицепсы, ягодичные и мышцы корпуса.',groups:['quads','glutes','abs'],phase:'Приседание'},pushup:{title:'Отжимание',desc:'Проверяем плечи, локти и кисти при положении корпуса почти горизонтально. Эта поза — тест геометрии рига, не эталон упражнения.',info:'Подсветка: грудь, задняя поверхность плеча, передние дельтовидные.',groups:['chest','arms_back','shoulders'],phase:'Отжимание'}};
 function setError(err){ui.status.textContent='Ошибка загрузки';ui.loading.style.display='none';ui.error.classList.add('visible');ui.errorText.textContent=err?.message||String(err)}
 function dimensions(){let w=ui.box.clientWidth,h=ui.box.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}window.addEventListener('resize',dimensions);dimensions();
+// Initialize motion axes before the asynchronous model loader can call setExercise/applyPose.
+const AXIS_X=new THREE.Vector3(1,0,0),AXIS_Y=new THREE.Vector3(0,1,0),AXIS_Z=new THREE.Vector3(0,0,1);
 let importedCatalog;
 try{const [gltf,catalog]=await Promise.all([new Promise((resolve,reject)=>new GLTFLoader().load('./assets/body_superficial.glb',resolve,e=>{if(e.total)ui.loadFill.style.width=Math.min(100,Math.round(e.loaded/e.total*100))+'%';},reject)),fetch('./assets/muscles.json').then(r=>{if(!r.ok)throw Error('Каталог мышц недоступен');return r.json()})]); importedCatalog=catalog; model=gltf.scene; orientation.add(model);model.updateMatrixWorld(true);
  // Match bones using the ORIGINAL glTF joint table: GLTFLoader sanitizes names
@@ -88,7 +90,6 @@ partIds=geo.attributes._PART_ID||geo.attributes._part_id||geo.attributes.part_id
  updateColors();setExercise('curl');
 }catch(e){console.error(e);setError(e)}
 function resetBones(){for(const [name,bone] of Object.entries(rig)){const r=rest[name];bone.position.copy(r.position);bone.quaternion.copy(r.quaternion);bone.scale.copy(r.scale)} orientation.position.set(0,0,0);orientation.rotation.set(0,0,0)}
-const AXIS_X=new THREE.Vector3(1,0,0),AXIS_Y=new THREE.Vector3(0,1,0),AXIS_Z=new THREE.Vector3(0,0,1);
 function rotateWorld(name,axis,angle){const bone=rig[name];if(!bone)return;const r=rest[name],parentAxis=axis.clone().applyQuaternion(r.parentWorldQ.clone().invert()).normalize();const dq=new THREE.Quaternion().setFromAxisAngle(parentAxis,angle);bone.quaternion.copy(dq.multiply(r.quaternion))}
 function smooth(t){t=Math.max(0,Math.min(1,t));return t*t*(3-2*t)}
 function effort(t){if(t<.10)return 0;if(t<.45)return smooth((t-.1)/.35);if(t<.58)return 1;if(t<.93)return 1-smooth((t-.58)/.35);return 0}
