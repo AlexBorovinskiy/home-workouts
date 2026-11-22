@@ -1,0 +1,45 @@
+name: Fast hand bone archive inventory
+on:
+  push:
+    paths:
+      - '.github/workflows/inventory-hand-source-fast.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read original archive without geometry splitting
+        shell: bash
+        run: |
+          mkdir -p evidence
+          curl --fail --location --retry 3 --max-time 60 \
+          'https://raw.githubusercontent.com/HegdeUSA/Hand_template/main/3D_model_of_segmented_bones.zip' \
+          -o /tmp/segmented.zip
+          python3 - <<'PY'
+          import pathlib,zipfile,struct,json,hashlib
+          b=pathlib.Path('/tmp/segmented.zip').read_bytes()
+          result={'sha256':hashlib.sha256(b).hexdigest(),'archive_bytes':len(b),'entries':[]}
+          with zipfile.ZipFile('/tmp/segmented.zip') as z:
+            for f in z.infolist():
+              row={'file':f.filename,'size':f.file_size,'compressed':f.compress_size}
+              if f.filename.lower().endswith('.stl'):
+                with z.open(f) as stream:
+                  head=stream.read(84)
+                  if len(head)==84:
+                    row['triangles_if_binary']=struct.unpack_from('<I',head,80)[0]
+                    row['binary_expected_bytes']=84+50*row['triangles_if_binary']
+                    row['valid_binary_size']=row['binary_expected_bytes']==f.file_size
+              result['entries'].append(row)
+          pathlib.Path('evidence/inventory.json').write_text(json.dumps(result,ensure_ascii=False,indent=2))
+          print(json.dumps(result,ensure_ascii=False,indent=2)[:23000])
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hand-bones-fast-inventory
+          path: evidence/
+          retention-days: 3
