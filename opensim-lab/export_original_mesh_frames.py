@@ -18,6 +18,9 @@ def vec3(v):
 def axes(rotation):
     # SimTK Rotation column vectors: local x/y/z expressed in Ground.
     # This avoids incorrectly approximating the orientation from joint positions.
+    # SWIG may not expose Rotation.x()/y()/z(); inspect underlying methods.
+    if not hasattr(rotation, "x"):
+        print("ROTATION_AVAILABLE_METHODS", sorted(k for k in dir(rotation) if not k.startswith("_")))
     return [vec3(rotation.x()),vec3(rotation.y()),vec3(rotation.z())]
 
 def export(filename,model_zip_path):
