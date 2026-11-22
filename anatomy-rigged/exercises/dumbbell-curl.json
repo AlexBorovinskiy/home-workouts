@@ -100,12 +100,12 @@
         0
       ],
       "thumb_01.L": [
+        -15,
         0,
-        0,
-        14
+        -70
       ],
       "thumb_02.L": [
-        -36,
+        42,
         0,
         0
       ],
@@ -170,12 +170,12 @@
         0
       ],
       "thumb_01.R": [
+        -15,
         0,
-        0,
-        -14
+        70
       ],
       "thumb_02.R": [
-        -36,
+        42,
         0,
         0
       ]
@@ -272,12 +272,12 @@
         0
       ],
       "thumb_01.L": [
+        -15,
         0,
-        0,
-        14
+        -70
       ],
       "thumb_02.L": [
-        -36,
+        42,
         0,
         0
       ],
@@ -342,12 +342,12 @@
         0
       ],
       "thumb_01.R": [
+        -15,
         0,
-        0,
-        -14
+        70
       ],
       "thumb_02.R": [
-        -36,
+        42,
         0,
         0
       ]
@@ -444,12 +444,12 @@
         0
       ],
       "thumb_01.L": [
+        -15,
         0,
-        0,
-        14
+        -70
       ],
       "thumb_02.L": [
-        -36,
+        42,
         0,
         0
       ],
@@ -514,18 +514,18 @@
         0
       ],
       "thumb_01.R": [
+        -15,
         0,
-        0,
-        -14
+        70
       ],
       "thumb_02.R": [
-        -36,
+        42,
         0,
         0
       ]
     }
   ],
-  "coachingStatus": "reference-aligned-animation-needs-visual-review",
+  "coachingStatus": "reference-aligned-animation-revised-thumb-grip-needs-visual-review",
   "guide": {
     "version": 1,
     "variant": "Стоя, двумя гантелями одновременно, с постепенной супинацией",
@@ -559,5 +559,6 @@
       "name": "ACE — Building Better Biceps (elbow flexion and forearm supination)",
       "url": "https://www.acefitness.org/resources/pros/expert-articles/9033/building-better-biceps-evidence-based-exercises-for-strength-and-function/"
     }
-  ]
+  ],
+  "gripRevision": "thumb-opposition-v2"
 }
