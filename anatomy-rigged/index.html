@@ -89,7 +89,7 @@ function applyPose(){if(!rigReady)return;resetBones();const a=effort(progress);
    for(const s of ['L','R']){rotateWorld('upperarm.'+s,AXIS_X,-Math.PI*.48);rotateWorld('forearm.'+s,AXIS_X,.95*a);rotateWorld('hand.'+s,AXIS_X,.1);}
    rotateWorld('spine_01',AXIS_X,-.05*a);
  }
- scene.updateMatrixWorld(true);if(skeletonHelper)skeletonHelper.update();}
+ scene.updateMatrixWorld(true);if(skeletonHelper)skeletonHelper.updateMatrixWorld(true);}
 function updateColors(){if(!colored||!partIds)return;const groups=exercises[active].groups,enabled=$('#highlight').checked;const color=muscleMesh.geometry.attributes.color;for(let i=0;i<partIds.count;i++){
   const id=Math.round(partIds.getX(i)),idx=Math.floor((id-1)/2),group=id>0?partGroups[idx]:null,t=tendons?tendons.getX(i):0;
   let r=.61,g=.26,b=.26;if(!id){r=.69;g=.65;b=.58} if(enabled && groups.includes(group)){r=1;g=.47;b=.26}else if(enabled&&id){r=.45;g=.26;b=.29}
