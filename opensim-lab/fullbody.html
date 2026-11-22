@@ -1,0 +1,127 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0b2131"><link rel="icon" href="data:,"><title>OpenSim · полное тело · проверка сборки</title>
+<style>
+:root{color-scheme:dark;--bg:#0a1d2a;--panel:#153542;--line:#385d68;--mint:#8bdacb;--text:#ebf6f4;--muted:#abcbd0}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(150deg,#164353,var(--bg) 54%);color:var(--text);font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+main{max-width:1090px;margin:0 auto;padding:17px 13px 70px}header{display:flex;align-items:center;justify-content:space-between;gap:12px;color:var(--mint);font-size:11px;font-weight:800;letter-spacing:.1em}header a{color:var(--text);font-weight:500;letter-spacing:normal;text-decoration:none;border:1px solid var(--line);padding:8px;border-radius:15px}
+h1{font-size:clamp(25px,4vw,35px);letter-spacing:-.045em;margin:29px 0 8px}.lead{color:var(--muted);line-height:1.6;max-width:750px;margin:0 0 14px}
+.layout{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(290px,.8fr);gap:13px}.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden;margin-bottom:13px}.stage{height:min(66vh,690px);min-height:415px;position:relative;background:radial-gradient(ellipse at 50% 35%,#284e59,#102331 75%);touch-action:none}canvas{display:block;height:100%;width:100%;touch-action:none}
+.hud{position:absolute;top:12px;left:12px;background:#112d3bde;padding:8px 11px;font-size:11px;color:#d0eae3;border:1px solid #37646e;border-radius:18px}.tip{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);background:#112e3cdb;padding:8px 11px;font-size:10px;color:var(--muted);white-space:nowrap;border-radius:20px}.err{position:absolute;inset:0;display:none;align-items:center;justify-content:center;padding:18px;text-align:center;background:#112937ee;line-height:1.7}.err.show{display:flex}.toolbar{padding:14px;display:grid;gap:11px}
+.actions{display:flex;gap:8px;flex-wrap:wrap}button{background:#235061;border:1px solid #517887;color:var(--text);padding:10px 11px;min-height:42px;border-radius:11px;font:inherit;font-weight:700;cursor:pointer}button.on{background:var(--mint);color:#12333d;border-color:var(--mint)}
+.side{padding:17px;margin-bottom:13px}h2{font-size:16px;margin:0 0 12px}.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.stat{background:#112c3b;border-radius:11px;padding:12px}.stat b{display:block;font-size:26px;font-variant-numeric:tabular-nums}.stat small{font-size:10px;color:var(--muted)}p{line-height:1.6;color:var(--muted)}.warn{background:#3e3029;border:1px solid #765c43;border-radius:10px;padding:12px;color:#f5d2a9;line-height:1.65;font-size:12px}.legend{font-size:12px;line-height:1.7}.legend span{display:inline-block;width:10px;height:10px;border-radius:50%;vertical-align:middle;margin-right:8px}
+.note{font-size:12px}a{color:var(--mint)}@media(max-width:780px){.layout{grid-template-columns:1fr}.stage{height:56vh}.side{padding:14px}}
+</style></head><body><main>
+<header><span>HOME WORKOUTS / OPEN SIM</span><a href="./native-motion.html">Движения позвоночника</a></header>
+<h1>Полное тело · проверка сборки OpenSim</h1>
+<p class="lead">Видны положения управляющих сегментов, рассчитанные OpenSim после объединения научной модели позвоночника с опубликованной моделью ног. Это не кожа и не анатомические поверхности костей: точки обозначают начала систем координат тел, линии показывают связи для удобства просмотра.</p>
+<div class="layout"><section class="card">
+<div class="stage" id="stage"><canvas id="canvas" aria-label="Трёхмерная схема полного тела OpenSim"></canvas>
+<div class="hud">OpenSim 4.6 · исходная поза</div><div class="tip">Проведи — вращение · два пальца — масштаб</div><div class="err" id="error"></div></div>
+<div class="toolbar">
+<div class="actions" id="cameras"><button data-view="front" class="on">Спереди</button><button data-view="side">Профиль</button><button data-view="back">Сзади</button></div>
+<div class="actions"><button class="on" id="spineToggle">Позвоночник</button><button class="on" id="armsToggle">Руки</button><button class="on" id="legsToggle">Ноги</button><button class="on" id="floorToggle">Условный пол</button></div>
+</div></section>
+<aside>
+<section class="card side"><h2>Проверено в OpenSim</h2>
+<div class="stats"><div class="stat"><b id="bodies">—</b><small>тел</small></div><div class="stat"><b id="joints">—</b><small>суставов</small></div><div class="stat"><b id="coords">—</b><small>координат</small></div><div class="stat"><b id="vertebrae">—</b><small>отдельных позвонков</small></div></div>
+<p id="audit" class="note">Загружаю проверенную структуру…</p>
+<div class="legend">
+<div><span style="background:#85dccb"></span>Грудной отдел позвоночника</div>
+<div><span style="background:#e3ac83"></span>Поясница и таз</div>
+<div><span style="background:#aaa6ef"></span>Плечевой пояс и руки</div>
+<div><span style="background:#eccb91"></span>Ноги и стопы</div>
+</div></section>
+<section class="card side"><h2>Готовность к отжиманиям</h2>
+<div class="warn">Пока это только проверенная сборка структуры. Анатомическое согласование исходных моделей не завершено, естественная поза планки не рассчитана, контактные силы и распределение давления не подтверждены. Использовать эту схему для оценки техники или риска травмы нельзя.</div>
+<p>На исходной позе руки заметно выше плоскости опоры стоп. Для отжимания понадобятся правильная позиция корпуса и контакт ладоней и стоп с полом. <strong>Нельзя просто повернуть фигуру на бок и назвать это отжиманием.</strong></p>
+<p class="note">Источники: <a href="https://zenodo.org/records/18259702">Framingham OpenSim 4.x</a> и <a href="https://github.com/opensim-org/opensim-models/tree/master/Models/Rajagopal">RajagopalLaiUhlrich2023</a>.</p></section>
+</aside></div></main>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+const $=s=>document.querySelector(s),stage=$('#stage'),canvas=$('#canvas');
+const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(35,1,.02,30);
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true,preserveDrawingBuffer:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.6));renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.setClearColor(0x0a2130,0);
+scene.add(new THREE.HemisphereLight(0xd5f7f2,0x42616a,2));
+const light=new THREE.DirectionalLight(0xfff2dd,2.7);light.position.set(2,4,3);scene.add(light);
+const orbit=new OrbitControls(camera,canvas);orbit.enableDamping=true;orbit.minDistance=.5;orbit.maxDistance=9;
+const colors={spine:0x86dccb,pelvis:0xe3ac83,arms:0xaaa6ef,legs:0xecc58a,ground:0x73aba9};
+const layer={spine:new THREE.Group(),arms:new THREE.Group(),legs:new THREE.Group(),ground:new THREE.Group()};
+Object.values(layer).forEach(g=>scene.add(g));
+const v=p=>new THREE.Vector3(...p);
+let points=null,candidate=null,source=null,groundY=-1;
+function resize(){renderer.setSize(stage.clientWidth,stage.clientHeight,false);camera.aspect=stage.clientWidth/Math.max(1,stage.clientHeight);camera.updateProjectionMatrix();}
+new ResizeObserver(resize).observe(stage);resize();
+function sphere(group,p,color,r=.017){
+ const mat=new THREE.MeshStandardMaterial({color,roughness:.5,metalness:.02});
+ const obj=new THREE.Mesh(new THREE.SphereGeometry(r,14,10),mat);obj.position.copy(v(p));group.add(obj);return obj;
+}
+function line(group,a,b,color,alpha=1){
+ if(!points[a]||!points[b])return;
+ const geom=new THREE.BufferGeometry().setFromPoints([v(points[a]),v(points[b])]);
+ const mat=new THREE.LineBasicMaterial({color,transparent:alpha<1,opacity:alpha});
+ group.add(new THREE.Line(geom,mat));
+}
+function label(group,p,word){
+ const cv=document.createElement('canvas');cv.width=260;cv.height=72;
+ const ctx=cv.getContext('2d');ctx.fillStyle='#0b2a37df';ctx.fillRect(0,0,240,65);
+ ctx.fillStyle='#f0fff9';ctx.font='bold 31px sans-serif';ctx.fillText(word,12,44);
+ const tex=new THREE.CanvasTexture(cv),m=new THREE.SpriteMaterial({map:tex,depthTest:false,transparent:true});
+ const obj=new THREE.Sprite(m);obj.scale.set(.15,.044,1);obj.position.copy(v(p)).add(new THREE.Vector3(0,.021,.04));group.add(obj);
+}
+function build(){
+ const sd=source.frames[0].bodyFrameOriginsM;
+ points={...sd,...candidate.bodyFrameOriginsM};
+ const labels=source.spineLevels;
+ for(let i=0;i<labels.length;i++){
+  const n=labels[i];
+  sphere(layer.spine,points[n],n.startsWith('lumbar')?colors.pelvis:colors.spine,.016);
+  if(i>0)line(layer.spine,labels[i-1],n,0x9acbca);
+  if(['lumbar5','lumbar1','thoracic12','thoracic6','thoracic1'].includes(n))label(layer.spine,points[n],n.replace('thoracic','T').replace('lumbar','L'));
+ }
+ for(const name of ['pelvis','sacrum'])if(points[name])sphere(layer.spine,points[name],colors.pelvis,.021);
+ line(layer.spine,'pelvis','sacrum',colors.pelvis);line(layer.spine,'sacrum','lumbar5',colors.pelvis);
+ for(const side of ['R','L']){
+  for(const name of ['clavicle_'+side,'scapula_'+side,'humerus_'+side,'ulna_'+side,'radius_'+side,'hand_'+side]){
+   if(points[name])sphere(layer.arms,points[name],colors.arms,name.includes('hand')?.024:.016);
+  }
+  for(const [a,b] of [['thoracic1','clavicle_'+side],['clavicle_'+side,'scapula_'+side],['scapula_'+side,'humerus_'+side],['humerus_'+side,'ulna_'+side],['ulna_'+side,'radius_'+side],['radius_'+side,'hand_'+side]])line(layer.arms,a,b,colors.arms);
+  const sl=side.toLowerCase(),path=['pelvis','femur_'+sl,'tibia_'+sl,'talus_'+sl,'calcn_'+sl,'toes_'+sl];
+  for(const n of path.slice(1))if(points[n])sphere(layer.legs,points[n],colors.legs,n.includes('toes')?.024:.018);
+  for(let i=1;i<path.length;i++)line(layer.legs,path[i-1],path[i],colors.legs);
+ }
+ groundY=Math.min(points['toes_r'][1],points['toes_l'][1])-.027;
+ const plane=new THREE.Mesh(new THREE.PlaneGeometry(4,3),
+   new THREE.MeshBasicMaterial({color:0x477e85,transparent:true,opacity:.23,side:THREE.DoubleSide,depthWrite:false}));
+ plane.rotation.x=-Math.PI/2;plane.position.y=groundY;layer.ground.add(plane);
+ const floorLines=new THREE.GridHelper(2,.15,0x6c9a9c,0x244754);floorLines.position.y=groundY+.001;layer.ground.add(floorLines);
+ for(const [id,n] of [['bodies','bodyCount'],['joints','jointCount'],['coords','coordinateCount'],['vertebrae','vertebrae']])$('#'+id).textContent=candidate[n];
+ const gap=(points.hand_R[1]-groundY)*100;
+ $('#audit').textContent='В исходном положении начало координат правой кисти находится на '+gap.toFixed(1)+' см выше условной плоскости стоп. Это не площадь контакта ладони и не положение её подушечек.';
+ view('front');
+ window.__fullbodyQA={ready:()=>true,source:()=>({bodyCount:candidate.bodyCount,vertebrae:candidate.vertebrae,feet:candidate.hasFeet,hands:candidate.hasHands}),view};
+}
+function view(name){
+ if(!points)return;
+ const vals=Object.values(points).map(v),bbox=new THREE.Box3().setFromPoints(vals),c=bbox.getCenter(new THREE.Vector3()),size=bbox.getSize(new THREE.Vector3());
+ const minVertical=Math.max(size.y,1.45),fitVertical=minVertical/(2*Math.tan(THREE.MathUtils.degToRad(camera.fov/2)));
+ const fitHorizontal=size.z/(2*Math.tan(THREE.MathUtils.degToRad(camera.fov/2))*camera.aspect);
+ const dist=1.23*Math.max(fitVertical,fitHorizontal,1.8);
+ const dir=name==='side'?new THREE.Vector3(dist,0,0):name==='back'?new THREE.Vector3(0,0,-dist):new THREE.Vector3(0,0,dist);
+ orbit.target.copy(c);camera.position.copy(c).add(dir);camera.lookAt(c);orbit.update();
+ document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('on',b.dataset.view===name));
+}
+document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>view(b.dataset.view)));
+for(const [id,key] of [['spineToggle','spine'],['armsToggle','arms'],['legsToggle','legs'],['floorToggle','ground']]){
+ $('#'+id).addEventListener('click',()=>{layer[key].visible=!layer[key].visible;$('#'+id).classList.toggle('on',layer[key].visible)});
+}
+function tick(){requestAnimationFrame(tick);orbit.update();renderer.render(scene,camera)}tick();
+Promise.all([
+ fetch('./assets/fullbody-candidate-summary.json').then(r=>{if(!r.ok)throw Error('Нет проверки полной сборки');return r.json()}),
+ fetch('./assets/native-spine-samples.json').then(r=>{if(!r.ok)throw Error('Нет расчёта позвоночника');return r.json()})
+]).then(([joint,spine])=>{
+ if(joint.data.bodyCount!==80||spine.spineLevels.length!==17)throw Error('Некорректные данные или несовместимые версии');
+ candidate=joint.data;source=spine;build();
+}).catch(e=>{$('#error').classList.add('show');$('#error').textContent='Ошибка загрузки: '+e.message});
+</script></body></html>
