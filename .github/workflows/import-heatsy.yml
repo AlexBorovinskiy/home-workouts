@@ -43,8 +43,9 @@ jobs:
               'translation':nodes[i].get('translation'),
               'rotation':nodes[i].get('rotation'),
               'scale':nodes[i].get('scale')} for i in joints],
-              'meshNodes':[{'index':i,'name':n.get('name',''),'mesh':n.get('mesh'),'skin':n.get('skin')} for i,n in enumerate(nodes) if 'mesh' in n],
-              'skins':[{'name':s.get('name'),'joints':len(s.get('joints',[])),'skeleton':s.get('skeleton')} for s in gltf['skins']]}
+              'meshNodes':[{'index':i,'name':n.get('name',''),'mesh':n.get('mesh'),'skin':n.get('skin'),'scale':n.get('scale'),'matrix':n.get('matrix'),'translation':n.get('translation'),'rotation':n.get('rotation')} for i,n in enumerate(nodes) if 'mesh' in n],
+              'skins':[{'name':s.get('name'),'joints':len(s.get('joints',[])),'skeleton':s.get('skeleton')} for s in gltf['skins']],
+              'meshPrimitives':[{'attributes':p.get('attributes'),'positionAccessor':gltf['accessors'][p['attributes']['POSITION']]} for p in gltf['meshes'][0]['primitives']]}
           (root/'rig-inspect.json').write_text(json.dumps(data,indent=2,ensure_ascii=False)+'\n')
           print('Bones:',len(joints),'node names:',[nodes[i].get('name') for i in joints])
           PY
