@@ -43,7 +43,7 @@ export function createAnatomicalRig(THREE) {
     }
     for(let j=0;j<stations.length-1;j++)for(let k=0;k<u;k++){
       const a=j*u+k,b=j*u+(k+1)%u,c=(j+1)*u+k,d=(j+1)*u+(k+1)%u;
-      inds.push(a,b,c,b,d,c);
+      inds.push(a,c,b,b,c,d);
     }
     const lower=verts.length/3;verts.push(0,-len/2,0);
     const upper=verts.length/3;verts.push(0,len/2,0);
