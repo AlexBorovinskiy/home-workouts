@@ -4,7 +4,7 @@ on:
     paths:
       - '.github/workflows/qa-anatomy-first-grip.yml'
       - 'anatomy-first/grip-reference.html'
-      - 'anatomy-first/full-mri-hand-rig-v5.js'
+      - 'anatomy-first/full-mri-hand-rig-v6.js'
       - 'anatomy-first/full-mri-hand-rig-v2.js'
   workflow_dispatch:
 permissions:
