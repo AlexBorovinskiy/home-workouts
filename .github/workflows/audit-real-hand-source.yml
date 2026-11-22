@@ -1,0 +1,60 @@
+name: Inspect research-derived segmented hand bones
+on:
+  push:
+    paths:
+      - '.github/workflows/audit-real-hand-source.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Retrieve author's unchanged upstream archive
+        shell: bash
+        run: |
+          mkdir -p evidence
+          curl --fail --location --retry 3 --max-time 120 \
+            'https://raw.githubusercontent.com/HegdeUSA/Hand_template/main/3D_model_of_segmented_bones.zip' \
+            -o evidence/segmented_bones_original.zip
+          sha256sum evidence/segmented_bones_original.zip | tee evidence/source-sha256.txt
+          unzip -l evidence/segmented_bones_original.zip | tee evidence/zip-entries.txt
+      - name: Inspect file components and physical dimensions
+        shell: bash
+        run: |
+          python3 -m pip install --quiet trimesh==4.10.0 numpy==2.2.6
+          python3 - <<'PY'
+          import zipfile, json, io, hashlib, pathlib, trimesh, numpy as np
+          folder=pathlib.Path('evidence')
+          source=folder/'segmented_bones_original.zip'
+          report={'source':'HegdeUSA/Hand_template','archive_sha256':hashlib.sha256(source.read_bytes()).hexdigest(),'entries':[]}
+          with zipfile.ZipFile(source) as z:
+            names=z.namelist()
+            for name in names:
+              info=z.getinfo(name)
+              row={'name':name,'file_size':info.file_size,'compressed':info.compress_size}
+              if name.lower().endswith(('.stl','.obj','.ply')) and info.file_size<800000000:
+                try:
+                  raw=z.read(name)
+                  mesh=trimesh.load(io.BytesIO(raw),file_type=name.split('.')[-1],force='mesh',process=False)
+                  if isinstance(mesh,trimesh.Trimesh):
+                    row.update({'vertices':int(len(mesh.vertices)),'faces':int(len(mesh.faces)),'bounds':mesh.bounds.tolist(),'watertight':bool(mesh.is_watertight)})
+                    pieces=mesh.split(only_watertight=False)
+                    row['component_count']=len(pieces)
+                    row['component_sizes']=sorted([int(len(m.faces)) for m in pieces],reverse=True)[:42]
+                except Exception as e:row['error']=str(e)[:250]
+              report['entries'].append(row)
+          (folder/'inspection.json').write_text(json.dumps(report,indent=2,ensure_ascii=False))
+          print(json.dumps(report,indent=2,ensure_ascii=False)[:18000])
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: segmented-hand-source-audit
+          path: |
+            evidence/inspection.json
+            evidence/zip-entries.txt
+            evidence/source-sha256.txt
+          retention-days: 5
