@@ -1,0 +1,327 @@
+{
+  "schema": "anatomy-first/hand-labels/v1",
+  "source": "HegdeUSA/Hand_template — MRI-derived segmented-bones STL",
+  "meshSha256": "00b1aa268a656172ba2e9648e5465955f3862bc4221b79eaa9607753bd5e2e38",
+  "anatomicalOrientation": "MRI template coordinate frame. +Z toward fingertips; +X thumb side; handedness not yet confirmed",
+  "annotated": "2026-11-22",
+  "status": "preliminary geometric identification",
+  "caution": "Labels are reasoned from geometry and arrangement, not verified with authors or CT/clinical expert. No joint centres or kinematic axes validated.",
+  "counts": {
+    "hand_bone": 19,
+    "carpal_candidate": 7,
+    "forearm_candidate": 2,
+    "small_fragment": 6
+  },
+  "segments": [
+    {
+      "id": "segment_01_unlabeled",
+      "index": 1,
+      "classification": "hand_bone",
+      "name_ru": "Вторая пястная кость",
+      "confidence": "high",
+      "digit": "index",
+      "part": "metacarpal",
+      "identification_basis": "Anatomical chain, relative position and geometry in MRI source; no original per-bone labels"
+    },
+    {
+      "id": "segment_02_unlabeled",
+      "index": 2,
+      "classification": "hand_bone",
+      "name_ru": "Третья пястная кость",
+      "confidence": "high",
+      "digit": "middle",
+      "part": "metacarpal",
+      "identification_basis": "Anatomical chain, relative position and geometry in MRI source; no original per-bone labels"
+    },
+    {
+      "id": "segment_03_unlabeled",
+      "index": 3,
+      "classification": "forearm_candidate",
+      "name_ru": "Кость предплечья — сегмент 3",
+      "confidence": "unverified",
+      "note": "Лучевая/локтевая пока не различены"
+    },
+    {
+      "id": "segment_04_unlabeled",
+      "index": 4,
+      "classification": "hand_bone",
+      "name_ru": "Четвёртая пястная кость",
+      "confidence": "high",
+      "digit": "ring",
+      "part": "metacarpal",
+      "identification_basis": "Anatomical chain, relative position and geometry in MRI source; no original per-bone labels"
+    },
+    {
+      "id": "segment_05_unlabeled",
+      "index": 5,
+      "classification": "hand_bone",
+      "name_ru": "Пятая пястная кость",
+      "confidence": "high",
+      "digit": "little",
+      "part": "metacarpal",
+      "identification_basis": "Anatomical chain, relative position and geometry in MRI source; no original per-bone labels"
+    },
+    {
+      "id": "segment_06_unlabeled",
+      "index": 6,
+      "classification": "hand_bone",
+      "name_ru": "Первая пястная кость",
+      "confidence": "high",
+      "digit": "thumb",
+      "part": "metacarpal",
+      "identification_basis": "Anatomical chain, relative position and geometry in MRI source; no original per-bone labels"
+    },
+    {
+      "id": "segment_07_unlabeled",
+      "index": 7,
+      "classification": "hand_bone",
+      "name_ru": "Проксимальная фаланга безымянного",
+      "confidence": "high",
+      "digit": "ring",
+      "part": "proximal",
+      "identification_basis": "Anatomical chain, relative position and geometry in MRI source; no original per-bone labels"
+    },
+    {
+      "id": "segment_08_unlabeled",
+      "index": 8,
+      "classification": "hand_bone",
+      "name_ru": "Проксимальная фаланга среднего",
+      "confidence": "high",
+      "digit": "middle",
+      "part": "proximal",
+      "identification_basis": "Anatomical chain, relative position and geometry in MRI source; no original per-bone labels"
+    },
+    {
+      "id": "segment_09_unlabeled",
+      "index": 9,
+      "classification": "hand_bone",
+      "name_ru": "Проксимальная фаланга указательного",
+      "confidence": "high",
+      "digit": "index",
+      "part": "proximal",
+      "identification_basis": "Anatomical chain, relative position and geometry in MRI source; no original per-bone labels"
+    },
+    {
+      "id": "segment_10_unlabeled",
+      "index": 10,
+      "classification": "forearm_candidate",
+      "name_ru": "Кость предплечья — сегмент 10",
+      "confidence": "unverified",
+      "note": "Лучевая/локтевая пока не различены"
+    },
+    {
+      "id": "segment_11_unlabeled",
+      "index": 11,
+      "classification": "hand_bone",
+      "name_ru": "Проксимальная фаланга мизинца",
+      "confidence": "high",
+      "digit": "little",
+      "part": "proximal",
+      "identification_basis": "Anatomical chain, relative position and geometry in MRI source; no original per-bone labels"
+    },
+    {
+      "id": "segment_12_unlabeled",
+      "index": 12,
+      "classification": "hand_bone",
+      "name_ru": "Проксимальная фаланга большого",
+      "confidence": "high",
+      "digit": "thumb",
+      "part": "proximal",
+      "identification_basis": "Anatomical chain, relative position and geometry in MRI source; no original per-bone labels"
+    },
+    {
+      "id": "segment_13_unlabeled",
+      "index": 13,
+      "classification": "carpal_candidate",
+      "name_ru": "Кость запястья — сегмент 13",
+      "confidence": "unverified",
+      "note": "Точное название не подтверждено"
+    },
+    {
+      "id": "segment_14_unlabeled",
+      "index": 14,
+      "classification": "carpal_candidate",
+      "name_ru": "Кость запястья — сегмент 14",
+      "confidence": "unverified",
+      "note": "Точное название не подтверждено"
+    },
+    {
+      "id": "segment_15_unlabeled",
+      "index": 15,
+      "classification": "carpal_candidate",
+      "name_ru": "Кость запястья — сегмент 15",
+      "confidence": "unverified",
+      "note": "Точное название не подтверждено"
+    },
+    {
+      "id": "segment_16_unlabeled",
+      "index": 16,
+      "classification": "hand_bone",
+      "name_ru": "Средняя фаланга среднего",
+      "confidence": "high",
+      "digit": "middle",
+      "part": "middle",
+      "identification_basis": "Anatomical chain, relative position and geometry in MRI source; no original per-bone labels"
+    },
+    {
+      "id": "segment_17_unlabeled",
+      "index": 17,
+      "classification": "hand_bone",
+      "name_ru": "Средняя фаланга безымянного",
+      "confidence": "high",
+      "digit": "ring",
+      "part": "middle",
+      "identification_basis": "Anatomical chain, relative position and geometry in MRI source; no original per-bone labels"
+    },
+    {
+      "id": "segment_18_unlabeled",
+      "index": 18,
+      "classification": "carpal_candidate",
+      "name_ru": "Кость запястья — сегмент 18",
+      "confidence": "unverified",
+      "note": "Точное название не подтверждено"
+    },
+    {
+      "id": "segment_19_unlabeled",
+      "index": 19,
+      "classification": "hand_bone",
+      "name_ru": "Дистальная фаланга большого",
+      "confidence": "high",
+      "digit": "thumb",
+      "part": "distal",
+      "identification_basis": "Anatomical chain, relative position and geometry in MRI source; no original per-bone labels"
+    },
+    {
+      "id": "segment_20_unlabeled",
+      "index": 20,
+      "classification": "hand_bone",
+      "name_ru": "Средняя фаланга указательного",
+      "confidence": "high",
+      "digit": "index",
+      "part": "middle",
+      "identification_basis": "Anatomical chain, relative position and geometry in MRI source; no original per-bone labels"
+    },
+    {
+      "id": "segment_21_unlabeled",
+      "index": 21,
+      "classification": "carpal_candidate",
+      "name_ru": "Кость запястья — сегмент 21",
+      "confidence": "unverified",
+      "note": "Точное название не подтверждено"
+    },
+    {
+      "id": "segment_22_unlabeled",
+      "index": 22,
+      "classification": "carpal_candidate",
+      "name_ru": "Кость запястья — сегмент 22",
+      "confidence": "unverified",
+      "note": "Точное название не подтверждено"
+    },
+    {
+      "id": "segment_23_unlabeled",
+      "index": 23,
+      "classification": "carpal_candidate",
+      "name_ru": "Кость запястья — сегмент 23",
+      "confidence": "unverified",
+      "note": "Точное название не подтверждено"
+    },
+    {
+      "id": "segment_24_unlabeled",
+      "index": 24,
+      "classification": "hand_bone",
+      "name_ru": "Средняя фаланга мизинца",
+      "confidence": "high",
+      "digit": "little",
+      "part": "middle",
+      "identification_basis": "Anatomical chain, relative position and geometry in MRI source; no original per-bone labels"
+    },
+    {
+      "id": "segment_25_unlabeled",
+      "index": 25,
+      "classification": "hand_bone",
+      "name_ru": "Дистальная фаланга среднего",
+      "confidence": "high",
+      "digit": "middle",
+      "part": "distal",
+      "identification_basis": "Anatomical chain, relative position and geometry in MRI source; no original per-bone labels"
+    },
+    {
+      "id": "segment_26_unlabeled",
+      "index": 26,
+      "classification": "hand_bone",
+      "name_ru": "Дистальная фаланга безымянного",
+      "confidence": "high",
+      "digit": "ring",
+      "part": "distal",
+      "identification_basis": "Anatomical chain, relative position and geometry in MRI source; no original per-bone labels"
+    },
+    {
+      "id": "segment_27_unlabeled",
+      "index": 27,
+      "classification": "hand_bone",
+      "name_ru": "Дистальная фаланга указательного",
+      "confidence": "high",
+      "digit": "index",
+      "part": "distal",
+      "identification_basis": "Anatomical chain, relative position and geometry in MRI source; no original per-bone labels"
+    },
+    {
+      "id": "segment_28_unlabeled",
+      "index": 28,
+      "classification": "hand_bone",
+      "name_ru": "Дистальная фаланга мизинца",
+      "confidence": "high",
+      "digit": "little",
+      "part": "distal",
+      "identification_basis": "Anatomical chain, relative position and geometry in MRI source; no original per-bone labels"
+    },
+    {
+      "id": "segment_29_unlabeled",
+      "index": 29,
+      "classification": "small_fragment",
+      "name_ru": "Малый фрагмент 29",
+      "confidence": "unverified",
+      "note": "Может быть артефактом сегментации или костным фрагментом; не считать отдельной костью"
+    },
+    {
+      "id": "segment_30_unlabeled",
+      "index": 30,
+      "classification": "small_fragment",
+      "name_ru": "Малый фрагмент 30",
+      "confidence": "unverified",
+      "note": "Может быть артефактом сегментации или костным фрагментом; не считать отдельной костью"
+    },
+    {
+      "id": "segment_31_unlabeled",
+      "index": 31,
+      "classification": "small_fragment",
+      "name_ru": "Малый фрагмент 31",
+      "confidence": "unverified",
+      "note": "Может быть артефактом сегментации или костным фрагментом; не считать отдельной костью"
+    },
+    {
+      "id": "segment_32_unlabeled",
+      "index": 32,
+      "classification": "small_fragment",
+      "name_ru": "Малый фрагмент 32",
+      "confidence": "unverified",
+      "note": "Может быть артефактом сегментации или костным фрагментом; не считать отдельной костью"
+    },
+    {
+      "id": "segment_33_unlabeled",
+      "index": 33,
+      "classification": "small_fragment",
+      "name_ru": "Малый фрагмент 33",
+      "confidence": "unverified",
+      "note": "Может быть артефактом сегментации или костным фрагментом; не считать отдельной костью"
+    },
+    {
+      "id": "segment_34_unlabeled",
+      "index": 34,
+      "classification": "small_fragment",
+      "name_ru": "Малый фрагмент 34",
+      "confidence": "unverified",
+      "note": "Может быть артефактом сегментации или костным фрагментом; не считать отдельной костью"
+    }
+  ]
+}
