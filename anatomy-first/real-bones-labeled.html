@@ -40,7 +40,7 @@ footer{font-size:11px;line-height:1.65;color:var(--muted);padding:18px 1px}foote
 <header><span class="eyebrow">HOME WORKOUTS / ANATOMY FIRST</span><a href="./hand-lab.html">← Предыдущий эксперимент</a></header>
 <h1>Разметка настоящего скелета кисти</h1>
 <p class="lead">На исходной МРТ-модели сопоставляем отдельные поверхности с костями пальцев и пясти. Коснись кости, чтобы узнать её предварительное название, или выбери её в списке.</p>
-<div class="notice"><strong>Предварительная анатомическая разметка.</strong> По расположению и форме определены 19 костей пальцев и пясти. Семь костей запястья пока без окончательных названий; два сегмента у предплечья тоже не подписаны. Эта версия не показывает анатомически проверенное движение.</div>
+<div class="notice"><strong>Предварительная анатомическая разметка.</strong> По расположению и форме определены 19 костей пальцев и пясти. Семь костей запястья и две кости предплечья получили предположительные названия по расположению и соседству. Эти названия требуют независимой анатомической проверки. Эта версия не показывает анатомически проверенное движение.</div>
 <section class="panel">
 <div class="stage" id="stage"><canvas id="scene"></canvas><div class="status" id="status">Загрузка настоящей 3D-геометрии…</div><div class="tip">Коснись кости · проведи — вращение · два пальца — масштаб</div><div class="error" id="error" role="alert"></div></div>
 <div class="controls">
@@ -150,7 +150,7 @@ function explode(flag){
 async function init(){
  const [gltf,metadata]=await Promise.all([
  new GLTFLoader().loadAsync('./assets/research-hand-segments.glb'),
- fetch('./assets/hand-segment-labels.json').then(r=>{if(!r.ok)throw Error('Не удалось загрузить разметку');return r.json()})
+ fetch('./assets/hand-segment-labels.json?v=2').then(r=>{if(!r.ok)throw Error('Не удалось загрузить разметку');return r.json()})
 ]);
  manifest=metadata;
  if(metadata.segments.length!==34)throw Error('Несовпадение количества меток и сегментов');
@@ -191,7 +191,7 @@ async function init(){
    line.append(cb,label);id.appendChild(line);
  });
  $('#stats').textContent='19 костей пальцев и пясти сопоставлены по форме и положению.\n'+
-   '7 костей запястья и 2 фрагмента предплечья требуют точных названий.\n'+
+   '7 костей запястья и 2 кости предплечья подписаны предположительно.\n'+
    'Ещё 6 маленьких частей по умолчанию скрыты.\n'+
    'Всего поверхностей: '+meshes.length+'. Ни одна сетка не была перерисована.';
  $('#status').textContent='МРТ-геометрия · 19 костей предварительно размечены';
