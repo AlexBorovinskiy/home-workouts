@@ -191,13 +191,14 @@ export function createFullMRIHandRigV5(THREE,gltf,landmarks,jointData){
   function pose(name){
     const p=presets[name];if(!p)throw Error('Unknown preset '+name);
     if(name==='open'){
-      for(const digit of ['index','middle','ring','little'])setFingerAngles(digit,[0,0,0]);
+      for(const digit of ['index','middle','ring','little']){setFingerAngles(digit,[0,0,0]);fingers[digit].curl=0;}
       rig.pose(rig.PRESETS.neutral);
     }else{
       if(!fitted)fitted=fitAll();
       for(const digit of ['index','middle','ring','little']){
         const angles=fitted.fingers[digit].angles.map(deg=>deg*p.fraction);
         setFingerAngles(digit,angles);
+        fingers[digit].curl=p.fraction;
       }
       const thumb=Object.fromEntries(
         Object.entries(fitted.thumb.pose).map(([key,val])=>[key,val*p.fraction]));
