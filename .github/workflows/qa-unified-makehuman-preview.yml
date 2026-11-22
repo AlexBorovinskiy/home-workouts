@@ -43,6 +43,22 @@ jobs:
               await page.waitForTimeout(280);
               await page.locator('canvas').screenshot({path:'results/'+name+'-'+view+'.png'});
              }
+             if(name==='x-pos-post'){
+               const poses=[];
+               for(const stage of [0,1,2]){
+                 await page.evaluate(n=>window.__unifiedQA.setStage(n),stage);
+                 await page.waitForTimeout(240);
+                 await page.locator('canvas').screenshot({path:'results/elbow-stage-'+stage+'.png'});
+                 poses.push(await page.evaluate(()=>window.__unifiedQA.getPose()));
+               }
+               const dist=(a,b)=>Math.hypot(...a.map((v,i)=>v-b[i]));
+               if(dist(poses[0].elbow,poses[2].elbow)>.001)throw Error('Elbow anchor moved');
+               if(poses[2].wrist[1]-poses[0].wrist[1]<.18)throw Error('Wrist did not curl upward');
+               const a=dist(poses[0].wrist,poses[0].bar),b=dist(poses[2].wrist,poses[2].bar);
+               if(Math.abs(a-b)>.002)throw Error('Dumbbell slid relative to hand');
+               writeFileSync('results/elbow-poses.json',JSON.stringify(poses,null,2));
+               await page.evaluate(()=>window.__unifiedQA.setStage(0));
+             }
              const c=await page.evaluate(()=>window.__unifiedQA.contacts());
              reports.push({name,contacts:c,errors});
              if(errors.length)throw Error(errors.join('; '));
