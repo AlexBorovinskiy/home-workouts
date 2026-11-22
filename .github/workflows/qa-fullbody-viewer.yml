@@ -1,0 +1,55 @@
+name: QA full-body scientific viewer
+on:
+  push:
+    paths:
+      - 'opensim-lab/fullbody.html'
+      - 'opensim-lab/assets/fullbody-candidate-summary.json'
+      - '.github/workflows/qa-fullbody-viewer.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser driver
+        run: npm install --prefix /tmp/qa-fullbody-viewer --no-audit --no-fund playwright-core@1.56.1
+      - name: Validate full-body OpenSim structure and mobile rendering
+        shell: bash
+        run: |
+          mkdir -p qa-fullbody-viewer
+          python3 -m http.server 8751 --bind 127.0.0.1 >/tmp/qa-fb-serve.log 2>&1 &
+          node --input-type=module <<'NODE'
+          import {chromium} from '/tmp/qa-fullbody-viewer/node_modules/playwright-core/index.mjs';
+          import {writeFileSync} from 'node:fs';
+          const browser=await chromium.launch({channel:'chrome',headless:true,args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+          const page=await browser.newPage({viewport:{width:430,height:932},isMobile:true,hasTouch:true});
+          const errors=[];
+          page.on('pageerror',e=>errors.push(e.message));
+          try{
+            await page.goto('http://127.0.0.1:8751/opensim-lab/fullbody.html',{waitUntil:'domcontentloaded'});
+            await page.waitForFunction(()=>window.__fullbodyQA?.ready()||document.querySelector('#error')?.classList.contains('show'),null,{timeout:90000});
+            if(!await page.evaluate(()=>Boolean(window.__fullbodyQA?.ready())))throw Error('Viewer did not initialize: '+await page.locator('#error').innerText());
+            const report=await page.evaluate(()=>window.__fullbodyQA.source());
+            if(report.bodyCount!==80||report.vertebrae!==17||!report.feet||!report.hands||errors.length)throw Error(JSON.stringify({report,errors}));
+            await page.locator('#canvas').screenshot({path:'qa-fullbody-viewer/front.png'});
+            await page.locator('[data-view="side"]').click();
+            await page.locator('#canvas').screenshot({path:'qa-fullbody-viewer/side.png'});
+            await page.locator('[data-view="back"]').click();
+            await page.locator('#canvas').screenshot({path:'qa-fullbody-viewer/back.png'});
+            console.log('FULLBODY_VIEWER_QA '+JSON.stringify({report,errors}));
+            console.log('FULLBODY_VIEWER_JPEG '+(await page.locator('#canvas').screenshot({type:'jpeg',quality:52})).toString('base64'));
+            writeFileSync('qa-fullbody-viewer/report.json',JSON.stringify({report,errors},null,2));
+          } finally {await browser.close()}
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fullbody-opensim-mobile-viewer
+          path: qa-fullbody-viewer/
+          retention-days: 7
