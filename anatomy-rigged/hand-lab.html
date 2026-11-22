@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="ru"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#091925">
+<title>Лаборатория хвата — Home Workouts</title>
+<style>
+:root{color-scheme:dark;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;--bg:#081623;--panel:#102b3a;--edge:#315163;--ink:#ecf6f7;--accent:#86ded2;--muted:#b2c9d3}
+*{box-sizing:border-box}body{margin:0;color:var(--ink);background:radial-gradient(ellipse at 15% 0%,#1c414d,var(--bg) 65%)}
+main{max-width:880px;margin:auto;padding:16px 12px calc(50px + env(safe-area-inset-bottom))}
+header{display:flex;align-items:center;justify-content:space-between;gap:8px}.eyebrow{font-size:10px;letter-spacing:.16em;font-weight:800;color:var(--accent)}
+a{color:var(--accent)}header a{border:1px solid var(--edge);border-radius:40px;text-decoration:none;padding:10px 13px;font-size:12px}
+h1{font-size:clamp(27px,5vw,36px);letter-spacing:-.6px;margin:19px 0 6px}.lead{font-size:13px;color:var(--muted);line-height:1.6;margin:0 0 14px}
+.notice{font-size:12px;line-height:1.55;padding:11px 13px;border-left:3px solid #dfa77b;background:#45332c9a;border-radius:10px;margin-bottom:13px;color:#f2d7c2}
+.panel{border:1px solid var(--edge);border-radius:19px;overflow:hidden;background:#112838}
+.viewer{height:min(65vh,570px);min-height:350px;position:relative;background:radial-gradient(ellipse at 45% 45%,#27505e,#0b1e2d 70%);touch-action:none}
+canvas{display:block;width:100%;height:100%;touch-action:none}
+.hud{position:absolute;top:12px;left:12px;color:#d7eef0;background:#0b2735d7;border:1px solid #4d7685;border-radius:30px;padding:7px 11px;font-size:11px;pointer-events:none}
+.hint{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);font-size:10px;color:#cee0e4;padding:6px 11px;white-space:nowrap;background:#092735d9;border-radius:25px;pointer-events:none}
+.controls{padding:15px}.label{font-size:11px;font-weight:750;letter-spacing:.1em;text-transform:uppercase;color:#a1d5d0;margin:0 0 8px}
+.poses,.views{display:grid;gap:7px}.poses{grid-template-columns:repeat(3,minmax(0,1fr))}.views{grid-template-columns:repeat(4,minmax(0,1fr))}
+button{font:inherit;font-size:12px;font-weight:650;color:#eaf7f4;min-height:43px;border:1px solid #3e6172;background:#1a3a4a;border-radius:11px;padding:8px;cursor:pointer;touch-action:manipulation}
+button.active{background:var(--accent);border-color:var(--accent);color:#082a33}button:focus-visible{outline:2px solid #ffe1a7;outline-offset:2px}
+hr{border:0;border-top:1px solid #2c4b5a;margin:14px 0}
+.actions{display:flex;gap:8px;margin-top:9px}.actions button{flex:1}
+.note{padding:11px 12px;background:#0d2332;border:1px solid #2d5162;border-radius:11px;color:#cadfe5;line-height:1.6;font-size:12px;margin:13px 0 0}
+.footer{font-size:11px;line-height:1.6;color:#a7bdc7;margin-top:15px}
+.error{display:none;position:absolute;inset:0;background:#081b29ec;align-items:center;justify-content:center;text-align:center;padding:25px;font-size:13px;line-height:1.6}.error.on{display:flex}
+@media(max-width:480px){.viewer{height:min(61vh,500px)}.controls{padding:12px}.views{grid-template-columns:repeat(2,minmax(0,1fr))}.hint{font-size:9px}}
+</style></head><body><main>
+<header><span class="eyebrow">HOME WORKOUTS / ЛАБОРАТОРИЯ</span><a href="./lesson.html">← К упражнению</a></header>
+<h1>Кисть и гантель</h1>
+<p class="lead">Отдельный стенд для проверки одного захвата. Поверни кисть и рассмотри четыре пальца, большой палец и рукоятку в трёх положениях руки.</p>
+<div class="notice"><strong>Прототип, не эталон техники.</strong> Пока проверяем геометрию, контакт и деформации. Основной урок не изменён.</div>
+<section class="panel"><div class="viewer" id="viewer">
+<canvas id="canvas" aria-label="Интерактивная модель кисти с гантелью"></canvas>
+<div class="hud" id="hud" role="status">Загрузка модели…</div>
+<div class="hint">Палец: вращение · два: масштаб и сдвиг</div>
+<div class="error" id="error" role="alert"></div></div>
+<div class="controls">
+<div class="label">Этап сгибания</div>
+<div class="poses" role="group" aria-label="Этапы движения"><button class="active" data-pose="0" aria-pressed="true">1 · Старт</button><button data-pose="1" aria-pressed="false">2 · Середина</button><button data-pose="2" aria-pressed="false">3 · Пик</button></div>
+<hr><div class="label">Ракурс</div>
+<div class="views"><button data-view="front">Ладонь</button><button data-view="side">Профиль</button><button data-view="back">С тыла</button><button id="reset">По центру</button></div>
+<div class="actions"><button id="check">Проверить контакт</button><button id="capture">Сохранить кадр</button></div>
+<p class="note" id="report" role="status">После загрузки можно проверить расстояние между поверхностью кожи и рукояткой. Это геометрический тест, а не медицинская экспертиза.</p>
+</div></section>
+<p class="footer">Основа кисти: Innerscene / MakeHuman (CC0). В стенде используется собственный скелет кисти, без переноса поворотов между разными ригами. Исходники: <a href="https://github.com/AlexBorovinskiy/home-workouts">home-workouts</a>.</p>
+</main>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+const $=s=>document.querySelector(s),holder=$('#viewer'),canvas=$('#canvas'),hud=$('#hud'),report=$('#report');
+const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(35,1,.012,20);
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true,preserveDrawingBuffer:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.8));renderer.outputColorSpace=THREE.SRGBColorSpace;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.2;renderer.setClearColor(0x091d2c,0);
+scene.add(new THREE.HemisphereLight(0xe9fbfa,0x2f4556,1.9));
+const light=new THREE.DirectionalLight(0xfff3e9,2.35);light.position.set(2,4,5);scene.add(light);
+const rim=new THREE.DirectionalLight(0x9de7e9,1.1);rim.position.set(-3,2,-4);scene.add(rim);
+const orbit=new OrbitControls(camera,canvas);orbit.enableDamping=true;orbit.dampingFactor=.08;orbit.screenSpacePanning=true;orbit.minDistance=.21;orbit.maxDistance=1.55;
+const assembly=new THREE.Group(),root=new THREE.Group();scene.add(assembly);assembly.add(root);
+let donor=null,mesh=null,bar=null,ready=false,stage=0;
+const rest=new Map(),skinMat=new THREE.MeshStandardMaterial({color:0xdfaba1,roughness:.83,side:THREE.DoubleSide});
+const shaftMat=new THREE.MeshStandardMaterial({color:0x364d5b,metalness:.56,roughness:.38});
+const discMat=new THREE.MeshStandardMaterial({color:0x899dac,metalness:.72,roughness:.32});
+const handleCenter=new THREE.Vector3(0,.07657357,.03055974),handleQ=new THREE.Quaternion(0,0,.10713777,.99424418).normalize();
+const bends={index:[-64,-75,-31],middle:[-64,-73,-32],ring:[-64,-78,-34],pinky:[-58,-76,-33],thumb:[-22,-25,-18]};
+const stages=[{name:'Старт',angle:0},{name:'Середина',angle:45},{name:'Пик',angle:90}];
+function resize(){const w=holder.clientWidth,h=holder.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}
+new ResizeObserver(resize).observe(holder);resize();
+function setView(view='front'){
+ if(!ready)return;
+ assembly.updateMatrixWorld(true);
+ const center=assembly.localToWorld(new THREE.Vector3(0,.075,.025));
+ const d=.43;
+ const p={front:[0,.035,d],side:[d,.035,0],back:[0,.035,-d]}[view]||[0,.035,d];
+ orbit.target.copy(center);camera.position.copy(center).add(new THREE.Vector3(...p));camera.lookAt(center);orbit.update();
+}
+function setStage(i){
+ stage=i;assembly.rotation.x=THREE.MathUtils.degToRad(-stages[i].angle);assembly.updateMatrixWorld(true);
+ for(const b of document.querySelectorAll('[data-pose]')){const on=Number(b.dataset.pose)===i;b.classList.toggle('active',on);b.setAttribute('aria-pressed',String(on))}
+ hud.textContent=stages[i].name+' · постоянный захват';setView('front');
+}
+function addDumbbell(){
+ bar=new THREE.Group();bar.position.copy(handleCenter);bar.quaternion.copy(handleQ);
+ const handle=new THREE.Mesh(new THREE.CylinderGeometry(.010,.010,.202,28),shaftMat);handle.rotation.z=Math.PI/2;bar.add(handle);
+ for(const x of [-.076,.076]){
+  const d=new THREE.Mesh(new THREE.CylinderGeometry(.049,.049,.022,32),discMat);d.rotation.z=Math.PI/2;d.position.x=x;bar.add(d);
+  const cap=new THREE.Mesh(new THREE.CylinderGeometry(.014,.014,.012,20),shaftMat);cap.rotation.z=Math.PI/2;cap.position.x=x*1.28;bar.add(cap);
+ }
+ root.add(bar);
+}
+function gripFingers(){
+ const rot=new THREE.Quaternion(),axis=new THREE.Vector3(1,0,0);
+ for(const [digit,angles] of Object.entries(bends))for(let j=1;j<=3;j++){
+  const joint=donor.getObjectByName(digit+'_0'+j+'_r');
+  if(!joint||!rest.has(joint))throw Error('Нет сустава '+digit+'_'+j);
+  rot.setFromAxisAngle(axis,THREE.MathUtils.degToRad(angles[j-1]));
+  joint.quaternion.copy(rest.get(joint)).premultiply(rot);
+ }
+ scene.updateMatrixWorld(true);mesh.skeleton.update();
+}
+async function init(){
+ const gltf=await new GLTFLoader().loadAsync('./assets/skin-hand-right.cc0.glb');
+ donor=gltf.scene;donor.updateMatrixWorld(true);
+ const hand=donor.getObjectByName('hand_r');if(!hand)throw Error('Не найден базовый сустав кисти');
+ donor.traverse(o=>{if(o.isSkinnedMesh){mesh=o;mesh.material=skinMat;mesh.frustumCulled=false}});
+ if(!mesh)throw Error('Не найдена поверхность кожи');
+ const inv=hand.matrixWorld.clone().invert();
+ const align=new THREE.Matrix4().makeTranslation(.0077,-.0029,.0023)
+  .multiply(new THREE.Matrix4().makeRotationY(THREE.MathUtils.degToRad(43.25)))
+  .multiply(new THREE.Matrix4().makeScale(.87,.87,.87)).multiply(inv);
+ donor.matrixAutoUpdate=false;donor.matrix.copy(align);root.add(donor);
+ for(const bone of mesh.skeleton.bones)rest.set(bone,bone.quaternion.clone());
+ addDumbbell();gripFingers();ready=true;setStage(0);
+ report.innerHTML='<strong>Модель загружена.</strong> Один исходный риг кисти, без отдельного пересчёта костей. Нажми «Проверить контакт» для диагностики поверхности.';
+ window.__handLabQA={isReady:()=>ready,setView,setStage,check:checkContact};
+}
+function checkContact(){
+ if(!ready)return null;
+ scene.updateMatrixWorld(true);mesh.skeleton.update();
+ const attr=mesh.geometry.getAttribute('position'),inv=bar.matrixWorld.clone().invert(),v=new THREE.Vector3();
+ let samples=0,near=0,penetration=0,min=Infinity;
+ const step=Math.max(1,Math.ceil(attr.count/7000));
+ for(let i=0;i<attr.count;i+=step){
+  v.fromBufferAttribute(attr,i);mesh.applyBoneTransform(i,v);mesh.localToWorld(v);v.applyMatrix4(inv);
+  if(Math.abs(v.x)>.063)continue;
+  samples++;const radial=Math.hypot(v.y,v.z);min=Math.min(min,radial);
+  if(Math.abs(radial-.01)<.003)near++;
+  if(radial<.008)penetration++;
+ }
+ report.innerHTML='<strong>Контакт с рукояткой:</strong> близко к поверхности (±3 мм) — '+near+' вершин; глубоко внутри цилиндра (&lt;8 мм) — '+penetration+'; проверено — '+samples+'. Это проверка геометрии, не подтверждение правильной техники.';
+ return {samples,near,penetration,minimumDistance:min};
+}
+function showError(e){console.error(e);$('#error').classList.add('on');$('#error').textContent='Ошибка: '+(e?.message||String(e));hud.textContent='Ошибка загрузки'}
+for(const b of document.querySelectorAll('[data-pose]'))b.addEventListener('click',()=>setStage(Number(b.dataset.pose)));
+for(const b of document.querySelectorAll('[data-view]'))b.addEventListener('click',()=>setView(b.dataset.view));
+$('#reset').addEventListener('click',()=>setView('front'));
+$('#check').addEventListener('click',checkContact);
+$('#capture').addEventListener('click',()=>{renderer.render(scene,camera);const a=document.createElement('a');a.download='hand-lab-'+stage+'.png';a.href=canvas.toDataURL('image/png');a.click()});
+(function loop(){requestAnimationFrame(loop);orbit.update();renderer.render(scene,camera)})();
+init().catch(showError);
+</script></body></html>
