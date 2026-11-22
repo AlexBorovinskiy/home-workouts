@@ -73,7 +73,9 @@ function grip(){
    }else{
      rot=new THREE.Quaternion().setFromAxisAngle(ax,THREE.MathUtils.degToRad(sign*flex[digit][j-1]));
    }
-   bone.quaternion.copy(q).multiply(rot);
+   bone.quaternion.copy(q);
+   if(digit==='thumb')bone.quaternion.multiply(rot);
+   else bone.quaternion[method](rot);
  }
  poseVersion++;scene.updateMatrixWorld(true);skin.skeleton.update();
 }
