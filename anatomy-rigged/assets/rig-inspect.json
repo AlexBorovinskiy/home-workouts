@@ -1212,7 +1212,11 @@
       "index": 56,
       "name": "body_superficial",
       "mesh": 0,
-      "skin": 0
+      "skin": 0,
+      "scale": null,
+      "matrix": null,
+      "translation": null,
+      "rotation": null
     }
   ],
   "skins": [
@@ -1220,6 +1224,36 @@
       "name": "body_rig",
       "joints": 56,
       "skeleton": null
+    }
+  ],
+  "meshPrimitives": [
+    {
+      "attributes": {
+        "POSITION": 0,
+        "NORMAL": 1,
+        "_FIBER": 2,
+        "JOINTS_0": 3,
+        "WEIGHTS_0": 4,
+        "_TENDON": 5,
+        "_PART_ID": 6
+      },
+      "positionAccessor": {
+        "bufferView": 0,
+        "byteOffset": 0,
+        "componentType": 5122,
+        "count": 79658,
+        "type": "VEC3",
+        "min": [
+          -3398,
+          36,
+          -1311
+        ],
+        "max": [
+          3398,
+          17076,
+          1407
+        ]
+      }
     }
   ]
 }
