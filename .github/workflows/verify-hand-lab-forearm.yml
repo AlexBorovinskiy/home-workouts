@@ -60,6 +60,32 @@ jobs:
             if(!contact.digits||digits.some(d=>!contact.digits[d]||contact.digits[d].samples<=0))throw Error('No separate digit diagnostics');
             if(await page.locator('#digitResults tbody tr').count()!==5)throw Error('Expected five diagnostic table rows');
             await page.locator('#thumbTuning summary').click();
+            await page.locator('[data-view="thumb"]').click();
+            const candidates=[
+              ['base',[-22,-12,-13,4,-5]],
+              ['opposed',[-35,-15,-40,20,20]],
+              ['folded',[-15,20,-35,45,25]],
+              ['under',[-10,-35,10,40,15]],
+              ['sweep',[15,-40,-20,50,30]],
+              ['pinch',[-45,0,-35,35,-15]],
+              ['close',[-30,-30,-20,30,10]]
+            ];
+            const thumbStudies=[];
+            for(const [name,vals] of candidates){
+              const data=await page.evaluate(({name,vals})=>{
+                const keys=['baseX','baseY','baseZ','middle','tip'];
+                for(let i=0;i<keys.length;i++){
+                  const el=document.querySelector('[data-thumb="'+keys[i]+'"]');
+                  el.value=String(vals[i]);el.dispatchEvent(new Event('change',{bubbles:true}));
+                }
+                const contact=window.__handLabQA.check();
+                return {name,angles:vals,tip:window.__handLabQA.getThumbTip(),contact:contact.digits.thumb};
+              },{name,vals});
+              thumbStudies.push(data);
+              await page.waitForTimeout(90);
+              await page.locator('canvas').screenshot({path:'screenshots/thumb-'+name+'.png'});
+            }
+            writeFileSync('screenshots/thumb-studies.json',JSON.stringify(thumbStudies,null,2));
             await page.locator('[data-thumb="baseX"]').fill('-35');
             await page.locator('[data-thumb="baseX"]').dispatchEvent('change');
             const changed=await page.locator('[data-value="baseX"]').innerText();
