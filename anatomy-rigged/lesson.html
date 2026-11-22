@@ -27,12 +27,12 @@
 <div class="top"><div class="eyebrow">HOME WORKOUTS / 3D-ТЕХНИКА</div><a class="back" href="../">← Журнал</a></div>
 <h1>Сгибание рук с гантелями</h1>
 <p class="lead">Учебная анимация: вращай мужскую анатомическую модель, меняй скорость и останавливай движение в нужной точке. Настраивать суставы самостоятельно не требуется.</p>
-<div class="warning"><strong>Обновлённый захват гантелей.</strong> Вместо открытых фаланг используется отдельная объёмная модель кистей CC0, привязанная к исходным суставам. Движение кистей визуально проверено в начале и верхней точке, но анатомическая точность ещё не подтверждена экспертом.</div>
+<div class="warning"><strong>Тест симметричного захвата.</strong> Положение пальцев и гантели левой руки зеркально перенесено с правой на симметричный скелет. Объёмные кисти CC0 сохраняются. Это опытный вариант: анатомическая точность ещё требует проверки.</div>
 <div class="cols">
 <section class="panel">
  <div class="scene" id="touchScene">
   <canvas id="canvas" aria-label="Анатомическая 3D-модель для редактирования движений"></canvas>
-  <div class="status" id="status">Загрузка анатомии…</div><button id="skinHandsToggle" class="skin-toggle" style="display:none" type="button">Объёмные кисти · вкл.</button><button id="compareGrip" type="button" class="compare-grip" style="display:none">Новый хват · Handhold</button>
+  <div class="status" id="status">Загрузка анатомии…</div><button id="skinHandsToggle" class="skin-toggle" style="display:none" type="button">Объёмные кисти · вкл.</button><button id="compareGrip" type="button" class="compare-grip" style="display:none">Хват · симметрия</button>
   <div class="views"><button data-view="front">Фас</button><button data-view="side">Профиль</button><button data-view="back">Спина</button><button id="resetCam" title="Вернуть всю фигуру в кадр" aria-label="Показать всю фигуру">⤢ Вся фигура</button></div>
   <div class="hint">Проведи: вращение · 2 пальца: масштаб / сдвиг</div>
   <div class="error" id="error"><div><strong>Не удалось загрузить модель</strong><p id="errorText"></p><button class="btn" onclick="location.reload()">Повторить</button></div></div>
@@ -315,7 +315,7 @@ async function loadModel(){
  const compare=document.getElementById('compareGrip'),status=document.getElementById('gripStatus');
  ui.status.textContent='Загрузка отдельно рассчитанных поз захвата…';
  try{
-   const gripResponse=await fetch('./assets/handhold-dumbbell-grips.json?v=24');
+   const gripResponse=await fetch('./assets/handhold-dumbbell-grips.json?v=25');
    if(!gripResponse.ok)throw Error('Файл с позами кистей недоступен');
    const data=await gripResponse.json();
    if(data.format!=='home-workouts-handhold'||data.version!==1)throw Error('Неподдерживаемая версия поз');
@@ -331,15 +331,15 @@ async function loadModel(){
    handholdGrips=data;handholdEnabled=true;
    setHandholdDumbbells(true);
    compare.style.display='block';compare.disabled=false;
-   compare.textContent='Новый хват · Handhold';
+   compare.textContent='Хват · симметрия';
    compare.onclick=()=>{
      playing=false;ui.play.textContent='▶ Воспроизвести';
      handholdEnabled=!handholdEnabled;
      setHandholdDumbbells(handholdEnabled);
      pose=poseAt(playhead);applyAngles();drawAxes();
-     compare.textContent=handholdEnabled?'Новый хват · Handhold':'Старый хват';
+     compare.textContent=handholdEnabled?'Хват · симметрия':'Старый хват';
    };
-   status.textContent='Новый хват рассчитан для нашего анатомического рига: Handhold определил удержание обеими руками (левая — '+data.hands.L.contactSegments.join('/')+', правая — '+data.hands.R.contactSegments.join('/')+' контактных фаланг). Сравни со старым кнопкой на модели. Это опытный вариант, не эталон техники.';
+   status.textContent='Для ровного захвата левая кисть и гантель зеркально повторяют правую на симметричном скелете. Сравни с прежним хватом кнопкой на модели. Визуализация экспериментальная, не эталон техники.';
  }catch(error){
    handholdEnabled=false;handholdGrips=null;setHandholdDumbbells(false);
    compare.style.display='none';status.textContent='Не удалось загрузить альтернативный захват: '+error.message+'. Используется прежняя модель.';
