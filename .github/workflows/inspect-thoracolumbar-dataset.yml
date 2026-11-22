@@ -29,6 +29,19 @@ jobs:
             with open('/tmp/fhs-sample.osim','wb') as sample:
               sample.write(z.read(names[0]))
             print('OSIM_FILES',len(names),'SAMPLE_NAMES',json.dumps(names[:12]))
+            from collections import Counter
+            suffixes=Counter(os.path.splitext(n.lower())[1] for n in z.namelist() if not n.endswith('/'))
+            print('ZIP_FILE_EXTENSIONS',json.dumps(suffixes.most_common(35)))
+            print('ZIP_MESH_FILE_SAMPLE',json.dumps([n for n in z.namelist() if n.lower().endswith(('.vtp','.obj','.stl','.ply','.glb','.fbx'))][:40]))
+            first=ET.fromstring(z.read(names[0])).find('Model')
+            geometryRefs=[n.text for n in first.findall('.//mesh_file') if n.text]
+            print('FIRST_OSIM_MESH_REFERENCES',json.dumps(Counter(geometryRefs).most_common(30)))
+            print('FIRST_OSIM_HEAD_BODY',json.dumps([
+               {'name':b.get('name'), 'attached':len(b.findall('./attached_geometry/*')),
+                'meshrefs':[m.text for m in b.findall('.//mesh_file')]}
+               for b in first.findall('./BodySet/objects/Body')
+               if 'head' in (b.get('name') or '').lower() or 'hand' in (b.get('name') or '').lower()
+            ]))
             for name in names[:8]:
               root=ET.fromstring(z.read(name))
               model=root.find('Model')
