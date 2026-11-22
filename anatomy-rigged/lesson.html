@@ -40,7 +40,7 @@
   <div class="row"><strong id="currentPhase" style="font-size:13px">Исходная поза</strong><span id="timeLabel" class="note">00:00 / 00:06</span></div>
   <input id="timeline" type="range" min="0" max="1000" value="0" aria-label="Просмотр движения">
   <div class="buttons"><button class="btn main" id="play">▶ Воспроизвести</button><button class="btn" id="restart">↺ Сначала</button><select id="lessonSpeed" aria-label="Скорость" style="width:auto"><option value="1" selected>1×</option><option value="0.75">0,75×</option><option value="0.5">0,5×</option><option value="0.25">0,25×</option></select><button class="btn" id="restorePose">Начало</button></div>
-  <div class="live-cue" id="lessonCue" role="status" aria-live="off">Старт: стой устойчиво, локти возле корпуса, запястья прямые.</div>
+  <div class="live-cue" id="lessonCue" role="status" aria-live="off">Старт: стой устойчиво, локти возле корпуса, запястья прямые.</div><p id="gripStatus" class="note" role="status" aria-live="polite">Загрузка и проверка положения пальцев…</p>
  </div>
 </section>
 <section class="panel right">
@@ -123,6 +123,7 @@
 <script type="module">
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import {fitDumbbellGrip} from './grip-constraints.js';
 const $=s=>document.querySelector(s);
 const ui={box:$('#touchScene'),canvas:$('#canvas'),status:$('#status'),error:$('#error'),errorText:$('#errorText'),time:$('#timeLabel'),timeline:$('#timeline'),play:$('#play'),phase:$('#currentPhase'),name:$('#exerciseName'),equip:$('#equipment'),muscle:$('#muscle'),joint:$('#joint'),mirror:$('#mirror'),saveState:$('#saveState')};
 const STORAGE='home-workouts-motion-editor-v1',DURATION=6,rad=Math.PI/180;let playbackSpeed=1;
@@ -284,9 +285,23 @@ async function loadModel(){
  orientation.scale.setScalar(1.76/size.y);
  skel=new THREE.SkeletonHelper(model);scene.add(skel);skel.visible=false;skel.material.color.setHex(0x8de5d6);skel.material.depthTest=false;skel.renderOrder=9;
  populateJoints();addDumbbells();loaded=true;
- const response=await fetch('./exercises/dumbbell-curl.json?v=19');
+ const response=await fetch('./exercises/dumbbell-curl.json?v=21');
  if(!response.ok)throw Error('Не удалось загрузить сценарий упражнения');
  restoreDocument(await response.json(),false);
+ ui.status.textContent='Подгонка захвата к гантелям…';
+ const fit=await fitDumbbellGrip({
+   THREE,rig,dumbbells,initialPose:copy(frames[0]),
+   applyPose:calibrationPose=>{pose=calibrationPose;applyAngles()}
+ });
+ if(Object.keys(fit.patch).length){
+   for(const frame of frames)Object.assign(frame,copy(fit.patch));
+ }
+ selectFrame(0);
+ const validCount=fit.measurements.filter(item=>item.valid).length;
+ const status=document.getElementById('gripStatus');
+ status.textContent=fit.ok?'Захват: пальцы автоматически подогнаны к рукояткам. Визуальная проверка ещё необходима.':
+   'Захват: автоматическая подгонка не завершена ('+validCount+'/'+fit.measurements.length+
+   '). Часть пальцев оставлена в исходном положении. Не используй это как образец хвата.';
  ui.saveState.textContent='Открыта готовая анимация упражнения.';
  ui.status.textContent='✓ Модель загружена';ui.status.style.display='none';fitWholeBody();
 }
