@@ -354,6 +354,7 @@ async function init(){
    ready:()=>ready,pose:selectPreset,setAngles,view,metrics:()=>rig.metrics(),setAllCurl:rig.setAllCurl,updateFinger:rig.updateFinger,getIndexSign:rig.getIndexSign,
    toggleHandle:(b)=>{rig.handle.visible=b;return rig.handle.visible;},
    gripGaps,
+   rigForTesting:()=>rig,
    bones:()=>({trapezium:rig.bone.trapezium.geometry.attributes.position.count,
       metacarpal:rig.bone.mc1.geometry.attributes.position.count,
       proximal:rig.bone.prox.geometry.attributes.position.count,
