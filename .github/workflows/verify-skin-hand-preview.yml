@@ -1,0 +1,71 @@
+name: Validate skinned hand overlay on mobile viewport
+on:
+  push:
+    paths:
+      - '.github/workflows/verify-skin-hand-preview.yml'
+      - 'anatomy-rigged/skin-hands.js'
+      - 'anatomy-rigged/skin-preview.html'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright adapter
+        run: npm install --prefix /tmp/skin-preview-qa --no-fund --no-audit playwright-core@1.56.1
+      - name: Capture skin overlay on local Pages clone
+        shell: bash
+        run: |
+          mkdir -p screenshots
+          python3 -m http.server 8765 --bind 127.0.0.1 > /tmp/skin-server.log 2>&1 &
+          node --input-type=module <<'NODE'
+          import { chromium } from '/tmp/skin-preview-qa/node_modules/playwright-core/index.mjs';
+          import { createHash } from 'node:crypto';
+          import { writeFileSync } from 'node:fs';
+          const browser=await chromium.launch({channel:'chrome',headless:true,args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+          const context=await browser.newContext({viewport:{width:430,height:932},deviceScaleFactor:1,isMobile:true,hasTouch:true,serviceWorkers:'block'});
+          const page=await context.newPage(),errors=[];
+          page.on('pageerror',e=>errors.push(String(e)));
+          page.on('console',m=>{if(m.type()==='error')errors.push('console: '+m.text())});
+          try{
+           await page.goto('http://127.0.0.1:8765/anatomy-rigged/skin-preview.html?v=25',{waitUntil:'domcontentloaded',timeout:60000});
+           await page.waitForFunction(()=>{
+             const st=document.querySelector('#gripStatus')?.textContent||'';
+             return Boolean(window.__skinPreviewDebug)||st.includes('Не удалось создать объёмные кисти');
+           },null,{timeout:90000});
+           const state=await page.evaluate(()=>window.__skinPreviewDebug?.getState()||null);
+           const grip=await page.locator('#gripStatus').innerText();
+           await page.locator('#touchScene').scrollIntoViewIfNeeded();
+           await page.evaluate(()=>window.__skinPreviewDebug?.setCamera({zoom:2.4,panY:-.18,yaw:.13,pitch:.08}));
+           await page.waitForTimeout(850);
+           const newShot=await page.locator('canvas').screenshot({path:'screenshots/skin-on.png'});
+           const toggle=page.locator('#skinHandsToggle');
+           if(await toggle.isVisible())await toggle.click();
+           await page.waitForTimeout(500);
+           const oldShot=await page.locator('canvas').screenshot({path:'screenshots/skin-off.png'});
+           await page.screenshot({path:'screenshots/full-page.png',fullPage:true});
+           const hash=x=>createHash('sha256').update(x).digest('hex');
+           const result={state,grip,skinToggleVisible:await toggle.isVisible(),visuallyChanged:hash(newShot)!==hash(oldShot),hashes:{skinOn:hash(newShot),skinOff:hash(oldShot)},errors};
+           writeFileSync('screenshots/result.json',JSON.stringify(result,null,2));
+           console.log(JSON.stringify(result,null,2));
+           if(!state?.enabled||state.maskedVertices<2000||!result.visuallyChanged||errors.length)throw Error('Skin preview failed checks');
+          }catch(e){
+           await page.screenshot({path:'screenshots/error.png',fullPage:true}).catch(()=>{});
+           writeFileSync('screenshots/failure.txt',String(e)+'\n'+errors.join('\n'));
+           throw e;
+          }finally{await browser.close()}
+          NODE
+      - name: Upload screenshot results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: skinned-hand-overlay-qa
+          path: screenshots/
+          retention-days: 14
