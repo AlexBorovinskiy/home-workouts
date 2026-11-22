@@ -1,0 +1,82 @@
+name: Thumb physical contact fit (experiment only)
+on:
+  push:
+    paths:
+      - '.github/workflows/experiment-thumb-fit.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  optimize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --prefix /tmp/thumb --no-fund --no-audit playwright-core@1.56.1
+      - name: Search thumb opposition with skin penetration checks
+        shell: bash
+        run: |
+          mkdir -p results
+          python3 -m http.server 8765 --bind 127.0.0.1 >/tmp/server.log 2>&1 &
+          node --input-type=module <<'NODE'
+          import {chromium} from '/tmp/thumb/node_modules/playwright-core/index.mjs';
+          import {writeFileSync} from 'node:fs';
+          const browser=await chromium.launch({channel:'chrome',headless:true,args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+          const context=await browser.newContext({viewport:{width:430,height:932},deviceScaleFactor:1,isMobile:true,hasTouch:true,serviceWorkers:'block'});
+          const page=await context.newPage(),errors=[];
+          page.on('pageerror',e=>errors.push(e.message));
+          try{
+            await page.goto('http://127.0.0.1:8765/anatomy-rigged/hand-lab-axis-debug.html?axis=z&sign=negative&order=post',{waitUntil:'domcontentloaded'});
+            await page.waitForFunction(()=>window.__handLabQA?.isReady(),null,{timeout:80000});
+            const list=await page.evaluate(()=>{
+              const grip={y:.085,z:.034,factors:{index:.6,middle:.7,ring:.65,pinky:.6}};
+              window.__configureGrip(grip);
+              let seed=104729;const random=()=>{seed=(seed*16807)%2147483647;return seed/2147483647};
+              const limits={baseX:[-60,20],baseY:[-55,30],baseZ:[-50,45],middle:[-40,55],tip:[-45,65]};
+              const initial=[
+               [-13,-50,7,-20,51],[-17,-45,11,-24,48],[-10,-50,-3,-27,50],[-40,4,18,22,33],
+               [-35,-15,-40,20,20],[-45,7,23,27,41],[-22,-12,-13,4,-5]
+              ];
+              const names=Object.keys(limits),out=[];
+              for(let i=0;i<420;i++){
+               const arr=initial[i] || names.map(k=>{
+                 const [lo,hi]=limits[k];return Math.round(lo+random()*(hi-lo));
+               });
+               const angles=Object.fromEntries(names.map((n,j)=>[n,arr[j]]));
+               const r=window.__handLabQA.setThumb(angles);
+               const tip=r.tip,d=r.thumb;
+               const radialPenalty=Math.abs(tip.radial-.013)*4000;
+               const outOfHandle=Math.max(0,Math.abs(tip.x)-.062)*2500;
+               const score=Math.min(d.near,240)-d.penetration*15-radialPenalty-outOfHandle-(d.near<12?80:0);
+               out.push({angles,score,near:d.near,pen:d.penetration,tip});
+              }
+              return out.sort((a,b)=>b.score-a.score);
+            });
+            writeFileSync('results/thumb-grid.json',JSON.stringify(list,null,2));
+            console.log(JSON.stringify(list.slice(0,14),null,2));
+            const picks=list.filter(a=>a.pen<5 && a.near>=10).slice(0,7);
+            if(picks.length===0)picks.push(...list.slice(0,5));
+            for(let i=0;i<picks.length;i++){
+              await page.evaluate(a=>{
+                window.__handLabQA.setThumb(a.angles);
+              },picks[i]);
+              await page.evaluate(()=>window.__handLabQA.setView('thumb'));
+              await page.waitForTimeout(130);
+              await page.locator('canvas').screenshot({path:'results/thumb-'+i+'-close.png'});
+              await page.evaluate(()=>window.__handLabQA.setView('front'));
+              await page.waitForTimeout(130);
+              await page.locator('canvas').screenshot({path:'results/thumb-'+i+'-front.png'});
+            }
+            if(errors.length)throw Error(errors.join('; '));
+          }catch(e){writeFileSync('results/error.txt',String(e)+'\n'+errors.join('; '));throw e}
+          finally{await browser.close()}
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: experimental-thumb-fit
+          path: results/
+          retention-days: 2
