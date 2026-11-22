@@ -1,0 +1,297 @@
+{
+  "schema": "home-workouts/anatomy-first/0.1",
+  "status": "DESIGN CONTRACT, not a built mesh or animation",
+  "units": "m",
+  "coordinates": {
+    "origin": "right wrist centre",
+    "x": "+X toward little finger, -X toward thumb",
+    "y": "+Y toward fingertips",
+    "z": "+Z dorsal direction"
+  },
+  "anatomical_bones": [
+    {
+      "name": "humerus_r",
+      "region": "arm"
+    },
+    {
+      "name": "radius_r",
+      "region": "arm"
+    },
+    {
+      "name": "ulna_r",
+      "region": "arm"
+    },
+    {
+      "name": "scaphoid_r",
+      "region": "carpus"
+    },
+    {
+      "name": "lunate_r",
+      "region": "carpus"
+    },
+    {
+      "name": "triquetrum_r",
+      "region": "carpus"
+    },
+    {
+      "name": "pisiform_r",
+      "region": "carpus"
+    },
+    {
+      "name": "trapezium_r",
+      "region": "carpus"
+    },
+    {
+      "name": "trapezoid_r",
+      "region": "carpus"
+    },
+    {
+      "name": "capitate_r",
+      "region": "carpus"
+    },
+    {
+      "name": "hamate_r",
+      "region": "carpus"
+    },
+    {
+      "name": "metacarpal_1_r",
+      "region": "metacarpus"
+    },
+    {
+      "name": "metacarpal_2_r",
+      "region": "metacarpus"
+    },
+    {
+      "name": "metacarpal_3_r",
+      "region": "metacarpus"
+    },
+    {
+      "name": "metacarpal_4_r",
+      "region": "metacarpus"
+    },
+    {
+      "name": "metacarpal_5_r",
+      "region": "metacarpus"
+    },
+    {
+      "name": "index_proximal_phalanx_r",
+      "region": "finger"
+    },
+    {
+      "name": "index_middle_phalanx_r",
+      "region": "finger"
+    },
+    {
+      "name": "index_distal_phalanx_r",
+      "region": "finger"
+    },
+    {
+      "name": "middle_proximal_phalanx_r",
+      "region": "finger"
+    },
+    {
+      "name": "middle_middle_phalanx_r",
+      "region": "finger"
+    },
+    {
+      "name": "middle_distal_phalanx_r",
+      "region": "finger"
+    },
+    {
+      "name": "ring_proximal_phalanx_r",
+      "region": "finger"
+    },
+    {
+      "name": "ring_middle_phalanx_r",
+      "region": "finger"
+    },
+    {
+      "name": "ring_distal_phalanx_r",
+      "region": "finger"
+    },
+    {
+      "name": "little_proximal_phalanx_r",
+      "region": "finger"
+    },
+    {
+      "name": "little_middle_phalanx_r",
+      "region": "finger"
+    },
+    {
+      "name": "little_distal_phalanx_r",
+      "region": "finger"
+    },
+    {
+      "name": "thumb_proximal_phalanx_r",
+      "region": "thumb"
+    },
+    {
+      "name": "thumb_distal_phalanx_r",
+      "region": "thumb"
+    }
+  ],
+  "rig_controllers": [
+    {
+      "name": "elbow_flexion_r",
+      "dof": [
+        "flexion_extension"
+      ],
+      "note": "Elbow hinge, not whole-arm camera turn"
+    },
+    {
+      "name": "radioulnar_rotation_r",
+      "dof": [
+        "pronation_supination"
+      ],
+      "note": "Forearm rotation, not wrist rotation"
+    },
+    {
+      "name": "wrist_r",
+      "dof": [
+        "flexion_extension",
+        "radial_ulnar_deviation"
+      ],
+      "note": "Neutral wrist under grip"
+    },
+    {
+      "name": "thumb_cmc_r",
+      "dof": [
+        "palmar_abduction",
+        "flexion",
+        "axial_rotation"
+      ],
+      "note": "Coupled thumb opposition anchored at trapezium"
+    },
+    {
+      "name": "thumb_mcp_r",
+      "dof": [
+        "flexion_extension",
+        "small_abduction"
+      ],
+      "note": "Thumb first knuckle"
+    },
+    {
+      "name": "thumb_ip_r",
+      "dof": [
+        "flexion_extension"
+      ],
+      "note": "Thumb pad closing movement"
+    },
+    {
+      "name": "index_mcp_r",
+      "dof": [
+        "flexion_extension",
+        "abduction_adduction"
+      ],
+      "note": "Knuckle axes calibrated in rest pose"
+    },
+    {
+      "name": "index_pip_r",
+      "dof": [
+        "flexion_extension"
+      ],
+      "note": "Proximal interphalangeal joint"
+    },
+    {
+      "name": "index_dip_r",
+      "dof": [
+        "flexion_extension"
+      ],
+      "note": "Distal interphalangeal joint"
+    },
+    {
+      "name": "middle_mcp_r",
+      "dof": [
+        "flexion_extension",
+        "abduction_adduction"
+      ],
+      "note": "Knuckle axes calibrated in rest pose"
+    },
+    {
+      "name": "middle_pip_r",
+      "dof": [
+        "flexion_extension"
+      ],
+      "note": "Proximal interphalangeal joint"
+    },
+    {
+      "name": "middle_dip_r",
+      "dof": [
+        "flexion_extension"
+      ],
+      "note": "Distal interphalangeal joint"
+    },
+    {
+      "name": "ring_mcp_r",
+      "dof": [
+        "flexion_extension",
+        "abduction_adduction"
+      ],
+      "note": "Knuckle axes calibrated in rest pose"
+    },
+    {
+      "name": "ring_pip_r",
+      "dof": [
+        "flexion_extension"
+      ],
+      "note": "Proximal interphalangeal joint"
+    },
+    {
+      "name": "ring_dip_r",
+      "dof": [
+        "flexion_extension"
+      ],
+      "note": "Distal interphalangeal joint"
+    },
+    {
+      "name": "little_mcp_r",
+      "dof": [
+        "flexion_extension",
+        "abduction_adduction"
+      ],
+      "note": "Knuckle axes calibrated in rest pose"
+    },
+    {
+      "name": "little_pip_r",
+      "dof": [
+        "flexion_extension"
+      ],
+      "note": "Proximal interphalangeal joint"
+    },
+    {
+      "name": "little_dip_r",
+      "dof": [
+        "flexion_extension"
+      ],
+      "note": "Distal interphalangeal joint"
+    }
+  ],
+  "grip_criteria": {
+    "handle_radius_m": 0.011,
+    "thumb_opposition_at_cmc": true,
+    "thumb_pad_faces_handle": true,
+    "each_finger_contact": true,
+    "contact_vertex_tolerance_m": 0.003,
+    "max_diagnostic_penetration_m": 0.002,
+    "visual_views": [
+      "palm",
+      "dorsal",
+      "side",
+      "thumb",
+      "three-quarter"
+    ],
+    "positions": [
+      "start",
+      "mid",
+      "peak"
+    ]
+  },
+  "anatomical_bone_count": 30,
+  "rig_controller_count": 18,
+  "notes": [
+    "27 hand bones + humerus radius ulna = 30 anatomical bone references",
+    "Controllers are not equivalent to anatomical bones",
+    "Proportions, skinning and joint limit measurements require anatomical validation",
+    "Initial goal is one functioning right hand and forearm, not immediate photorealistic full body"
+  ]
+}
