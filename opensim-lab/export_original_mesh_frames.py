@@ -44,7 +44,7 @@ def export(filename,model_zip_path):
     for body in model_elt.findall("./BodySet/objects/Body"):
         name=body.get("name")
         geometries=[]
-        for mesh in body.findall("./attached_geometry/Mesh"):
+        for mesh in body.findall(".//Mesh"):
             file_=(mesh.findtext("mesh_file") or "").strip()
             s=(mesh.findtext("scale_factors") or "1 1 1").split()
             sf=[float(v) for v in s]
@@ -53,7 +53,7 @@ def export(filename,model_zip_path):
                 continue
             if socket!="..":
                 # Do not guess extra PhysicalOffsetFrame transform. Force QA failure.
-                raise ValueError(f"Unsupported mesh frame for {name}: {socket}")
+                raise ValueError(f"Unsupported attached mesh offset frame for {name}: {socket}; original mesh {file_}")
             geometries.append({
                 "file":file_,
                 "scaleFactors":sf,
