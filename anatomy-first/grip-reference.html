@@ -40,13 +40,13 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--mint);outline-o
 .foot a{color:var(--mint)}
 .audit{border:1px solid #468577;background:#1b4041;padding:12px;border-radius:11px;font-size:12px;line-height:1.5}
 .audit.bad{background:#4a302a;border-color:#b98267;color:#ffe6d5}
-.handlenote{font-size:11px;color:var(--muted);line-height:1.5;margin-top:8px}
+.handlenote{font-size:11px;color:var(--muted);line-height:1.5;margin-top:8px} #handleDetail .ranges,#fit-handle{display:none}
 
 @media(min-width:750px){.viewport{height:600px}.controls{grid-template-columns:1fr 1fr;column-gap:25px}.controls .wide{grid-column:1/-1}.ranges{grid-template-columns:1fr 1fr;gap:18px}}
 </style></head><body><main>
 <header><strong>HOME WORKOUTS / ANATOMY FIRST</strong><a href="./index.html">← К моделям</a></header>
 <h1>Кисть · референсный хват</h1>
-<p class="lead">Кости человеческой кисти из МРТ. Рукоять зафиксирована у основания пальцев; положение фаланг и противопоставление большого пальца подбираются обратной кинематикой под финальный захват на видео.</p>
+<p class="lead">Кости человеческой кисти из МРТ. Рукоять фиксирована у основания пальцев. Поза фаланг рассчитана заранее по исходным МРТ-костям, с проверкой пересечений. Можно рассматривать хват со всех сторон.</p>
 <div class="notice"><strong>Экспериментальная кинематика.</strong> Это исследовательская 3D-модель без кожи и мышц: 19 костей кисти и 7 предварительно определённых костей запястья. Суставные центры приблизительные, поверхность кожи отсутствует. Подгонка по видео является инженерной реконструкцией, а не медицински подтверждённой кинематикой. Гороховидная кость отдельно в исходной сетке не выделена.</div>
 <div class="viewer">
 <div class="viewport" id="stage">
@@ -348,7 +348,7 @@ async function init(){
  scene.add(rig.root);
  prepareHandle();scene.updateMatrixWorld(true);
  ready=true;
- selectPreset('open');view('palm');
+ selectPreset('grasp');view('diagonal');
  $('#contextToggle').classList.add('active');
  window.__thumbQA={
    ready:()=>ready,pose:selectPreset,setAngles,view,metrics:()=>rig.metrics(),setAllCurl:rig.setAllCurl,updateFinger:rig.updateFinger,getIndexSign:rig.getIndexSign,
