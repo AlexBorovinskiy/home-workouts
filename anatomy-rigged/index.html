@@ -45,8 +45,23 @@ function setError(err){ui.status.textContent='Ошибка загрузки';ui.
 function dimensions(){let w=ui.box.clientWidth,h=ui.box.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}window.addEventListener('resize',dimensions);dimensions();
 let importedCatalog;
 try{const [gltf,catalog]=await Promise.all([new Promise((resolve,reject)=>new GLTFLoader().load('./assets/body_superficial.glb',resolve,e=>{if(e.total)ui.loadFill.style.width=Math.min(100,Math.round(e.loaded/e.total*100))+'%';},reject)),fetch('./assets/muscles.json').then(r=>{if(!r.ok)throw Error('Каталог мышц недоступен');return r.json()})]); importedCatalog=catalog; model=gltf.scene; orientation.add(model);model.updateMatrixWorld(true);
- model.traverse(o=>{if(o.isBone){rig[o.name]=o;rest[o.name]={position:o.position.clone(),quaternion:o.quaternion.clone(),scale:o.scale.clone()}} if(o.isSkinnedMesh){muscleMesh=o;}});
- if(!muscleMesh)throw Error('В файле отсутствует SkinnedMesh');const required=['pelvis','spine_01','upperarm.L','upperarm.R','forearm.L','forearm.R','hand.L','hand.R','thigh.L','thigh.R','shin.L','shin.R','foot.L','foot.R'];const missing=required.filter(n=>!rig[n]);if(missing.length)throw Error('В модели нет суставов: '+missing.join(', '));
+ // Match bones using the ORIGINAL glTF joint table: GLTFLoader sanitizes names
+ // and changes dots in "upperarm.L", "forearm.R" etc. Index order is stable.
+ model.traverse(o=>{if(o.isSkinnedMesh)muscleMesh=o;});
+ if(!muscleMesh?.skeleton)throw Error('В файле отсутствует SkinnedMesh или привязка костей');
+ const bones=muscleMesh.skeleton.bones;
+ const skin=gltf.parser.json.skins.find(s=>s.joints.length===bones.length);
+ if(!skin)throw Error('Не удалось сопоставить суставы GLB и скелета Three.js');
+ skin.joints.forEach((nodeIndex,i)=>{
+   const bone=bones[i],originalName=gltf.parser.json.nodes[nodeIndex]?.name||bone?.name;
+   if(!bone?.isBone)throw Error('Неверный элемент скелета '+i);
+   if(!originalName||rig[originalName])throw Error('Ошибка имени сустава '+originalName);
+   rig[originalName]=bone;
+   rest[originalName]={position:bone.position.clone(),quaternion:bone.quaternion.clone(),scale:bone.scale.clone()};
+ });
+ const required=['pelvis','spine_01','upperarm.L','upperarm.R','forearm.L','forearm.R','hand.L','hand.R','thigh.L','thigh.R','shin.L','shin.R','foot.L','foot.R'];
+ const missing=required.filter(n=>!rig[n]);
+ if(missing.length)throw Error('Не удалось сопоставить суставы: '+missing.join(', '));
  // The imported model has actual bone weights: we never shear vertex positions in shaders.
  // The asset stores signed SHORT vertex positions in 0.1 mm, whereas the joint coordinates are metres.
 // Convert to float metres without damaging the shape by integer truncation.
