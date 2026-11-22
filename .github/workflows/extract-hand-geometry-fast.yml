@@ -1,0 +1,72 @@
+name: Fast exact bone segmentation and GLB inspection
+on:
+  push:
+    paths:
+      - '.github/workflows/extract-hand-geometry-fast.yml'
+      - 'anatomy-first/data/split_stl_exact.cpp'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch source archive with pinned checksum
+        shell: bash
+        run: |
+          mkdir -p evidence
+          curl --fail --location --retry 3 --max-time 75 \
+           'https://raw.githubusercontent.com/HegdeUSA/Hand_template/main/3D_model_of_segmented_bones.zip' -o /tmp/hand.zip
+          echo '9e2022f7fea4e7473dc22d01eefe1510bca73e316d44f45e6732ca33336558f6  /tmp/hand.zip' | sha256sum -c -
+          unzip -p /tmp/hand.zip Hand_template_Bones_only_3D_printable.stl > /tmp/hand.stl
+      - name: Exact-facet decomposition without topology inventions
+        shell: bash
+        run: |
+          g++ -std=c++17 -O2 -Wall -Wextra anatomy-first/data/split_stl_exact.cpp -o /tmp/split_stl
+          /tmp/split_stl /tmp/hand.stl evidence | tee evidence/counts.txt
+          head -c 10000 evidence/components.json
+      - name: Build browser-ready neutral-labelled GLB if source is usable
+        shell: bash
+        run: |
+          python3 -m pip install --quiet trimesh==4.10.0 numpy==2.2.6
+          python3 - <<'PY'
+          import pathlib,json,numpy as np,trimesh,hashlib
+          folder=pathlib.Path('evidence');report=json.loads((folder/'components.json').read_text())
+          count=report['substantial_segments']
+          if count<15 or count>75:
+            print('DO NOT PUBLISH: unverified component inventory',count)
+            raise SystemExit(0)
+          paths=sorted(folder.glob('segment_*.stl'))
+          pieces=[trimesh.load(p,force='mesh',process=False) for p in paths]
+          all_min=np.vstack([m.bounds[0] for m in pieces]).min(axis=0)
+          all_max=np.vstack([m.bounds[1] for m in pieces]).max(axis=0)
+          origin=(all_min+all_max)/2
+          scale=.001 if np.max(all_max-all_min)>1 else 1.
+          scene=trimesh.Scene()
+          colors=[[222,205,175,255],[203,188,158,255],[233,217,191,255],[196,208,198,255]]
+          for i,m in enumerate(pieces):
+            m.apply_translation(-origin);m.apply_scale(scale)
+            m.merge_vertices()
+            m.visual.face_colors=colors[i%len(colors)]
+            name=f'segment_{i+1:02d}_unlabeled'
+            scene.add_geometry(m,geom_name=name,node_name=name)
+          glb=scene.export(file_type='glb')
+          (folder/'research-hand-segments.glb').write_bytes(glb)
+          report.update({'glb_components':len(pieces),'glb_sha256':hashlib.sha256(glb).hexdigest(),
+                         'glb_bytes':len(glb),'scale':scale,'original_bounds':[all_min.tolist(),all_max.tolist()],
+                         'anatomical_labels_verified':False})
+          (folder/'conversion-summary.json').write_text(json.dumps(report,indent=2))
+          print('GLB_EXPORTED',json.dumps({k:report[k] for k in ('glb_components','glb_bytes','glb_sha256','scale')}))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: segmented-real-bones-fast
+          path: |
+            evidence/components.json
+            evidence/conversion-summary.json
+            evidence/counts.txt
+            evidence/research-hand-segments.glb
+          retention-days: 3
