@@ -43,7 +43,12 @@ jobs:
             if(d(poses[0].elbow,poses[2].elbow)>.001)throw Error('Elbow joint did not remain fixed');
             if(poses[2].wrist[1]-poses[0].wrist[1]<.18)throw Error('Forearm did not curl');
             if(Math.abs(d(poses[0].wrist,poses[0].bar)-d(poses[2].wrist,poses[2].bar))>.002)throw Error('Bar detached from wrist');
-            writeFileSync('evidence/report.json',JSON.stringify({source:page.url(),poses,errors},null,2));
+            const shaftAngle=Math.acos(Math.max(-1,Math.min(1,poses[0].shaftDirection.reduce((sum,v,i)=>sum+v*poses[2].shaftDirection[i],0))))*180/Math.PI;
+            if(shaftAngle>35)throw Error('Excess bar rotation: '+shaftAngle+'°');
+            if(poses[0].wristLocalRotation.some((v,i)=>Math.abs(v-poses[2].wristLocalRotation[i])>1e-7))throw Error('Wrist joint rotating in place of forearm');
+            const grip=await page.evaluate(()=>window.__unifiedQA.contacts());
+            if(grip.thumb.near<20||grip.thumb.inside>4)throw Error('Thumb grip QA failed: '+JSON.stringify(grip.thumb));
+            writeFileSync('evidence/report.json',JSON.stringify({source:page.url(),poses,shaftAngle,grip,errors},null,2));
             if(errors.length)throw Error(errors.join('\n'));
           }catch(e){
             writeFileSync('evidence/error.txt',String(e)+'\n'+errors.join('\n'));
