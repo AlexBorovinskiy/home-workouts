@@ -86,6 +86,7 @@
 <script type="module">
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import {fitDumbbellGrip} from './grip-constraints.js';
 const $=s=>document.querySelector(s);
 const ui={box:$('#touchScene'),canvas:$('#canvas'),status:$('#status'),error:$('#error'),errorText:$('#errorText'),time:$('#timeLabel'),timeline:$('#timeline'),play:$('#play'),phase:$('#currentPhase'),name:$('#exerciseName'),equip:$('#equipment'),muscle:$('#muscle'),joint:$('#joint'),mirror:$('#mirror'),saveState:$('#saveState')};
 const STORAGE='home-workouts-motion-editor-v1',DURATION=8,rad=Math.PI/180;
@@ -188,6 +189,23 @@ function addGripPreset(poseTarget){
    if(rig['thumb_02.'+side])poseTarget['thumb_02.'+side]=[42,0,0];
  }
 }
+async function calibrateGripForCurrentFrames(){
+  if(!loaded||ui.equip.value!=='dumbbells')return;
+  const currentFrame=selected,original=copy(pose);
+  ui.status.textContent='Подгонка пальцев к рукояткам…';
+  const fit=await fitDumbbellGrip({
+    THREE,rig,dumbbells,initialPose:copy(frames[0]),
+    applyPose:calibrationPose=>{pose=calibrationPose;applyAngles()}
+  });
+  if(Object.keys(fit.patch).length){
+    for(const frame of frames)Object.assign(frame,copy(fit.patch));
+  }
+  selectFrame(currentFrame);
+  ui.status.textContent='✓ Редактор готов · '+Object.keys(rig).length+' костей';
+  ui.saveState.textContent=fit.ok?'Контакт пальцев с рукояткой подобран. Проверка внешнего вида ещё нужна.':
+    'Автоматически подогнаны не все суставы: '+fit.measurements.filter(x=>x.valid).length+'/'+fit.measurements.length+'. Часть поз оставлена исходной.';
+  return fit;
+}
 function demo(){
  activeName='Сгибание рук с гантелями';ui.name.value=activeName;ui.equip.value='dumbbells';ui.muscle.value='arms_front';$('#secondary').value='forearms';$('#stabilizer').value='abs';
  const start={},top={};pose={};setPoseValue('upperarm.L',[-3,0,0]);
@@ -251,9 +269,10 @@ async function loadModel(){
  orientation.scale.setScalar(1.76/size.y);
  skel=new THREE.SkeletonHelper(model);scene.add(skel);skel.visible=false;skel.material.color.setHex(0x8de5d6);skel.material.depthTest=false;skel.renderOrder=9;
  populateJoints();addDumbbells();loaded=true;
- const saved=localStorage.getItem(STORAGE);
- if(saved){try{restoreDocument(JSON.parse(saved),false);ui.saveState.textContent='Восстановлен сохранённый проект с этого устройства.'}catch(e){demo();ui.saveState.textContent='Сохранённый файл повреждён; открыт пример.'}}
- else demo();
+ const saved=localStorage.getItem(STORAGE);let sampleLoaded=false;
+ if(saved){try{restoreDocument(JSON.parse(saved),false);ui.saveState.textContent='Восстановлен сохранённый проект с этого устройства.'}catch(e){demo();sampleLoaded=true;ui.saveState.textContent='Сохранённый файл повреждён; открыт пример.'}}
+ else {demo();sampleLoaded=true}
+ if(sampleLoaded)await calibrateGripForCurrentFrames();
  ui.status.textContent='✓ Редактор готов · '+Object.keys(rig).length+' костей';
 }
 const clamp=(x,a,b)=>Math.min(b,Math.max(a,x));
@@ -319,13 +338,13 @@ $('#copyPrevious').onclick=()=>{const index=selected===0?2:selected-1;pose=copy(
 $('#jointReset').onclick=()=>{const n=ui.joint.value;delete pose[n];const m=mirrorOf(n);if(ui.mirror.checked&&m)delete pose[m];drawAxes();applyAngles()};
 $('#neutral').onclick=()=>{pose={};drawAxes();applyAngles();ui.saveState.textContent='Нейтральная поза открыта; её можно записать в выбранный этап.'};
 $('#restorePose').onclick=()=>selectFrame(selected);
-$('#loadDemo').onclick=()=>{if(confirm('Заменить текущие позы на пример сгибания рук?'))demo()};
-$('#gripPreset').onclick=()=>{
+$('#loadDemo').onclick=async()=>{if(confirm('Заменить текущие позы на пример сгибания рук?')){demo();await calibrateGripForCurrentFrames()}};
+$('#gripPreset').onclick=async()=>{
  if(!loaded)return;
  frames[selected]=copy(pose); // Preserve unsaved work on the selected keyframe.
  for(const frame of frames)addGripPreset(frame);
  ui.equip.value='dumbbells';selectFrame(selected);equipUpdate();
- ui.saveState.textContent='Захват гантели применён к трём позам. Проверь пальцы на модели.';
+ await calibrateGripForCurrentFrames();
 };
 $('#showSkeleton').onchange=e=>{if(skel)skel.visible=e.target.checked};
 ui.equip.onchange=equipUpdate;ui.muscle.onchange=recolor;$('#secondary').onchange=recolor;$('#stabilizer').onchange=recolor;
