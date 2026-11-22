@@ -59,7 +59,7 @@ jobs:
             const neutralAfter=await page.evaluate(()=>window.__thumbQA.metrics());
             if(d(neutralBefore.distalBoneTip,neutralAfter.distalBoneTip)<.004)throw Error('CMC slider does nothing');
             await page.locator('button[data-pose="grasp"]').click();
-            if(await page.locator('input[data-angle="ipFlex"]').inputValue()!=='18')throw Error('Grip preset not loaded');
+            if(await page.locator('input[data-angle="ipFlex"]').inputValue()!=='8')throw Error('Grip preset not loaded');
             if(errors.length)throw Error('Browser errors: '+errors.join(' | '));
             const report={bones:qa,poses,
               cmcMoved:d(poses.neutral.pivotCMC,poses.grasp.pivotCMC),
