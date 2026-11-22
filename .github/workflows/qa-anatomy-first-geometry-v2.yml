@@ -1,0 +1,86 @@
+name: QA second-generation hand bone geometry
+on:
+  push:
+    paths:
+      - '.github/workflows/qa-anatomy-first-geometry-v2.yml'
+      - 'anatomy-first/hand-lab-geometry-v2.html'
+      - 'anatomy-first/hand-rig-v2.js'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  hand:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser automation
+        run: npm install --prefix /tmp/anatomy-hand-qa --no-audit --no-fund playwright-core@1.56.1
+      - name: Test kinematics and render mobile screenshots
+        shell: bash
+        run: |
+          mkdir -p evidence
+          python3 -m http.server 8765 --bind 127.0.0.1 > /tmp/anatomy-http.log 2>&1 &
+          node --input-type=module <<'NODE'
+          import {chromium} from '/tmp/anatomy-hand-qa/node_modules/playwright-core/index.mjs';
+          import {writeFileSync} from 'node:fs';
+          const browser=await chromium.launch({channel:'chrome',headless:true,args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+          const context=await browser.newContext({viewport:{width:430,height:932},deviceScaleFactor:1,isMobile:true,hasTouch:true,serviceWorkers:'block'});
+          const page=await context.newPage(),errors=[];
+          page.on('pageerror',e=>errors.push(e.message));
+          page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+          const dist=(a,b)=>Math.hypot(...a.map((v,i)=>v-b[i]));
+          try {
+            await page.goto('http://127.0.0.1:8765/anatomy-first/hand-lab-geometry-v2.html',{waitUntil:'domcontentloaded',timeout:50000});
+            await page.waitForFunction(()=>window.__anatomyQA?.ready()||document.getElementById('error')?.classList.contains('on'),null,{timeout:60000});
+            if(!await page.evaluate(()=>window.__anatomyQA?.ready()))throw Error(await page.locator('#error').innerText());
+            const states=[];
+            const poses=[['open',0,0],['opposition',1,0],['grip',1,.85]];
+            for(const [name,opposition,grip] of poses){
+              const sample=await page.evaluate(({opposition,grip})=>{
+                const qa=window.__anatomyQA;
+                const metrics=qa.setPose({opposition,grip});
+                return {metrics,cmc:qa.getCMC(),indexTip:qa.getIndexTip()};
+              },{opposition,grip});
+              if(sample.metrics.bones!==30)throw Error('Wrong anatomical proxy bone count');
+              if(!Number.isFinite(sample.metrics.thumbTipToHandleMeters))throw Error('Nonfinite hand metric');
+              states.push({name,...sample});
+              for(const v of ['palm','side']){
+                await page.evaluate(v=>window.__anatomyQA.view(v),v);
+                await page.waitForTimeout(300);
+                await page.locator('canvas').screenshot({path:'evidence/'+name+'-'+v+'.png'});
+              }
+            }
+            const cmcDrift=dist(states[0].cmc,states[1].cmc);
+            const oppositionDisplacement=dist(states[0].metrics.thumbPad,states[1].metrics.thumbPad);
+            const indexDisplacement=dist(states[1].indexTip,states[2].indexTip);
+            if(cmcDrift>.00001)throw Error('CMC pivot is not fixed: '+cmcDrift);
+            if(oppositionDisplacement<.008)throw Error('Thumb opposition fails to move pad: '+oppositionDisplacement);
+            if(indexDisplacement<.015)throw Error('Finger flexion fails to curl index: '+indexDisplacement);
+            await page.locator('button[data-preset="open"]').click();
+            if(await page.locator('#opposition').inputValue()!=='0')throw Error('Open preset does not reset opposition');
+            await page.locator('button[data-preset="grip"]').click();
+            if(await page.locator('#grip').inputValue()!=='85')throw Error('Grip preset incorrect');
+            if(!await page.evaluate(()=>window.__anatomyQA.getBarVisible()))throw Error('Expected dumbbell in grip preset');
+            await page.locator('#barSwitch').click();
+            if(await page.evaluate(()=>window.__anatomyQA.getBarVisible()))throw Error('Dumbbell toggle failed');
+            await page.locator('button[data-view="thumb"]').click();
+            await page.waitForTimeout(250);
+            await page.locator('canvas').screenshot({path:'evidence/thumb-angle.png'});
+            const out={states,cmcDrift,oppositionDisplacement,indexDisplacement,errors};
+            writeFileSync('evidence/report.json',JSON.stringify(out,null,2));
+            console.log(JSON.stringify({cmcDrift,oppositionDisplacement,indexDisplacement,errors},null,2));
+            await page.screenshot({path:'evidence/mobile-page.png',fullPage:true});
+            if(errors.length)throw Error('Browser runtime errors: '+errors.join(' | '));
+          }catch(e){writeFileSync('evidence/error.txt',String(e)+'\n'+errors.join('\n'));await page.screenshot({path:'evidence/failure.png',fullPage:true}).catch(()=>{});throw e}
+          finally{await browser.close()}
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: anatomy-first-geometry-v2-qa
+          path: evidence/
+          retention-days: 5
