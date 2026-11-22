@@ -26,7 +26,7 @@
 <div><div class="section">Техника выполнения</div><h2 id="step">01 / Подготовка</h2><p class="desc" id="desc">Стопы устойчивы, корпус собран. Движение начинается сгибанием тазобедренных и коленных суставов.</p><div class="explain" id="mechanics">Основное усилие создают квадрицепсы и ягодичные. Мышцы спины и живота поддерживают стабильность корпуса.</div></div>
 <hr class="divider"/>
 <div><div class="section">Подсветить мышечную группу</div><div class="muscles" id="muscles"><button class="mus active" data-focus="all"><span class="swatch"></span>Все основные мышцы</button><button class="mus" data-focus="quad"><span class="swatch"></span>Квадрицепсы (передняя поверхность бедра)</button><button class="mus" data-focus="glute"><span class="swatch"></span>Большие ягодичные</button><button class="mus" data-focus="core"><span class="swatch"></span>Стабилизаторы корпуса</button></div><label class="toggle">Показывать глубокие мышцы <input id="deep" type="checkbox"></label></div>
-<div class="full"><hr class="divider"><div class="skeletoninfo"><strong>Важно:</strong> геометрия мышц взята из анатомического атласа, однако движения приблизительны. Суставная анимация сохраняет длину сегментов ног и корпуса, но не моделирует сокращение мышц и не заменяет проверенную биомеханику. Это прототип интерфейса, а не инструкция по выполнению приседания.</div></div>
+<div class="full"><hr class="divider"><div class="skeletoninfo"><strong>Важно:</strong> геометрия мышц взята из анатомического атласа, однако движения приблизительны. Пространственная анимация использует единые правила для всех мышечных структур, но не моделирует их прикрепления и сокращения с медицинской точностью. Это прототип интерфейса, а не инструкция по выполнению приседания.</div></div>
 </div></div>
 <div class="credits">Анатомический источник: <a href="https://github.com/Charleeh/ecorche" target="_blank" rel="noopener">Écorché</a> (CC BY-SA 4.0), на основе BodyParts3D © The Database Center for Life Science (CC BY 4.0) и Z-Anatomy by Gauthier Kervyn (CC BY-SA 4.0). Изменения: экспериментальная суставная анимация и подсветка. Производные части модели — CC BY-SA 4.0. Код прототипа — самостоятельная демонстрация. Для обучения, не клинического применения.</div>
 </main>
@@ -53,19 +53,24 @@ const loader=new GLTFLoader();loader.setMeshoptDecoder(MeshoptDecoder);let meshe
 const highList=[/vastus|rectus femoris/i,/gluteus maximus/i,/erector spinae|transversus abdominis|rectus abdominis|obliquus externus|external oblique|multifidus/i];
 const muscleType=name =>highList[0].test(name)?'quad':highList[1].test(name)?'glute':highList[2].test(name)?'core':'other';
 const shaderUniforms=[];
-// Pose prototype v3: rotate rigid-length anatomical segments around their
-// joints, instead of shearing vertex positions by height (which crushed legs).
-// This is an illustrative kinematic rig, NOT a validated muscle simulation.
-function augmentedMaterial(src,region){
+// Pose prototype v4. Every anatomical vertex uses the SAME spatial deformation
+// function, regardless of the anatomical part's name or layer. Mixing per-object
+// arm flags previously caused neighboring muscle meshes to visibly separate.
+// This is still an approximate visualization, not a biologically validated rig.
+function augmentedMaterial(src){
  const mat=src.clone();mat.roughness=.91;mat.metalness=0;mat.side=THREE.DoubleSide;mat.transparent=false;mat.depthWrite=true;
  mat.onBeforeCompile=shader=>{
-  shader.uniforms.uSquat={value:0};shader.uniforms.uRigRegion={value:region};
+  shader.uniforms.uSquat={value:0};
   shaderUniforms.push(shader.uniforms.uSquat);
   const poseFns=`
  uniform float uSquat;
- uniform float uRigRegion;
  vec3 squatRotX(vec3 v, float a){float c=cos(a),sn=sin(a);return vec3(v.x,v.y*c-v.z*sn,v.y*sn+v.z*c);}
- float squatArmWeight(vec3 p){return max(uRigRegion,smoothstep(0.23,0.34,abs(p.x))*smoothstep(0.66,0.82,p.y));}
+ // Shared spatial weighting (never classify entire muscles by their names).
+ // Hands and arms follow the trunk; both sides use precisely the same field.
+ // The transition is gradual to avoid jumps at mesh boundaries.
+ float squatArmWeight(vec3 p){
+   return smoothstep(0.21,0.32,abs(p.x))*smoothstep(0.35,0.57,p.y);
+ }
  vec3 squatBlend(vec3 p,vec3 foot,vec3 shin,vec3 thigh,vec3 torso){
   vec3 leg=mix(foot,shin,smoothstep(0.105,0.17,p.y));
   leg=mix(leg,thigh,smoothstep(0.47,0.55,p.y));
@@ -100,9 +105,8 @@ function augmentedMaterial(src,region){
    transformed=squatBlend(p,p,shin,thigh,torso);
   `);
  };
- mat.customProgramCacheKey=()=> 'home-workouts-anatomy-articulated-v3';return mat;
+ mat.customProgramCacheKey=()=> 'home-workouts-anatomy-continuous-v4';return mat;
 }
-const armRegion=/\b(arm|hand|finger|thumb|wrist|forearm|humerus|radius|ulna|metacarp|carpal|phalange|biceps|triceps|brachial|brachioradial|anconeus|deltoid|pronator|supinator|flexor digitorum|extensor digitorum|pectoral|pectoralis|scapula|clavicle|rotator cuff|teres major|teres minor|supraspinatus|infraspinatus)\b/i;
 const gltf=await loader.loadAsync('https://charleeh.github.io/ecorche/model/ecorche.meshopt.glb',(e)=>{if(e.total)el.barFill.style.width=Math.round(e.loaded/e.total*100)+'%';}).catch(e=>{el.error.classList.add('visible');el.status.textContent='Загрузка не удалась';el.bar.style.display='none';console.error(e);return null});
 if(gltf){gltf.scene.updateMatrixWorld(true);const body=new THREE.Group();scene.add(body);
  gltf.scene.traverse(src=>{if(!src.isMesh)return;const name=src.userData?.name||src.name||'';const layer=src.userData?.layer||'';const geometry=new THREE.BufferGeometry();
@@ -116,8 +120,8 @@ if(gltf){gltf.scene.updateMatrixWorld(true);const body=new THREE.Group();scene.a
  }
  if(src.geometry.index)geometry.setIndex(src.geometry.index.clone());
  geometry.applyMatrix4(src.matrixWorld);
- const material=augmentedMaterial(src.material,armRegion.test(name)?1:0);const mesh=new THREE.Mesh(geometry,material);mesh.frustumCulled=false;mesh.userData={name,layer,muscle:muscleType(name),sourceMaterial:material.color.clone(),baseEmissive:material.emissive.clone()};body.add(mesh);meshes.push(mesh);});
- loaded=true;el.bar.style.display='none';el.status.innerHTML='<span class="dot"></span> 3D-анатомия · '+meshes.length+' структур · тест движения';layerRefresh();
+ const material=augmentedMaterial(src.material);const mesh=new THREE.Mesh(geometry,material);mesh.frustumCulled=false;mesh.userData={name,layer,muscle:muscleType(name),sourceMaterial:material.color.clone(),baseEmissive:material.emissive.clone()};body.add(mesh);meshes.push(mesh);});
+ loaded=true;el.bar.style.display='none';el.status.innerHTML='<span class="dot"></span> 3D-анатомия · '+meshes.length+' структур · тест v4';layerRefresh();
 }
 function layerRefresh(){for(const m of meshes){const tissue=m.userData.layer||'';const bone=tissue==='skeleton',d=tissue==='deep muscles',s=tissue==='superficial muscles';m.visible=mode==='bones'?bone:mode==='mix'?(bone||s||(d&&deep)):(s||(d&&deep));m.material.transparent=mode==='mix' && !bone;m.material.opacity=(mode==='mix'&&!bone)?.80:1;m.material.depthWrite=!(mode==='mix'&&!bone);let group=m.userData.muscle;const selected=focus==='all'?['quad','glute','core'].includes(group):group===focus;const isMuscle=!bone;
  m.material.emissive.setHex(selected&&isMuscle?0xd64d31:0x0a0706);m.material.emissiveIntensity=selected&&isMuscle? .33 : .03; m.material.color.copy(m.userData.sourceMaterial);if(focus!=='all' && !selected && isMuscle)m.material.color.multiplyScalar(.54);m.material.needsUpdate=true;}}
