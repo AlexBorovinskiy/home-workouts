@@ -26,12 +26,12 @@
 <div class="top"><div class="eyebrow">HOME WORKOUTS / 3D-ТЕХНИКА</div><a class="back" href="../">← Журнал</a></div>
 <h1>Сгибание рук с гантелями</h1>
 <p class="lead">Учебная анимация: вращай мужскую анатомическую модель, меняй скорость и останавливай движение в нужной точке. Настраивать суставы самостоятельно не требуется.</p>
-<div class="warning"><strong>Внимание: захват гантелей в этой модели пока показан неточно.</strong> Положение пальцев не прошло визуальную проверку, поэтому не используй их расположение как инструкцию. Техника движения описана по ACE и NASM; сама 3D-анимация остаётся экспериментальной.</div>
+<div class="warning"><strong>Сравнение двух способов захвата.</strong> Новый вариант получен из независимого 3D-инструмента Handhold (MIT); старый можно вернуть кнопкой на модели. Правдоподобность положения пальцев ещё проверяется. Техника сгибаний описана по ACE и NASM.</div>
 <div class="cols">
 <section class="panel">
  <div class="scene" id="touchScene">
   <canvas id="canvas" aria-label="Анатомическая 3D-модель для редактирования движений"></canvas>
-  <div class="status" id="status">Загрузка анатомии…</div><button id="compareGrip" type="button" class="compare-grip" style="display:none">Новый хват · опытный</button>
+  <div class="status" id="status">Загрузка анатомии…</div><button id="compareGrip" type="button" class="compare-grip" style="display:none">Новый хват · Handhold</button>
   <div class="views"><button data-view="front">Фас</button><button data-view="side">Профиль</button><button data-view="back">Спина</button><button id="resetCam" title="Вернуть всю фигуру в кадр" aria-label="Показать всю фигуру">⤢ Вся фигура</button></div>
   <div class="hint">Проведи: вращение · 2 пальца: масштаб / сдвиг</div>
   <div class="error" id="error"><div><strong>Не удалось загрузить модель</strong><p id="errorText"></p><button class="btn" onclick="location.reload()">Повторить</button></div></div>
@@ -123,13 +123,14 @@
 <script type="module">
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
-import {fitDumbbellGrip} from './grip-constraints.js?v=22';
+// Finger-grip quaternions are imported from independently generated Handhold output.
 const $=s=>document.querySelector(s);
 const ui={box:$('#touchScene'),canvas:$('#canvas'),status:$('#status'),error:$('#error'),errorText:$('#errorText'),time:$('#timeLabel'),timeline:$('#timeline'),play:$('#play'),phase:$('#currentPhase'),name:$('#exerciseName'),equip:$('#equipment'),muscle:$('#muscle'),joint:$('#joint'),mirror:$('#mirror'),saveState:$('#saveState')};
 const STORAGE='home-workouts-motion-editor-v1',DURATION=6,rad=Math.PI/180;let playbackSpeed=1;
 const copy=x=>JSON.parse(JSON.stringify(x));
 const defaultFrames=()=>[{}, {}, {}];
 let frames=defaultFrames(),pose={},selected=0,playing=false,playhead=0,lastTime=0,loaded=false,rig={},rest={},mesh=null,dumbbells=[],skel=null,part=null,groups=[],vertexColors=null;
+let handholdGrips=null,handholdEnabled=false,oldDumbbells=[];
 let yaw=.15,pitch=.06,zoom=3.75,panX=0,panY=0,activeName='Сгибание рук с гантелями',targetGroup='arms_front';
 const scene=new THREE.Scene(),cam=new THREE.PerspectiveCamera(34,1,.02,80),renderer=new THREE.WebGLRenderer({canvas:ui.canvas,antialias:true,alpha:true,powerPreference:'high-performance'});
 renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.7));renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.15;renderer.setClearColor(0x081928,0);
@@ -192,8 +193,26 @@ function applyAngles(){
    bone.quaternion.copy(localDelta.multiply(base.quat));
    bone.position.copy(base.pos);
  }
+ if(handholdEnabled&&handholdGrips){
+   for(const hand of Object.values(handholdGrips.hands)){
+     for(const [name,q] of Object.entries(hand.bones)){
+       if(rig[name])rig[name].quaternion.fromArray(q).normalize();
+     }
+   }
+ }
  scene.updateMatrixWorld(true);
  if(skel)skel.updateMatrixWorld(true);
+}
+function setHandholdDumbbells(enabled){
+ dumbbells.forEach((g,i)=>{
+   const original=oldDumbbells[i],saved=handholdGrips?.hands[i===0?'L':'R']?.dumbbell;
+   if(!original||!saved)return;
+   if(enabled){
+     g.position.fromArray(saved.position);g.quaternion.fromArray(saved.quaternion).normalize();g.scale.fromArray(saved.scale);
+   }else{
+     g.position.copy(original.position);g.quaternion.copy(original.quaternion);g.scale.copy(original.scale);
+   }
+ });
 }
 function drawAxes(){const a=getAngles(ui.joint.value);for(let i=0;i<3;i++){const n=['X','Y','Z'][i];$('#angle'+n).value=a[i];$('#out'+n).textContent=Math.round(a[i])+'°'}}
 function applySlider(){
@@ -288,42 +307,41 @@ async function loadModel(){
  const response=await fetch('./exercises/dumbbell-curl.json?v=22');
  if(!response.ok)throw Error('Не удалось загрузить сценарий упражнения');
  restoreDocument(await response.json(),false);
- const originalFrames=copy(frames);
- ui.status.textContent='Подгонка захвата к гантелям…';
- const fit=await fitDumbbellGrip({
-   THREE,rig,dumbbells,initialPose:copy(frames[0]),
-   applyPose:calibrationPose=>{pose=calibrationPose;applyAngles()}
- });
- const changed=Object.entries(fit.patch).filter(([joint,angles])=>{
-   const old=originalFrames[0][joint];
-   return !old||angles.some((n,i)=>Math.abs(n-old[i])>.1);
- }).length;
- if(changed){
-   for(const frame of frames)Object.assign(frame,copy(fit.patch));
- }
- const fittedFrames=copy(frames);
- const compare=document.getElementById('compareGrip');
- compare.style.display='block';
- compare.disabled=!changed;
- if(!changed)compare.textContent='Хват: без изменений';
- if(changed){
-   let showingNew=true;
-   compare.textContent='Новый хват · опытный';
+ // Retain the last working pose as a reversible fallback.
+ oldDumbbells=dumbbells.map(g=>({position:g.position.clone(),quaternion:g.quaternion.clone(),scale:g.scale.clone()}));
+ const compare=document.getElementById('compareGrip'),status=document.getElementById('gripStatus');
+ ui.status.textContent='Загрузка отдельно рассчитанных поз захвата…';
+ try{
+   const gripResponse=await fetch('./assets/handhold-dumbbell-grips.json?v=23');
+   if(!gripResponse.ok)throw Error('Файл с позами кистей недоступен');
+   const data=await gripResponse.json();
+   if(data.format!=='home-workouts-handhold'||data.version!==1)throw Error('Неподдерживаемая версия поз');
+   for(const side of ['L','R']){
+     const hand=data.hands?.[side];
+     if(!hand?.stable||hand.handBone!=='hand.'+side||Object.keys(hand.bones||{}).length!==15)
+       throw Error('Для кисти '+side+' не подтверждён удерживающий захват');
+     if(!Object.entries(hand.bones).every(([name,q])=>rig[name]&&Array.isArray(q)&&q.length===4&&q.every(Number.isFinite)))
+       throw Error('Несовместимость скелета кисти '+side);
+     if(!hand.dumbbell?.position||!hand.dumbbell?.quaternion||!hand.dumbbell?.scale)
+       throw Error('Нет положения гантели для '+side);
+   }
+   handholdGrips=data;handholdEnabled=true;
+   setHandholdDumbbells(true);
+   compare.style.display='block';compare.disabled=false;
+   compare.textContent='Новый хват · Handhold';
    compare.onclick=()=>{
-     const savedPosition=playhead;
      playing=false;ui.play.textContent='▶ Воспроизвести';
-     showingNew=!showingNew;
-     frames=copy(showingNew?fittedFrames:originalFrames);
-     pose=poseAt(savedPosition);applyAngles();drawAxes();
-     compare.textContent=showingNew?'Новый хват · опытный':'Прежний хват';
+     handholdEnabled=!handholdEnabled;
+     setHandholdDumbbells(handholdEnabled);
+     pose=poseAt(playhead);applyAngles();drawAxes();
+     compare.textContent=handholdEnabled?'Новый хват · Handhold':'Старый хват';
    };
+   status.textContent='Новый хват рассчитан для нашего анатомического рига: Handhold определил удержание двумя руками (левая — 5/15, правая — 6/15 контактных фаланг). Сравни со старым кнопкой на модели. Это опытный вариант, не эталон техники.';
+ }catch(error){
+   handholdEnabled=false;handholdGrips=null;setHandholdDumbbells(false);
+   compare.style.display='none';status.textContent='Не удалось загрузить альтернативный захват: '+error.message+'. Используется прежняя модель.';
  }
  selectFrame(0);
- const validCount=fit.measurements.filter(item=>item.valid).length;
- const status=document.getElementById('gripStatus');
- status.textContent=changed
-   ?'Экспериментальный хват: изменено '+changed+' суставов, успешно подогнано '+validCount+'/'+fit.measurements.length+'. Кнопка в углу модели переключает старый и новый варианты. Правильность ещё не подтверждена.'
-   :'Захват не изменён: расчёт не нашёл допустимое улучшение. Прежние пальцы оставлены без изменений. '+(fit.reason||'');
  ui.saveState.textContent='Открыта готовая анимация упражнения.';
  ui.status.textContent='✓ Модель загружена';ui.status.style.display='none';fitWholeBody();
 }
