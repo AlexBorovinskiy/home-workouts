@@ -267,4 +267,6 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')hideTech()});
 if('serviceWorker'in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./sw.js').catch(()=>{});
 view();
 </script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="./drive-sync.js" defer></script>
 </body></html>
