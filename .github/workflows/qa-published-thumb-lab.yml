@@ -1,0 +1,70 @@
+name: Verify published Thumb Lab on iPhone-sized Chrome
+on:
+  push:
+    paths:
+      - '.github/workflows/qa-published-thumb-lab.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --prefix /tmp/thumb-live --no-audit --no-fund playwright-core@1.56.1
+      - name: Test GitHub Pages actual deployed model
+        shell: bash
+        run: |
+          mkdir -p proof
+          node --input-type=module <<'NODE'
+          import {chromium} from '/tmp/thumb-live/node_modules/playwright-core/index.mjs';
+          import {writeFileSync} from 'node:fs';
+          const browser=await chromium.launch({channel:'chrome',headless:true,args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+          const page=await browser.newPage({viewport:{width:430,height:932},deviceScaleFactor:1,isMobile:true,hasTouch:true,serviceWorkers:'block'});
+          const errors=[];page.on('pageerror',e=>errors.push(e.message));
+          page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+          const url='https://alexborovinskiy.github.io/home-workouts/anatomy-first/thumb-lab.html';
+          try{
+            let good=false;
+            for(let i=0;i<7;i++){
+              const r=await page.goto(url+'?v=qa-2',{waitUntil:'domcontentloaded',timeout:65000});
+              if(r.status()===200){good=true;break;}
+              await page.waitForTimeout(3000);
+            }
+            if(!good)throw Error('New thumb page not deployed');
+            await page.waitForFunction(()=>window.__thumbQA?.ready()||document.querySelector('#error')?.classList.contains('show'),null,{timeout:75000});
+            if(!await page.evaluate(()=>window.__thumbQA?.ready()))throw Error(await page.locator('#error').innerText());
+            const bones=await page.evaluate(()=>window.__thumbQA.bones());
+            if(Object.values(bones).some(x=>x<100))throw Error('Not the source mesh');
+            const states=[];
+            for(const pose of ['neutral','oppose','grasp']){
+              await page.locator('[data-pose="'+pose+'"]').click();
+              states.push(await page.evaluate(()=>window.__thumbQA.metrics()));
+              await page.locator('canvas').screenshot({path:'proof/'+pose+'.png'});
+            }
+            if(states[1].insideReferenceShaft||states[2].insideReferenceShaft)throw Error('Thumb preset penetrates bar');
+            const first=states[0].pivotCMC,last=states[2].pivotCMC;
+            if(Math.hypot(...first.map((v,i)=>v-last[i]))>.00001)throw Error('CMC moved');
+            if(Math.hypot(...states[0].distalBoneTip.map((v,i)=>v-states[2].distalBoneTip[i]))<.02)throw Error('Opposition motion absent');
+            await page.locator('[data-view="side"]').click();
+            await page.locator('canvas').screenshot({path:'proof/side.png'});
+            const report={url,bones,states,errors};
+            writeFileSync('proof/report.json',JSON.stringify(report,null,2));
+            console.log(JSON.stringify({url,bones,distances:states.map(s=>s.tipToShaftMm),errors},null,2));
+            if(errors.length)throw Error(errors.join('|'));
+          }catch(e){
+            writeFileSync('proof/error.txt',String(e)+'\n'+errors.join('\n'));
+            await page.screenshot({path:'proof/failure.png',fullPage:true}).catch(()=>{});
+            throw e;
+          }finally{await browser.close()}
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: thumb-lab-live-qa
+          path: proof/
+          retention-days: 3
