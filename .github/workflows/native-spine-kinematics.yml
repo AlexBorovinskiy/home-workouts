@@ -1,0 +1,71 @@
+name: Run native OpenSim spine kinematics
+on:
+  push:
+    paths:
+      - 'opensim-lab/native_spine_kinematics.py'
+      - '.github/workflows/native-spine-kinematics.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  calculate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install actual OpenSim 4.6 Python engine
+        run: |
+          python -m pip install --disable-pip-version-check 'opensim==4.6'
+          python -c "import opensim; print('OPENSIM_ENGINE', opensim.GetVersionAndDate())"
+      - name: Get public FHS research model for local computation
+        shell: bash
+        run: |
+          curl -fL --max-time 170 --retry 2             'https://zenodo.org/records/18259702/files/FHS_dataset_4.x.zip?download=1'             -o /tmp/fhs-2026.zip
+          python - <<'PY'
+          from pathlib import Path
+          import zipfile
+          with zipfile.ZipFile('/tmp/fhs-2026.zip') as archive:
+            files=[n for n in archive.namelist() if n.lower().endswith('.osim')]
+            preferred=[n for n in files if '/male/' in n.lower()]
+            if not preferred:raise RuntimeError('No male models in the research ZIP')
+            name=sorted(preferred)[0]
+            Path('/tmp/research-subject.osim').write_bytes(archive.read(name))
+            print('RESEARCH_INPUT',name)
+          PY
+      - name: Calculate constrained transforms with OpenSim engine
+        run: |
+          mkdir -p qa-opensim-native
+          python opensim-lab/native_spine_kinematics.py             --model /tmp/research-subject.osim             --output qa-opensim-native/spine-samples.json
+      - name: Validate kinematics data and contact limitations
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json,math
+          from pathlib import Path
+          p=Path('qa-opensim-native/spine-samples.json')
+          d=json.loads(p.read_text())
+          assert d['kind']=='opensim-native-kinematic-diagnostic'
+          assert len(d['spineLevels'])==17
+          assert len(d['frames'])==5
+          assert d['contactAudit']['hasFeet'] is False
+          assert d['isPushup'] is False
+          a=d['frames'][0]['bodyFrameOriginsM']
+          b=d['frames'][1]['bodyFrameOriginsM']
+          assert math.dist(a['thoracic1'],b['thoracic1'])>1e-5
+          for frame in d['frames']:
+            for coord in frame['bodyFrameOriginsM'].values():
+              assert all(math.isfinite(x) for x in coord)
+          print('NATIVE_KINEMATICS_VALIDATED',json.dumps({
+             'frames':len(d['frames']), 'vertebrae':len(d['spineLevels']),
+             'thoracic1_moved_mm':round(1000*math.dist(a['thoracic1'],b['thoracic1']),2),
+             'contact':d['contactAudit']},ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: opensim-native-kinematics
+          path: qa-opensim-native/
+          retention-days: 7
