@@ -27,11 +27,12 @@ small{color:#adcbd0;line-height:1.6}@media(max-width:760px){.wrap{grid-template-
 <textarea id="source">https://raw.githubusercontent.com/opensim-org/opensim-models/master/Models/Rajagopal/RajagopalLaiUhlrich2023.osim</textarea>
 <div class="actions"><button id="load">Загрузить тестовую модель</button></div>
 <div id="state" class="status">Научная модель ещё не открыта.</div>
+<p><small>Проверка исходного ZIP: в архиве 250 моделей. Пример: 68 тел, 68 суставов, 155 координат, 552 мышцы, 17 позвонков T1–L5. Это только исследовательская структура — не готовая анимация.</small></p>
 </section>
 <section class="card"><h2>Позвонки, присутствующие в файле</h2><div id="levels"><p>Список появится после импорта.</p></div><p><small>Это проверка названий в исходном файле, а не анатомическая схема и не расчёт нагрузок.</small></p></section>
 </div><aside>
 <section class="card"><h2>Структура модели</h2>
-<div class="nums"><div class="num"><strong id="nb">—</strong><span>тел</span></div><div class="num"><strong id="nj">—</strong><span>суставов</span></div><div class="num"><strong id="nc">—</strong><span>координат*</span></div><div class="num"><strong id="nm">—</strong><span>мышц</span></div></div>
+<div class="nums"><div class="num"><strong id="nb">—</strong><span>тел</span></div><div class="num"><strong id="nj">—</strong><span>суставов</span></div><div class="num"><strong id="nc">—</strong><span>координат*</span></div><div class="num"><strong id="nm">—</strong><span>мышц</span></div><div class="num"><strong id="ni">—</strong><span>межпозвонковых суставов</span></div></div>
 <div id="meta" class="status">Пока данных нет.</div><small>* Координаты могут быть заблокированы или связаны ограничениями.</small></section>
 <section class="card"><h2>Управляемые координаты</h2><div id="coords"><p>После импорта появятся записанные в OpenSim названия суставных координат.</p></div></section>
 <section class="card"><h2>Что эта лаборатория пока не умеет</h2><p>Она не запускает OpenSim, не рассчитывает силы и не оценивает безопасность отжиманий. Следующий этап — расчёт в настоящем OpenSim с измеренным движением и перенос на нашу видимую модель тела.</p></section>
@@ -57,17 +58,18 @@ function parse(xml,label){
  const muscles=set("ForceSet").filter(x=>x.tagName.endsWith("Muscle"));
  const coordinates=joints.flatMap(j=>Array.from(j.getElementsByTagName("Coordinate")).map(x=>({name:x.getAttribute("name")||"",joint:j.getAttribute("name")||"",range:txt(x,"range"),locked:txt(x,"locked")==="true"})));
  const names=bodies.map(x=>x.getAttribute("name")||"");
- const present=ls.filter(level=>names.some(n=>{
-  const m=n.toUpperCase().match(/(?:^|[^A-Z0-9])(T(?:1[0-2]|[1-9])|L[1-5])(?=$|[^A-Z0-9])/);
-  return Boolean(m&&m[1]===level);
- }));
+ const present=ls.filter(level=>{
+   const expected=(level.startsWith("T")?"THORACIC":"LUMBAR")+level.slice(1);
+   return names.some(n=>n.toUpperCase()===expected||n.toUpperCase()===level);
+ });
+ const intervertebral=joints.filter(x=>/^(?:T(?:1[0-2]|[1-9])|L[1-5])_(?:T(?:1[0-2]|[1-9])|L[1-5]|S1)_IVDJNT$/i.test(x.getAttribute("name")||"")).length;
  return {label,name:m.getAttribute("name")||"",version:d.documentElement.getAttribute("Version")||"",
-  bodies:bodies.length,joints:joints.length,muscles:muscles.length,coordinates:coordinates.length,present,coordItems:coordinates};
+  bodies:bodies.length,joints:joints.length,muscles:muscles.length,coordinates:coordinates.length,intervertebral,present,coordItems:coordinates};
 }
 function render(r){
  current=r;
- for(const [id,v] of [["nb",r.bodies],["nj",r.joints],["nc",r.coordinates],["nm",r.muscles]])$("#"+id).textContent=v;
- $("#meta").innerHTML="<b>"+esc(r.name)+"</b><div>OpenSim XML "+esc(r.version)+"</div><div>"+esc(r.label)+"</div><div>"+r.present.length+" из 17 уровней T1–L5 найдены по названиям тел</div>";
+ for(const [id,v] of [["nb",r.bodies],["nj",r.joints],["nc",r.coordinates],["nm",r.muscles],["ni",r.intervertebral]])$("#"+id).textContent=v;
+ $("#meta").innerHTML="<b>"+esc(r.name)+"</b><div>OpenSim XML "+esc(r.version)+"</div><div>"+esc(r.label)+"</div><div>"+r.present.length+" из 17 уровней T1–L5 найдены по названиям тел; "+r.intervertebral+" межпозвонковых суставов</div>";
  $("#levels").innerHTML=ls.map(x=>"<div class='"+(r.present.includes(x)?"found":"")+"'>"+x+(r.present.includes(x)?" ✓":" —")+"</div>").join("");
  const relevant=r.coordItems.filter(c=>/spine|thorac|lumbar|pelvis|T[1-9]|L[1-5]/i.test(c.name+" "+c.joint));
  const list=(relevant.length?relevant:r.coordItems).slice(0,125);
