@@ -303,9 +303,11 @@ async function loadModel(){
  }
  const fittedFrames=copy(frames);
  const compare=document.getElementById('compareGrip');
+ compare.style.display='block';
+ compare.disabled=!changed;
+ if(!changed)compare.textContent='Хват: без изменений';
  if(changed){
    let showingNew=true;
-   compare.style.display='block';
    compare.textContent='Новый хват · опытный';
    compare.onclick=()=>{
      const savedPosition=playhead;
