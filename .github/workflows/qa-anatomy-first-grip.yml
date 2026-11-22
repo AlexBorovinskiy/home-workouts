@@ -44,6 +44,7 @@ jobs:
               await page.waitForTimeout(400);
               results[pose]={metrics:await page.evaluate(()=>window.__thumbQA.metrics()),gaps:await page.evaluate(()=>window.__thumbQA.gripGaps()),audit:await page.locator('#audit').innerText()};
               await page.locator('#stage canvas').screenshot({path:'qa-shots/'+pose+'.png'});
+              if(pose==='grasp')console.log('GRASP_IMAGE_JPEG '+(await page.locator('#stage canvas').screenshot({type:'jpeg',quality:48})).toString('base64'));
               await page.locator('[data-view="side"]').click();
               await page.waitForTimeout(300);
               await page.locator('#stage canvas').screenshot({path:'qa-shots/'+pose+'-side.png'});
