@@ -1,0 +1,84 @@
+name: QA complete five-digit MRI hand on phone
+on:
+  push:
+    paths:
+      - 'anatomy-first/full-hand-lab.html'
+      - 'anatomy-first/full-mri-hand-rig.js'
+      - '.github/workflows/qa-full-mri-hand.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  mobile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --prefix /tmp/full-hand-qa --no-audit --no-fund playwright-core@1.56.1
+      - name: Verify five articulated fingers and obtain mobile renders
+        shell: bash
+        run: |
+          mkdir -p proof
+          python3 -m http.server 8765 --bind 127.0.0.1 >/tmp/http.log 2>&1 &
+          node --input-type=module <<'NODE'
+          import {chromium} from '/tmp/full-hand-qa/node_modules/playwright-core/index.mjs';
+          import {writeFileSync} from 'node:fs';
+          const browser=await chromium.launch({channel:'chrome',headless:true,args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+          const page=await browser.newPage({viewport:{width:430,height:932},deviceScaleFactor:1,isMobile:true,hasTouch:true,serviceWorkers:'block'});
+          const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',msg=>{if(msg.type()==='error')errors.push(msg.text())});
+          const dist=(a,b)=>Math.hypot(...a.map((v,i)=>v-b[i]));
+          try{
+            await page.goto('http://127.0.0.1:8765/anatomy-first/full-hand-lab.html',{waitUntil:'domcontentloaded',timeout:65000});
+            await page.waitForFunction(()=>window.__thumbQA?.ready()||document.querySelector('#error')?.classList.contains('show'),null,{timeout:75000});
+            if(!await page.evaluate(()=>window.__thumbQA?.ready()))throw Error('App failed: '+await page.locator('#error').innerText());
+            const rawBones=await page.evaluate(()=>window.__thumbQA.fingerBones());
+            if(Object.keys(rawBones).length!==3)throw Error('Missing middle/ring/little bone chains');
+            if(Object.values(rawBones).some(entry=>Object.keys(entry).length!==4||Object.values(entry).some(v=>v<100)))
+              throw Error('Original bone geometries missing: '+JSON.stringify(rawBones));
+            const poses={};
+            for(const preset of ['open','oppose','grasp']){
+              await page.locator('button[data-pose="'+preset+'"]').click();
+              poses[preset]=await page.evaluate(()=>window.__thumbQA.metrics());
+              if(poses[preset].actualHandBones!==19||poses[preset].carpalMeshesDisplayed!==7)
+                throw Error('Wrong actual MRI bone/carpal count');
+              for(const v of ['palm','side']){
+                await page.locator('[data-view="'+v+'"]').click();await page.waitForTimeout(250);
+                await page.locator('canvas').screenshot({path:'proof/'+preset+'-'+v+'.png'});
+              }
+            }
+            if(Object.values(poses.open.digitCurls).some(x=>x!==0))throw Error('Open hand not fully open');
+            if(Object.values(poses.oppose.digitCurls).some(x=>x<.6))throw Error('One finger not curling in reference pose');
+            const motions={};
+            for(const finger of ['index','middle','ring','little']){
+              const a=poses.open.fingerTipPositions[finger],b=poses.grasp.fingerTipPositions[finger];
+              motions[finger]=dist(a,b);
+              if(motions[finger]<.009)throw Error('Digit '+finger+' does not move enough: '+motions[finger]);
+            }
+            if(dist(poses.open.pivotCMC,poses.grasp.pivotCMC)>.00001)throw Error('CMC fixed pivot drifted');
+            await page.locator('#middleCurl').fill('35');
+            if(Math.abs((await page.evaluate(()=>window.__thumbQA.metrics())).digitCurls.middle-.35)>.01)
+              throw Error('Independent middle-finger control failed');
+            await page.locator('#allCurl').fill('50');
+            const all=await page.evaluate(()=>window.__thumbQA.metrics());
+            if(Object.values(all.digitCurls).some(x=>Math.abs(x-.5)>.01))
+              throw Error('Whole-hand slider failed: '+JSON.stringify(all.digitCurls));
+            await page.screenshot({path:'proof/full-iphone-screen.png',fullPage:true});
+            const report={rawBones,poses,motions,errors};
+            writeFileSync('proof/report.json',JSON.stringify(report,null,2));
+            console.log(JSON.stringify({motions,openToOpposeBoneTipGap:[poses.open.boneTipDistanceMm,poses.oppose.boneTipDistanceMm],fiveDigits:all.digitCount,errors},null,2));
+            if(errors.length)throw Error('Browser errors: '+errors.join('|'));
+          }catch(e){
+            writeFileSync('proof/error.txt',String(e)+'\n'+errors.join('|'));
+            await page.screenshot({path:'proof/error.png',fullPage:true}).catch(()=>{});
+            throw e;
+          }finally{await browser.close()}
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: full-mri-hand-mobile
+          path: proof/
+          retention-days: 5
