@@ -150,7 +150,7 @@ function connect(){
     },
     error_callback:function(e){note('Не удалось открыть окно входа Google. Попробуй в Safari.');}
   });
-  c.requestAccessToken({prompt:''});
+  c.requestAccessToken();
 }
 function disconnect(){clearTimeout(debounce);token='';tokenExpires=0;connected=false;conflict=false;note('Отключено на этом устройстве. Копия на Google Диске сохранена.');}
 function cloudPanel(){
