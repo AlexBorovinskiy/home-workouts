@@ -31,7 +31,7 @@ jobs:
           const errors=[];
           page.on('pageerror',e=>errors.push(String(e)));
           try{
-            await page.goto('https://alexborovinskiy.github.io/home-workouts/anatomy-rigged/lesson.html?v=23&qa=1',{waitUntil:'domcontentloaded',timeout:90000});
+            await page.goto('https://alexborovinskiy.github.io/home-workouts/anatomy-rigged/lesson.html?v=24&qa=2',{waitUntil:'domcontentloaded',timeout:90000});
             await page.waitForFunction(()=>{
               const text=document.querySelector('#gripStatus')?.textContent||'';
               return text.includes('Новый хват рассчитан')||text.includes('Не удалось загрузить альтернативный захват');
@@ -42,11 +42,11 @@ jobs:
             await page.locator('canvas').scrollIntoViewIfNeeded();
             await page.waitForTimeout(800);
             await page.screenshot({path:'snapshots/whole-page.png',fullPage:true});
-            const newImage=await page.locator('canvas').screenshot({path:'snapshots/handhold-canvas.png'});
+            const newImage=await page.locator('canvas').screenshot({path:'snapshots/default-old-canvas.png'});
             if(!visible||!status.includes('Новый хват рассчитан'))throw Error('Expected Handhold pose did not load: '+status);
             await page.locator('#compareGrip').click();
             await page.waitForTimeout(500);
-            const oldImage=await page.locator('canvas').screenshot({path:'snapshots/old-canvas.png'});
+            const oldImage=await page.locator('canvas').screenshot({path:'snapshots/oriented-handhold-canvas.png'});
             const sha=x=>createHash('sha256').update(x).digest('hex');
             const changed=sha(newImage)!==sha(oldImage);
             const result={status,button,visible,visualPixelsChanged:changed,newHash:sha(newImage),oldHash:sha(oldImage),errors};
