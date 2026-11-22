@@ -47,6 +47,7 @@ jobs:
            await page.waitForTimeout(850);
            const newShot=await page.locator('canvas').screenshot({path:'screenshots/skin-on.png'});
            await page.locator('#timeline').evaluate(el=>{el.value='500';el.dispatchEvent(new Event('input',{bubbles:true}))});
+           await page.evaluate(()=>window.__skinPreviewDebug?.setCamera({zoom:2.4,panY:.46,pitch:.08}));
            await page.waitForTimeout(500);
            await page.locator('canvas').screenshot({path:'screenshots/skin-at-curl-peak.png'});
            await page.locator('[data-view="side"]').click();
