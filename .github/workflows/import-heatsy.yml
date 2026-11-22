@@ -60,7 +60,7 @@ jobs:
           jlen=struct.unpack_from('<I',raw,12)[0]
           goff=20+jlen
           bsize,btype=struct.unpack_from('<I4s',raw,goff)
-          assert btype==b'BIN\\0'
+          assert btype==bytes([66,73,78,0])
           binary=raw[goff+8:goff+8+bsize]
           doc=json.loads(raw[20:20+jlen])
           access=doc['accessors'];views=doc['bufferViews']
@@ -99,7 +99,7 @@ jobs:
               'weights':list(item(attrs['WEIGHTS_0'],k)) if 'WEIGHTS_0' in attrs else None,
               } for k in [0,5,150,2000,10000,40000,70000]],
           }
-          (root/'rig-diagnostics.json').write_text(json.dumps(md,ensure_ascii=False,indent=2)+'\\n')
+          (root/'rig-diagnostics.json').write_text(json.dumps(md,ensure_ascii=False,indent=2) + chr(10))
           print('Mesh attributes:',list(attrs),'IBM count:',len(matrices))
           PY
       - name: Commit verified open model and skeleton metadata
