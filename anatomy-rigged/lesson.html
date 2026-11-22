@@ -312,7 +312,7 @@ async function loadModel(){
  const compare=document.getElementById('compareGrip'),status=document.getElementById('gripStatus');
  ui.status.textContent='Загрузка отдельно рассчитанных поз захвата…';
  try{
-   const gripResponse=await fetch('./assets/handhold-dumbbell-grips.json?v=23');
+   const gripResponse=await fetch('./assets/handhold-dumbbell-grips.json?v=24');
    if(!gripResponse.ok)throw Error('Файл с позами кистей недоступен');
    const data=await gripResponse.json();
    if(data.format!=='home-workouts-handhold'||data.version!==1)throw Error('Неподдерживаемая версия поз');
@@ -336,7 +336,7 @@ async function loadModel(){
      pose=poseAt(playhead);applyAngles();drawAxes();
      compare.textContent=handholdEnabled?'Новый хват · Handhold':'Старый хват';
    };
-   status.textContent='Новый хват рассчитан для нашего анатомического рига: Handhold определил удержание двумя руками (левая — 5/15, правая — 6/15 контактных фаланг). Сравни со старым кнопкой на модели. Это опытный вариант, не эталон техники.';
+   status.textContent='Новый хват рассчитан для нашего анатомического рига: Handhold определил удержание обеими руками (левая — '+data.hands.L.contactSegments.join('/')+', правая — '+data.hands.R.contactSegments.join('/')+' контактных фаланг). Сравни со старым кнопкой на модели. Это опытный вариант, не эталон техники.';
  }catch(error){
    handholdEnabled=false;handholdGrips=null;setHandholdDumbbells(false);
    compare.style.display='none';status.textContent='Не удалось загрузить альтернативный захват: '+error.message+'. Используется прежняя модель.';
