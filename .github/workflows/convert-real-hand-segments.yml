@@ -1,0 +1,33 @@
+name: Split real hand MRI bone mesh into unlabeled parts
+on:
+  push:
+    paths:
+      - '.github/workflows/convert-real-hand-segments.yml'
+      - 'anatomy-first/data/convert_hand_source.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  segment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch and hash exact upstream segmented bone STL
+        shell: bash
+        run: |
+          mkdir -p evidence
+          curl --fail --location --retry 3 --max-time 120 \
+            'https://raw.githubusercontent.com/HegdeUSA/Hand_template/main/3D_model_of_segmented_bones.zip' -o /tmp/source.zip
+          echo '9e2022f7fea4e7473dc22d01eefe1510bca73e316d44f45e6732ca33336558f6  /tmp/source.zip' | sha256sum -c -
+      - name: Compute connected bones and export lossless-derived GLB
+        shell: bash
+        run: |
+          python3 -m pip install --quiet numpy==2.2.6 scipy==1.15.3 trimesh==4.10.0
+          OPENBLAS_NUM_THREADS=1 python3 anatomy-first/data/convert_hand_source.py /tmp/source.zip evidence
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: original-hand-bone-component-audit
+          path: evidence/
+          retention-days: 3
