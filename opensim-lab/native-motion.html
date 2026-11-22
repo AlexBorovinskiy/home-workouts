@@ -37,7 +37,7 @@ h2{font-size:16px;margin:0 0 11px}
 </style></head><body><main>
 <header><span>HOME WORKOUTS / OPEN SIM MOTION</span><a href="./">Исходные .osim</a></header>
 <h1>Позвоночник: нативный расчёт OpenSim</h1>
-<p class="lead">Визуализация положений управляющих тел, полученных действительным движком OpenSim из исследовательской модели позвоночника. Это **диагностические изменения суставных координат**, а не запись упражнения, не настоящие позвонки и не оценка нагрузки.</p>
+<p class="lead">Визуализация положений управляющих тел, полученных действительным движком OpenSim из исследовательской модели позвоночника. Это <strong>диагностические изменения суставных координат</strong>, а не запись упражнения, не настоящие позвонки и не оценка нагрузки.</p>
 <div class="layout">
 <section class="card">
 <div class="stage" id="stage">
@@ -46,7 +46,7 @@ h2{font-size:16px;margin:0 0 11px}
 <div class="hint">Пальцем — вращение · двумя — масштаб</div>
 <div class="error" id="error"></div></div>
 <div class="controls">
-<div class="sub">Диагностический режим</div>
+<div class="sub">Диагностический режим</div><div style="font-size:11px;color:var(--muted)">Яркие точки — расчётная поза, полупрозрачные — исходное положение. Подписи обозначают уровни позвоночника.</div>
 <div class="btns" id="modes">
 <button class="on" data-mode="neutral">Исходное положение</button>
 <button data-mode="flexion_diagnostic">Сгибание</button>
@@ -86,7 +86,7 @@ scene.add(new THREE.HemisphereLight(0xd8eeef,0x375566,2.0));
 const light=new THREE.DirectionalLight(0xfff1df,2.0);light.position.set(2,4,4);scene.add(light);
 const orbit=new OrbitControls(camera,canvas);orbit.enableDamping=true;orbit.minDistance=.12;orbit.maxDistance=4;
 let data=null,current='neutral',power=0,playing=false,geometry=null;
-let jointMarkers=[],segments=[],suppMarkers=[],suppLinks=[],map=new Map();
+let jointMarkers=[],segments=[],suppMarkers=[],suppLinks=[],ghosts=[],ghostSegments=[],labels=[];
 const P=new THREE.Vector3();
 function resize(){const w=stage.clientWidth,h=stage.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/Math.max(h,1);camera.updateProjectionMatrix();}
 new ResizeObserver(resize).observe(stage);resize();
@@ -106,6 +106,15 @@ function view(name){
  document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('on',b.dataset.view===name));
 }
 function point(name,frame){return vec(frame.bodyFrameOriginsM[name]);}
+function makeLabel(label){
+ const board=document.createElement('canvas');board.width=256;board.height=80;
+ const ctx=board.getContext('2d');
+ ctx.fillStyle='rgba(13,36,48,.86)';ctx.beginPath();ctx.roundRect(0,8,128,60,16);ctx.fill();
+ ctx.fillStyle='#e0f6ef';ctx.font='bold 36px sans-serif';ctx.fillText(label,13,51);
+ const tex=new THREE.CanvasTexture(board);const material=new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false});
+ const sprite=new THREE.Sprite(material);sprite.scale.set(.10,.032,1);scene.add(sprite);
+ return sprite;
+}
 function makeMarker(col,r=.011){
  const mat=new THREE.MeshStandardMaterial({color:col,roughness:.43,metalness:.05});
  const mesh=new THREE.Mesh(new THREE.SphereGeometry(r,16,12),mat);scene.add(mesh);return mesh;
@@ -124,7 +133,11 @@ function create(){
  const ids=data.spineLevels,first=data.frames[0];
  for(let i=0;i<ids.length;i++){
    jointMarkers.push(makeMarker(ids[i].startsWith('lumbar')?0xe2aa78:0x8de1d0,.013));
-   if(i)segments.push(makeLine(0x94bccc));
+   const ghost=makeMarker(0x7c909f,.0065);ghost.material.transparent=true;ghost.material.opacity=.38;ghosts.push(ghost);
+   if(i){segments.push(makeLine(0x94bccc));ghostSegments.push(makeLine(0x5c8297,.22))}
+   if(['lumbar5','lumbar1','thoracic12','thoracic6','thoracic1'].includes(ids[i])){
+     labels.push({id:ids[i],sprite:makeLabel(ids[i].replace('thoracic','T').replace('lumbar','L'))});
+   }
  }
  const extras=['clavicle_R','scapula_R','clavicle_L','scapula_L','sternum'];
  for(const name of extras)if(first.bodyFrameOriginsM[name]){const marker=makeMarker(name.includes('scapula')?0xe2c39b:0xb4aeea,.009);suppMarkers.push({name,mesh:marker});}
@@ -138,13 +151,22 @@ function update(){
  const start=data.frames[0],end=data.frames.find(f=>f.id===current)||start;
  const t=current==='neutral'?0:power;
  const pos=new Map();
+ const startPos=new Map(Object.entries(start.bodyFrameOriginsM).map(([name,xyz])=>[name,vec(xyz)]));
  for(const name of Object.keys(start.bodyFrameOriginsM)){
   if(!end.bodyFrameOriginsM[name])continue;
   pos.set(name,point(name,start).lerp(point(name,end),t));
  }
  data.spineLevels.forEach((name,i)=>{
   const p=pos.get(name);if(!p)return;
-  jointMarkers[i].position.copy(p);if(i&&pos.has(data.spineLevels[i-1]))updateLine(segments[i-1],pos.get(data.spineLevels[i-1]),p);
+  jointMarkers[i].position.copy(p);ghosts[i].position.copy(startPos.get(name));
+  if(i&&pos.has(data.spineLevels[i-1])){
+   updateLine(segments[i-1],pos.get(data.spineLevels[i-1]),p);
+   updateLine(ghostSegments[i-1],startPos.get(data.spineLevels[i-1]),startPos.get(name));
+  }
+ });
+ labels.forEach(({id,sprite})=>{
+  if(!pos.has(id))return;
+  sprite.position.copy(pos.get(id)).add(new THREE.Vector3(.066,0,0));
  });
  suppMarkers.forEach(e=>e.mesh.position.copy(pos.get(e.name)||new THREE.Vector3()));
  suppLinks.forEach(e=>{if(pos.has(e.a)&&pos.has(e.b))updateLine(e.line,pos.get(e.a),pos.get(e.b))});
