@@ -27,12 +27,12 @@
 <div class="top"><div class="eyebrow">HOME WORKOUTS / 3D-ТЕХНИКА</div><a class="back" href="../">← Журнал</a></div>
 <h1>Сгибание рук с гантелями</h1>
 <p class="lead">Учебная анимация: вращай мужскую анатомическую модель, меняй скорость и останавливай движение в нужной точке. Настраивать суставы самостоятельно не требуется.</p>
-<div class="warning"><strong>Тест обхвата рукоятки.</strong> Пальцы отдельно согнуты вокруг цилиндрической рукоятки с учётом длины фаланг, большой палец расположен напротив остальных. Обе кисти зеркальны, объёмная модель CC0 сохранена. Переключай три варианта кнопкой на модели. Результат экспериментальный, анатомическая точность ещё проверяется.</div>
+
 <div class="cols">
 <section class="panel">
  <div class="scene" id="touchScene">
   <canvas id="canvas" aria-label="Анатомическая 3D-модель для редактирования движений"></canvas>
-  <div class="status" id="status">Загрузка анатомии…</div><button id="skinHandsToggle" class="skin-toggle" style="display:none" type="button">Объёмные кисти · вкл.</button><button id="compareGrip" type="button" class="compare-grip" style="display:none">Обхват · новый</button>
+  <div class="status" id="status">Загрузка анатомии…</div>
   <div class="views"><button data-view="front">Фас</button><button data-view="side">Профиль</button><button data-view="back">Спина</button><button id="resetCam" title="Вернуть всю фигуру в кадр" aria-label="Показать всю фигуру">⤢ Вся фигура</button></div>
   <div class="hint">Проведи: вращение · 2 пальца: масштаб / сдвиг</div>
   <div class="error" id="error"><div><strong>Не удалось загрузить модель</strong><p id="errorText"></p><button class="btn" onclick="location.reload()">Повторить</button></div></div>
@@ -132,7 +132,7 @@ const STORAGE='home-workouts-motion-editor-v1',DURATION=6,rad=Math.PI/180;let pl
 const copy=x=>JSON.parse(JSON.stringify(x));
 const defaultFrames=()=>[{}, {}, {}];
 let frames=defaultFrames(),pose={},selected=0,playing=false,playhead=0,lastTime=0,loaded=false,rig={},rest={},mesh=null,dumbbells=[],skel=null,part=null,groups=[],vertexColors=null;
-let handholdGrips=null,handholdEnabled=false,oldDumbbells=[],handSkin=null;
+let handholdGrips=null,handSkin=null;
 let yaw=.15,pitch=.06,zoom=3.75,panX=0,panY=0,activeName='Сгибание рук с гантелями',targetGroup='arms_front';
 const scene=new THREE.Scene(),cam=new THREE.PerspectiveCamera(34,1,.02,80),renderer=new THREE.WebGLRenderer({canvas:ui.canvas,antialias:true,alpha:true,powerPreference:'high-performance'});
 renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.7));renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.15;renderer.setClearColor(0x081928,0);
@@ -195,7 +195,7 @@ function applyAngles(){
    bone.quaternion.copy(localDelta.multiply(base.quat));
    bone.position.copy(base.pos);
  }
- if(handholdEnabled&&handholdGrips){
+ if(handholdGrips){
    for(const hand of Object.values(handholdGrips.hands)){
      for(const [name,q] of Object.entries(hand.bones)){
        if(rig[name])rig[name].quaternion.fromArray(q).normalize();
@@ -206,16 +206,14 @@ function applyAngles(){
  if(handSkin)handSkin.update();
  if(skel)skel.updateMatrixWorld(true);
 }
-function setHandholdDumbbells(enabled){
- dumbbells.forEach((g,i)=>{
-   const original=oldDumbbells[i],saved=handholdGrips?.hands[i===0?'L':'R']?.dumbbell;
-   if(!original||!saved)return;
-   if(enabled){
-     g.position.fromArray(saved.position);g.quaternion.fromArray(saved.quaternion).normalize();g.scale.fromArray(saved.scale);
-   }else{
-     g.position.copy(original.position);g.quaternion.copy(original.quaternion);g.scale.copy(original.scale);
-   }
- });
+function positionDumbbellsForGrip(){
+  for(let i=0;i<dumbbells.length;i++){
+    const g=dumbbells[i],saved=handholdGrips?.hands[i===0?'L':'R']?.dumbbell;
+    if(!saved)throw Error('Отсутствует положение гантели');
+    g.position.fromArray(saved.position);
+    g.quaternion.fromArray(saved.quaternion).normalize();
+    g.scale.fromArray(saved.scale);
+  }
 }
 function drawAxes(){const a=getAngles(ui.joint.value);for(let i=0;i<3;i++){const n=['X','Y','Z'][i];$('#angle'+n).value=a[i];$('#out'+n).textContent=Math.round(a[i])+'°'}}
 function applySlider(){
@@ -310,68 +308,34 @@ async function loadModel(){
  const response=await fetch('./exercises/dumbbell-curl.json?v=22');
  if(!response.ok)throw Error('Не удалось загрузить сценарий упражнения');
  restoreDocument(await response.json(),false);
- // Retain the last working pose as a reversible fallback.
- oldDumbbells=dumbbells.map(g=>({position:g.position.clone(),quaternion:g.quaternion.clone(),scale:g.scale.clone()}));
- const compare=document.getElementById('compareGrip'),status=document.getElementById('gripStatus');
- ui.status.textContent='Загрузка отдельно рассчитанных поз захвата…';
- try{
-   const [wrapResponse,legacyResponse]=await Promise.all([
-     fetch('./assets/ergonomic-dumbbell-grip.json?v=1'),
-     fetch('./assets/handhold-dumbbell-grips.json?v=26')
-   ]);
-   if(!wrapResponse.ok||!legacyResponse.ok)throw Error('Файлы с позами кистей недоступны');
-   const [wrapGrip,legacyGrip]=await Promise.all([wrapResponse.json(),legacyResponse.json()]);
-   for(const data of [wrapGrip,legacyGrip]){
-     if(data.format!=='home-workouts-handhold'||data.version!==1)throw Error('Неподдерживаемая версия поз');
-     for(const side of ['L','R']){
-       const hand=data.hands?.[side];
-       if(!hand?.stable||hand.handBone!=='hand.'+side||Object.keys(hand.bones||{}).length!==15)
-         throw Error('Для кисти '+side+' не найден полный захват');
-       if(!Object.entries(hand.bones).every(([name,q])=>rig[name]&&Array.isArray(q)&&q.length===4&&q.every(Number.isFinite)))
-         throw Error('Несовместимость скелета кисти '+side);
-       if(!hand.dumbbell?.position||!hand.dumbbell?.quaternion||!hand.dumbbell?.scale)
-         throw Error('Нет положения гантели для '+side);
-     }
-   }
-   const gripModes=[
-     {label:'Обхват · новый',data:wrapGrip,note:'Новый экспериментальный обхват: фаланги согнуты вокруг цилиндрической рукоятки, большой палец направлен навстречу остальным. Геометрические расстояния проверены; визуальная точность ещё не подтверждена.'},
-     {label:'Симметрия · прежний',data:legacyGrip,note:'Предыдущий зеркально-симметричный хват: сохранён для сравнения. На видео пальцы были недостаточно согнуты.'},
-     {label:'Исходный хват',data:null,note:'Исходные позы пальцев и гантелей до независимого подбора. Сравнение только для диагностики.'}
-   ];
-   let gripModeIndex=0;
-   const chooseGripMode=(index)=>{
-     gripModeIndex=index;
-     const mode=gripModes[index];
-     handholdGrips=mode.data;
-     handholdEnabled=!!handholdGrips;
-     setHandholdDumbbells(handholdEnabled);
-     if(loaded){pose=poseAt(playhead);applyAngles();drawAxes()}
-     compare.textContent=mode.label;
-     status.textContent=mode.note+' Нажми на кнопку захвата для сравнения вариантов.';
-   };
-   compare.style.display='block';compare.disabled=false;
-   compare.onclick=()=>{
-     playing=false;ui.play.textContent='▶ Воспроизвести';
-     chooseGripMode((gripModeIndex+1)%gripModes.length);
-   };
-   chooseGripMode(0);
- }catch(error){
-   handholdEnabled=false;handholdGrips=null;setHandholdDumbbells(false);
-   compare.style.display='none';status.textContent='Не удалось загрузить альтернативный захват: '+error.message+'. Используется прежняя модель.';
+ const status=document.getElementById('gripStatus');
+ ui.status.textContent='Загрузка положения пальцев…';
+ const gripResponse=await fetch('./assets/ergonomic-dumbbell-grip.json?v=2');
+ if(!gripResponse.ok)throw Error('Не удалось загрузить положение кистей');
+ const gripData=await gripResponse.json();
+ if(gripData.format!=='home-workouts-handhold'||gripData.version!==1)throw Error('Неподдерживаемая версия позы кистей');
+ for(const side of ['L','R']){
+   const hand=gripData.hands?.[side];
+   if(!hand?.stable||hand.handBone!=='hand.'+side||Object.keys(hand.bones||{}).length!==15)
+     throw Error('Для кисти '+side+' не найден полный захват');
+   if(!Object.entries(hand.bones).every(([name,q])=>rig[name]&&Array.isArray(q)&&q.length===4&&q.every(Number.isFinite)))
+     throw Error('Несовместимость скелета кисти '+side);
+   if(!hand.dumbbell?.position||!hand.dumbbell?.quaternion||!hand.dumbbell?.scale)
+     throw Error('Нет положения гантели для '+side);
  }
+ handholdGrips=gripData;
+ positionDumbbellsForGrip();
  try{
    handSkin=await createSkinHandPreview({THREE,GLTFLoader,scene,rig,rest,bodyMesh:mesh});
-   window.__skinPreviewDebug={getState:()=>({enabled:handSkin.isEnabled(),maskedVertices:handSkin.maskedVertices}),setCamera:(opts)=>{zoom=opts.zoom??zoom;panY=opts.panY??panY;panX=opts.panX??panX;yaw=opts.yaw??yaw;pitch=opts.pitch??pitch}};
-   const skinToggle=document.getElementById('skinHandsToggle');
-   skinToggle.style.display='block';
-   skinToggle.textContent='Объёмные кисти · вкл.';
-   skinToggle.onclick=()=>{
-     const enabled=!handSkin.isEnabled();
-     handSkin.setEnabled(enabled);
-     skinToggle.textContent=enabled?'Объёмные кисти · вкл.':'Объёмные кисти · выкл.';
+   // Hidden diagnostic hook: no experimental grip controls in the user interface.
+   window.__skinPreviewDebug={
+     getState:()=>({enabled:handSkin.isEnabled(),maskedVertices:handSkin.maskedVertices}),
+     setCamera:(opts)=>{zoom=opts.zoom??zoom;panY=opts.panY??panY;panX=opts.panX??panX;yaw=opts.yaw??yaw;pitch=opts.pitch??pitch}
    };
+   handSkin.setEnabled(true);
+   status.textContent='Объёмная модель кистей и захват гантелей загружены. Положение пальцев остаётся экспериментальным и уточняется.';
  }catch(err){
-   document.getElementById('gripStatus').textContent+=' Не удалось создать объёмные кисти: '+err.message;
+   status.textContent='Не удалось загрузить объёмные кисти: '+err.message;
  }
  selectFrame(0);
  ui.saveState.textContent='Готовое учебное упражнение с экспериментальной объёмной моделью кистей.';
