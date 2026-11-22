@@ -48,6 +48,7 @@ jobs:
                 await page.locator('canvas').screenshot({path:'thumb-qa/'+name+'-'+v+'.png'});
               }
             }
+            if(poses.grasp.insideReferenceShaft||poses.oppose.insideReferenceShaft)throw Error('Thumb landmark inside reference shaft');
             if(d(poses.neutral.pivotCMC,poses.grasp.pivotCMC)>.00001)throw Error('CMC root displaced!');
             if(d(poses.neutral.pivotMCP,poses.grasp.pivotMCP)<.003)throw Error('CMC did not move first metacarpal: '+JSON.stringify(poses));
             if(d(poses.neutral.pivotIP,poses.grasp.pivotIP)<.008)throw Error('MCP did not move proximal phalanx');
