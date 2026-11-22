@@ -1,0 +1,73 @@
+name: Search cylinder fit on unified skinned hand
+on:
+  push:
+    paths:
+      - '.github/workflows/fit-unified-hand.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  fit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --prefix /tmp/unified-fit --no-fund --no-audit playwright-core@1.56.1
+      - name: Evaluate skin-cylinder clearance without changing production
+        shell: bash
+        run: |
+          mkdir -p results
+          python3 -m http.server 8765 --bind 127.0.0.1 > /tmp/server.log 2>&1 &
+          node --input-type=module <<'NODE'
+          import {chromium} from '/tmp/unified-fit/node_modules/playwright-core/index.mjs';
+          import {writeFileSync} from 'node:fs';
+          const browser=await chromium.launch({channel:'chrome',headless:true,args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+          const context=await browser.newContext({viewport:{width:430,height:932},deviceScaleFactor:1,isMobile:true,hasTouch:true,serviceWorkers:'block'});
+          const page=await context.newPage(),errors=[];
+          page.on('pageerror',e=>errors.push(e.message));
+          try {
+            await page.goto('http://127.0.0.1:8765/anatomy-rigged/unified-makehuman-preview.html?axis=x&sign=pos&order=post',{waitUntil:'domcontentloaded',timeout:60000});
+            await page.waitForFunction(()=>window.__unifiedQA?.ready(),null,{timeout:70000});
+            const data=await page.evaluate(()=>{
+              const rows=[],digits=['index','middle','ring','pinky'];
+              for(const direction of [[.78,.32,.54],[.94,.19,.29]]){
+                for(const x of [-.029,-.014,0]){
+                  for(const y of [.065,.077,.089,.101]){
+                    for(const z of [-.012,.008,.028,.048]){
+                      const metric=window.__unifiedQA.configure({center:[x,y,z],direction,factor:.95});
+                      const parts=digits.map(k=>metric[k]);
+                      const score=parts.reduce((sum,p)=>sum+Math.min(p.near,50)*2-p.inside*12-Math.min(p.closest,.03)*1250-(p.near<3?45:0),0);
+                      rows.push({center:[x,y,z],direction,factor:.95,score,parts:Object.fromEntries(digits.map(k=>[k,metric[k]])),thumb:metric.thumb});
+                    }
+                  }
+                }
+              }
+              return rows.sort((a,b)=>b.score-a.score);
+            });
+            writeFileSync('results/grid.json',JSON.stringify(data,null,2));
+            console.log(JSON.stringify(data.slice(0,8),null,2));
+            const choices=[];
+            for(const row of data){if(choices.length>=6)break;if(choices.some(a=>a.center.join(',')===row.center.join(',')))continue;choices.push(row)}
+            for(let i=0;i<choices.length;i++){
+              await page.evaluate(c=>window.__unifiedQA.configure(c),choices[i]);
+              for(const view of ['palm','thumb','wrist']){
+                await page.evaluate(v=>window.__unifiedQA.view(v),view);
+                await page.waitForTimeout(160);
+                await page.locator('canvas').screenshot({path:'results/candidate-'+i+'-'+view+'.png'});
+              }
+            }
+            if(errors.length)throw Error(errors.join(' | '));
+          }catch(e){
+            writeFileSync('results/error.txt',String(e)+'\n'+errors.join('\n'));
+            throw e;
+          }finally{await browser.close()}
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: unified-cylinder-fit-grid
+          path: results/
+          retention-days: 3
