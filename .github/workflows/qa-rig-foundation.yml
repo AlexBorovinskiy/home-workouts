@@ -1,0 +1,65 @@
+name: QA rig foundation CC0 body
+on:
+  push:
+    paths:
+      - '.github/workflows/qa-rig-foundation.yml'
+      - 'rig-foundation/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser automation
+        run: npm install --prefix /tmp/rig-foundation-qa --no-audit --no-fund playwright-core@1.56.1
+      - name: Validate model hierarchy and mobile views
+        shell: bash
+        run: |
+          mkdir -p qa-foundation
+          python3 -m http.server 8766 --bind 127.0.0.1 >/tmp/rig-foundation.log 2>&1 &
+          node --input-type=module <<'NODE'
+          import {chromium} from '/tmp/rig-foundation-qa/node_modules/playwright-core/index.mjs';
+          import {writeFileSync} from 'node:fs';
+          const browser=await chromium.launch({channel:'chrome',headless:true,args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+          const page=await browser.newPage({viewport:{width:430,height:932},deviceScaleFactor:1,isMobile:true,hasTouch:true});
+          const errors=[];
+          page.on('pageerror',e=>errors.push('pageerror: '+e.message));
+          page.on('console',m=>{if(m.type()==='error')errors.push('console: '+m.text())});
+          try{
+            await page.goto('http://127.0.0.1:8766/rig-foundation/index.html',{waitUntil:'domcontentloaded',timeout:90000});
+            await page.waitForFunction(()=>window.__foundationQA?.ready()||document.querySelector('#error')?.classList.contains('show'),null,{timeout:90000});
+            if(!await page.evaluate(()=>window.__foundationQA?.ready()))throw new Error('Model init failed: '+await page.locator('#error').innerText());
+            const stats=await page.evaluate(()=>window.__foundationQA.stats());
+            if(stats.bones<40||stats.skinMeshes<1||stats.fingerJoints<25)throw new Error('Incomplete hand/body rig: '+JSON.stringify(stats));
+            const thumbs=await page.evaluate(()=>window.__foundationQA.boneNames().filter(x=>x.startsWith('thumb_')));
+            for(const v of ['body','right','left','arm']){
+              await page.evaluate(name=>window.__foundationQA.view(name),v);
+              await page.waitForTimeout(350);
+              await page.locator('#canvas').screenshot({path:'qa-foundation/'+v+'.png'});
+              if(v==='body'||v==='right')console.log('VIEW_'+v.toUpperCase()+'_JPEG '+(await page.locator('#canvas').screenshot({type:'jpeg',quality:52})).toString('base64'));
+            }
+            await page.evaluate(()=>{window.__foundationQA.view('right');window.__foundationQA.showRig(true);window.__foundationQA.pose('test')});
+            await page.waitForTimeout(300);
+            await page.locator('#canvas').screenshot({path:'qa-foundation/right-joint-test.png'});
+            const status={stats,thumbs,errors,rigVisible:await page.evaluate(()=>window.__foundationQA.rigVisible())};
+            console.log('FOUNDATION_REPORT '+JSON.stringify(status));
+            writeFileSync('qa-foundation/report.json',JSON.stringify(status,null,2));
+            if(errors.length)throw new Error('Browser errors');
+          }catch(e){
+            writeFileSync('qa-foundation/failure.txt',String(e)+'\n'+errors.join('\n'));
+            await page.screenshot({path:'qa-foundation/failure.png'}).catch(()=>{});
+            throw e;
+          }finally{await browser.close()}
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rig-foundation-mobile-qa
+          path: qa-foundation/
+          retention-days: 5
