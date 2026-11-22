@@ -201,7 +201,8 @@ export function createAnatomicalRig(THREE) {
     const disc=new THREE.Mesh(new THREE.CylinderGeometry(.035,.035,.018,28),plateMat);
     disc.rotation.z=Math.PI/2;disc.position.x=x;bar.add(disc);
   }
-  const calibration={cmcAbduction:-34,cmcFlexion:-29,cmcAxial:-40,thumbMcpFlex:-26,thumbIpFlex:-24};
+  // Tested marker pose only: near shaft, not an anatomically validated skin grip.
+  const calibration={cmcAbduction:-45,cmcFlexion:-35,cmcAxial:-40,thumbMcpFlex:-45,thumbIpFlex:-26};
   let currentPose={opposition:0,grip:0};
   function pose({opposition=0,grip=0}={}) {
     const o=clamp(opposition,0,1),g=clamp(grip,0,1);
