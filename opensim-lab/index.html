@@ -1,0 +1,110 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="data:,"><title>OpenSim — лаборатория позвоночника</title>
+<style>
+:root{color-scheme:dark;--bg:#0a2231;--p:#193847;--mint:#9be1d2;--line:#41636f}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(160deg,#183b4a,var(--bg) 40%);color:#eaf5f3;font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+main{max-width:1060px;margin:auto;padding:17px 13px 60px}h1{font-size:clamp(26px,4vw,37px);letter-spacing:-.04em;margin:30px 0 9px}h2{font-size:17px;margin:0 0 12px}p{color:#b6ced2;line-height:1.65}header{display:flex;justify-content:space-between;font-size:11px;color:var(--mint);letter-spacing:.1em;font-weight:800}a{color:var(--mint)}
+.wrap{display:grid;grid-template-columns:1.1fr .9fr;gap:14px}.card{background:var(--p);border:1px solid var(--line);padding:18px;border-radius:16px;margin-bottom:14px}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}button,.link{background:#265064;color:#f0fbfb;border:1px solid #5e8891;padding:11px 13px;border-radius:10px;font:inherit;font-weight:700;cursor:pointer;min-height:43px;text-decoration:none}button.primary{background:var(--mint);color:#15303a;border-color:var(--mint)}
+input[type=file]{display:none}textarea{width:100%;background:#112b3a;color:#d8f3ed;border:1px solid var(--line);padding:10px;border-radius:9px;resize:vertical;min-height:64px;font:12px monospace}
+.status{font-size:12px;line-height:1.6;background:#102e3e;border:1px solid var(--line);border-radius:10px;padding:11px;margin:12px 0;word-break:break-word}.status.warn{color:#ffe2bb;background:#47362a}
+.nums{display:grid;grid-template-columns:1fr 1fr;gap:9px}.num{background:#0d2b3a;border-radius:10px;padding:12px}.num strong{font-size:29px;display:block}.num span{font-size:11px;color:#adcbd0}
+#levels{display:grid;grid-template-columns:1fr 1fr;gap:6px}#levels div{border:1px solid #496673;border-radius:8px;padding:7px;text-align:center;background:#263f4e}#levels div.found{background:#2f756b;border-color:#8de8cf}
+#coords{max-height:390px;overflow:auto}table{width:100%;font-size:11px;border-collapse:collapse}td,th{padding:8px 4px;border-bottom:1px solid #395666;text-align:left}th{color:var(--mint)}
+small{color:#adcbd0;line-height:1.6}@media(max-width:760px){.wrap{grid-template-columns:1fr}.card{padding:14px}}
+</style></head><body><main>
+<header><span>HOME WORKOUTS · OPEN SIM</span><a href="../rig-foundation/">Наш 3D-человек</a></header>
+<h1>OpenSim: настоящая модель позвоночника</h1>
+<p>Это отдельная лаборатория для изучения научной модели, а не новая выдуманная анимация упражнений. Можно открыть файл .osim или архив ZIP и увидеть реальные тела, суставы, координаты и мышцы, записанные исследователями.</p>
+<div class="wrap"><div>
+<section class="card">
+<h2>Открыть исходные данные</h2>
+<p>Набор моделей позвоночника и рёбер, адаптированный для OpenSim 4.x (2026): T1–T12, L1–L5, верхние конечности. Исходный архив 39,7 МБ, файлы остаются на устройстве.</p>
+<div class="actions"><a class="link" href="https://zenodo.org/records/18259702" target="_blank" rel="noopener">Перейти к исследованию</a><button id="pick" class="primary">Выбрать .osim / .zip</button></div>
+<input id="file" type="file" accept=".osim,.xml,.zip">
+<div class="actions"><button id="zenodo">Загрузить архив автоматически</button></div>
+<p><small>Если прямую загрузку блокирует браузер, скачай архив через ссылку на исследование и выбери его через «Выбрать .osim / .zip».</small></p>
+<p>Проверка импортёра на официальной модели OpenSim (её позвоночник упрощён):</p>
+<textarea id="source">https://raw.githubusercontent.com/opensim-org/opensim-models/master/Models/Rajagopal/RajagopalLaiUhlrich2023.osim</textarea>
+<div class="actions"><button id="load">Загрузить тестовую модель</button></div>
+<div id="state" class="status">Научная модель ещё не открыта.</div>
+</section>
+<section class="card"><h2>Позвонки, присутствующие в файле</h2><div id="levels"><p>Список появится после импорта.</p></div><p><small>Это проверка названий в исходном файле, а не анатомическая схема и не расчёт нагрузок.</small></p></section>
+</div><aside>
+<section class="card"><h2>Структура модели</h2>
+<div class="nums"><div class="num"><strong id="nb">—</strong><span>тел</span></div><div class="num"><strong id="nj">—</strong><span>суставов</span></div><div class="num"><strong id="nc">—</strong><span>координат*</span></div><div class="num"><strong id="nm">—</strong><span>мышц</span></div></div>
+<div id="meta" class="status">Пока данных нет.</div><small>* Координаты могут быть заблокированы или связаны ограничениями.</small></section>
+<section class="card"><h2>Управляемые координаты</h2><div id="coords"><p>После импорта появятся записанные в OpenSim названия суставных координат.</p></div></section>
+<section class="card"><h2>Что эта лаборатория пока не умеет</h2><p>Она не запускает OpenSim, не рассчитывает силы и не оценивает безопасность отжиманий. Следующий этап — расчёт в настоящем OpenSim с измеренным движением и перенос на нашу видимую модель тела.</p></section>
+</aside></div></main>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script>
+(function(){
+"use strict";
+const $=s=>document.querySelector(s);
+const ls=[...Array.from({length:12},(_,i)=>"T"+(i+1)),...Array.from({length:5},(_,i)=>"L"+(i+1))];
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const kids=n=>Array.from(n?.children||[]);
+const txt=(n,sel)=>n.querySelector(sel)?.textContent?.trim()||"";
+let current=null;
+function parse(xml,label){
+ const d=new DOMParser().parseFromString(xml,"application/xml");
+ if(d.querySelector("parsererror"))throw Error("XML содержит ошибку");
+ const m=d.querySelector("OpenSimDocument > Model");
+ if(!m)throw Error("Это не модель OpenSim");
+ const set=t=>kids(m.querySelector(t+" > objects"));
+ const bodies=set("BodySet").filter(x=>x.tagName==="Body");
+ const joints=set("JointSet").filter(x=>x.tagName.endsWith("Joint"));
+ const muscles=set("ForceSet").filter(x=>x.tagName.endsWith("Muscle"));
+ const coordinates=joints.flatMap(j=>Array.from(j.getElementsByTagName("Coordinate")).map(x=>({name:x.getAttribute("name")||"",joint:j.getAttribute("name")||"",range:txt(x,"range"),locked:txt(x,"locked")==="true"})));
+ const names=bodies.map(x=>x.getAttribute("name")||"");
+ const present=ls.filter(level=>names.some(n=>{
+  const m=n.toUpperCase().match(/(?:^|[^A-Z0-9])(T(?:1[0-2]|[1-9])|L[1-5])(?=$|[^A-Z0-9])/);
+  return Boolean(m&&m[1]===level);
+ }));
+ return {label,name:m.getAttribute("name")||"",version:d.documentElement.getAttribute("Version")||"",
+  bodies:bodies.length,joints:joints.length,muscles:muscles.length,coordinates:coordinates.length,present,coordItems:coordinates};
+}
+function render(r){
+ current=r;
+ for(const [id,v] of [["nb",r.bodies],["nj",r.joints],["nc",r.coordinates],["nm",r.muscles]])$("#"+id).textContent=v;
+ $("#meta").innerHTML="<b>"+esc(r.name)+"</b><div>OpenSim XML "+esc(r.version)+"</div><div>"+esc(r.label)+"</div><div>"+r.present.length+" из 17 уровней T1–L5 найдены по названиям тел</div>";
+ $("#levels").innerHTML=ls.map(x=>"<div class='"+(r.present.includes(x)?"found":"")+"'>"+x+(r.present.includes(x)?" ✓":" —")+"</div>").join("");
+ const relevant=r.coordItems.filter(c=>/spine|thorac|lumbar|pelvis|T[1-9]|L[1-5]/i.test(c.name+" "+c.joint));
+ const list=(relevant.length?relevant:r.coordItems).slice(0,125);
+ $("#coords").innerHTML="<table><tr><th>Координата</th><th>Сустав</th><th>Диапазон</th></tr>"+list.map(x=>"<tr><td>"+esc(x.name)+(x.locked?" 🔒":"")+"</td><td>"+esc(x.joint)+"</td><td>"+esc(x.range||"—")+"</td></tr>").join("")+"</table>";
+ $("#state").className="status";
+ $("#state").textContent="Настоящий документ OpenSim разобран. Это анализ структуры, не физическое моделирование.";
+}
+async function zipLoad(bytes,name){
+ if(!window.JSZip)throw Error("Библиотека чтения ZIP недоступна");
+ const archive=await JSZip.loadAsync(bytes);
+ const files=Object.values(archive.files).filter(f=>!f.dir&&f.name.toLowerCase().endsWith(".osim"));
+ if(!files.length)throw Error("В ZIP отсутствуют файлы .osim");
+ files.sort((a,b)=>Number(/generic|fullbody|base/i.test(b.name))-Number(/generic|fullbody|base/i.test(a.name))||a.name.length-b.name.length);
+ $("#state").textContent="Найдено "+files.length+" файлов .osim, читаю "+files[0].name;
+ render(parse(await files[0].async("string"),name+" / "+files[0].name));
+}
+async function process(file){
+ if(!file)return;
+ $("#state").textContent="Читаю "+file.name;
+ try{if(file.name.toLowerCase().endsWith(".zip"))await zipLoad(await file.arrayBuffer(),file.name);
+ else render(parse(await file.text(),file.name));}
+ catch(e){$("#state").className="status warn";$("#state").textContent="Ошибка: "+e.message;}
+}
+async function download(url){
+ $("#state").className="status";$("#state").textContent="Загружаю файл…";
+ try{
+  const response=await fetch(url);
+  if(!response.ok)throw Error("HTTP "+response.status);
+  const filename=url.split("/").pop().split("?")[0];
+  if(filename.toLowerCase().endsWith(".zip"))await zipLoad(await response.arrayBuffer(),filename);
+  else render(parse(await response.text(),filename));
+ }catch(e){$("#state").className="status warn";$("#state").textContent="Прямая загрузка не удалась: "+e.message+". Скачай исходник отдельно и открой файлом.";}
+}
+$("#pick").onclick=()=>$("#file").click();
+$("#file").onchange=()=>process($("#file").files[0]);
+$("#load").onclick=()=>download($("#source").value.trim());
+$("#zenodo").onclick=()=>download("https://zenodo.org/records/18259702/files/FHS_dataset_4.x.zip?download=1");
+window.__osimQA={parse,render,get:()=>current,ready:()=>true};
+})();
+</script></body></html>
