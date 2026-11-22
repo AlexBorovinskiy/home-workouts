@@ -159,11 +159,10 @@ function applyPose(){if(!rigReady)return;resetBones();const a=effort(progress);
     }
     // Tentative grip driven by hand/finger bones; still needs visual verification.
     if($('#grip').checked && $('#equipment').checked){
-      for(const name of ['index','middle','ring','pinky']){
-        for(const [segment,angle] of [[1,-.86],[2,-.94],[3,-.53]]){
-          const joint=name+'_0'+segment+'.'+side;
-          if(rig[joint])rotateWorld(joint,AXIS_X,angle);
-        }
+      // Individually tuned finger flexion, shared with the editor and lesson keyframes.
+      const digitFlex={index:[-85,-75,-20],middle:[-85,-95,-40],ring:[-80,-95,-35],pinky:[-95,-100,-40]};
+      for(const [name,angles] of Object.entries(digitFlex)){
+        angles.forEach((deg,i)=>rotateWorld(name+'_0'+(i+1)+'.'+side,AXIS_X,THREE.MathUtils.degToRad(deg)));
       }
       // Bring thumb across the handle, then flex the second phalanx toward the grip.
       rotateWorldXYZ('thumb_01.'+side,THREE.MathUtils.degToRad(-15),0,THREE.MathUtils.degToRad(side==='L'?-70:70));
