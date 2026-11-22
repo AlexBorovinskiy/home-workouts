@@ -1,0 +1,91 @@
+name: Test anatomy-first CMC opposition trajectories
+on:
+  push:
+    paths:
+      - '.github/workflows/qa-anatomy-cmc-calibration.yml'
+      - 'anatomy-first/cmc-calibration-bench.html'
+      - 'anatomy-first/hand-rig-v3.js'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  cmc:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --prefix /tmp/cmc-qa --no-audit --no-fund playwright-core@1.56.1
+      - name: Calibrate thumb opposition and compare 3D poses
+        shell: bash
+        run: |
+          mkdir -p results
+          python3 -m http.server 8765 --bind 127.0.0.1 >/tmp/cmc-http.log 2>&1 &
+          node --input-type=module <<'NODE'
+          import {chromium} from '/tmp/cmc-qa/node_modules/playwright-core/index.mjs';
+          import {writeFileSync} from 'node:fs';
+          const browser=await chromium.launch({channel:'chrome',headless:true,args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+          const page=await browser.newPage({viewport:{width:430,height:932},deviceScaleFactor:1,isMobile:true,hasTouch:true,serviceWorkers:'block'});
+          const errors=[];page.on('pageerror',e=>errors.push(e.message));
+          try{
+            await page.goto('http://127.0.0.1:8765/anatomy-first/cmc-calibration-bench.html',{waitUntil:'domcontentloaded',timeout:50000});
+            await page.waitForFunction(()=>window.__anatomyQA?.ready()||document.querySelector('#error')?.classList.contains('on'),null,{timeout:45000});
+            if(!await page.evaluate(()=>window.__anatomyQA?.ready()))throw Error(await page.locator('#error').innerText());
+            const result=await page.evaluate(()=>{
+              const q=window.__anatomyQA;
+              q.setPose({opposition:1,grip:.85});
+              const baseline=q.getCalibration(),base=q.getMetrics();
+              const candidates=[];
+              for(const abduction of [-15,-30,-45])
+               for(const flex of [-35,-50,-65,-75])
+                for(const axial of [-20,-40,-60])
+                 for(const mcp of [-15,-30,-45])
+                  for(const ip of [-12,-26,-40]){
+                    const angle={cmcAbduction:abduction,cmcFlexion:flex,cmcAxial:axial,thumbMcpFlex:mcp,thumbIpFlex:ip};
+                    const m=q.calibrate(angle);
+                    const gap=m.thumbTipToHandleMeters,indexDist=m.thumbToIndexTipMeters,facing=m.thumbPadFacingDot;
+                    const penalty=Math.abs(abduction+34)*.04+Math.abs(flex+29)*.08+
+                     Math.abs(axial+40)*.04+Math.abs(mcp+26)*.025+Math.abs(ip+24)*.025;
+                    const score=-Math.abs(gap)*6300-Math.max(0,-gap-.0015)*15000+
+                     25*facing-Math.max(0,indexDist-.032)*2000-penalty;
+                    candidates.push({angle,gap,indexDist,facing,score,pad:m.thumbPad});
+                  }
+              candidates.sort((a,b)=>b.score-a.score);
+              q.calibrate(baseline);
+              const distinct=[];
+              for(const c of candidates){
+                if(distinct.some(d=>Object.keys(c.angle).reduce((s,k)=>s+Math.abs(c.angle[k]-d.angle[k]),0)<25))continue;
+                distinct.push(c);if(distinct.length===8)break;
+              }
+              return {baseline,base,total:candidates.length,top:distinct};
+            });
+            writeFileSync('results/candidates.json',JSON.stringify(result,null,2));
+            console.log(JSON.stringify({total:result.total,base:result.base,top:result.top.slice(0,5)},null,2));
+            const views=['thumb','palm','wrist'];
+            const poses=[{name:'original',angles:result.baseline},...result.top.slice(0,5).map((v,i)=>({name:'candidate-'+i,angles:v.angle}))];
+            for(const p of poses){
+              await page.evaluate(angles=>{
+                window.__anatomyQA.setPose({opposition:1,grip:.85});
+                window.__anatomyQA.calibrate(angles);
+                document.getElementById('barSwitch')?.click();
+              },p.angles);
+              for(const view of views){
+                await page.evaluate(v=>window.__anatomyQA.view(v),view);
+                await page.waitForTimeout(120);
+                await page.locator('canvas').screenshot({path:'results/'+p.name+'-'+view+'.png'});
+              }
+            }
+            if(errors.length)throw Error(errors.join(';'));
+          }catch(e){
+            writeFileSync('results/error.txt',String(e)+'\n'+errors.join(';'));
+            throw e;
+          }finally{await browser.close()}
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: anatomy-cmc-trajectories
+          path: results/
+          retention-days: 3
