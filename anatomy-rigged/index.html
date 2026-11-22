@@ -24,7 +24,7 @@
 <div class="actions"><button class="primary" id="play">▶ Запустить</button><button id="restart">↺ Сначала</button><button id="hold">Стоп-кадр</button><select id="speed" aria-label="Скорость"><option value="0.25" selected>0,25×</option><option value="0.5">0,5×</option><option value="0.75">0,75×</option><option value="1">1×</option></select></div></div></div>
 <div class="panel section"><div class="kicker">Проверка скелетной анимации</div><h2 id="exTitle">Сгибание рук</h2><p id="exDesc">Сгибание в локте: предплечья следуют за локтевыми суставами, кисти — за предплечьями. Проверь, не отделяются ли мышцы рук.</p>
 <div class="notice" id="anatomyInfo">Выделены двуглавые мышцы плеча и мышцы предплечий. Подсветка показывает целевые зоны, а не величину мышечной активности.</div>
-<hr><div class="kicker">Проверка модели</div><div class="switches"><label><input id="highlight" type="checkbox" checked>Работающие мышцы</label><label><input id="skeleton" type="checkbox">Линии скелета</label></div>
+<hr><div class="kicker">Проверка модели</div><div class="switches"><label><input id="highlight" type="checkbox" checked>Работающие мышцы</label><label><input id="skeleton" type="checkbox">Линии скелета</label><label><input id="equipment" type="checkbox" checked>Гантели</label></div>
 <p id="joints" class="readout">Ожидание рига…</p>
 <p>Пока проверяем три разные схемы: руки в локтях, ноги в коленях и опору на руки. Именно они помогут выявить проблемные веса и привязки мышц.</p>
 </div></div>
@@ -39,12 +39,43 @@ try{THREE=await import('three');({GLTFLoader}=await import('three/addons/loaders
 const scene=new THREE.Scene(),renderer=new THREE.WebGLRenderer({canvas:ui.canvas,antialias:true,alpha:true,powerPreference:'high-performance'});renderer.setClearColor(0x0c2331,0);renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.65));renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.15;renderer.outputColorSpace=THREE.SRGBColorSpace;
 const camera=new THREE.PerspectiveCamera(33,1,.01,50);scene.add(new THREE.HemisphereLight(0xe2fbff,0x344656,1.7));const key=new THREE.DirectionalLight(0xffe5db,2.3);key.position.set(1.6,4,5);scene.add(key);const back=new THREE.DirectionalLight(0x87e9e3,1.0);back.position.set(-4,1,-2);scene.add(back);
 const floor=new THREE.Mesh(new THREE.CylinderGeometry(.77,.82,.03,64),new THREE.MeshStandardMaterial({color:0x16394a,roughness:1}));floor.position.y=-.035;scene.add(floor);const ring=new THREE.Mesh(new THREE.TorusGeometry(.81,.006,8,90),new THREE.MeshBasicMaterial({color:0x4b8791}));ring.rotation.x=Math.PI/2;ring.position.y=-.017;scene.add(ring);
-let model,rig={},rest={},skeletonHelper=null,muscleMesh=null,partIds=null,tendons=null,partGroups=[],colored=null,active='curl',progress=0,playing=false,speed=.25,last=0,zoom=3.9,yaw=.10,pitch=.06,panX=0,panY=0,rigReady=false,frontSign=1;const restFoot={},restPelvis=new THREE.Vector3();const viewerGroup=new THREE.Group(),orientation=new THREE.Group();scene.add(viewerGroup);viewerGroup.add(orientation);
-const exercises={curl:{title:'Сгибание рук',desc:'Согни локти и проверь: мышцы плеча, предплечья, кисти и пальцы должны оставаться соединёнными на протяжении движения.',info:'Подсветка: передние мышцы плеча и предплечья. Это области приложения усилия, не расчёт активации.',groups:['arms_front','forearms'],phase:'Сгибание в локте'},squat:{title:'Приседание',desc:'Проверяем сгибание тазобедренных и коленных суставов. Стопы должны оставаться на уровне пола; движение пока не используется как образец техники.',info:'Подсветка: квадрицепсы, ягодичные и мышцы корпуса.',groups:['quads','glutes','abs'],phase:'Приседание'},pushup:{title:'Отжимание',desc:'Проверяем плечи, локти и кисти при положении корпуса почти горизонтально. Эта поза — тест геометрии рига, не эталон упражнения.',info:'Подсветка: грудь, задняя поверхность плеча, передние дельтовидные.',groups:['chest','arms_back','shoulders'],phase:'Отжимание'}};
+let model,rig={},rest={},skeletonHelper=null,muscleMesh=null,partIds=null,tendons=null,partGroups=[],colored=null,active='curl',progress=0,playing=false,speed=.25,last=0,zoom=3.9,yaw=.10,pitch=.06,panX=0,panY=0,rigReady=false,frontSign=1;const restFoot={},restPelvis=new THREE.Vector3();let dumbbells=[],trainingEffortUniform=null,exerciseMask=null;const viewerGroup=new THREE.Group(),orientation=new THREE.Group();scene.add(viewerGroup);viewerGroup.add(orientation);
+const exercises={curl:{title:'Сгибание рук',desc:'Гантели рядом с бёдрами. Не раскачивай корпус: плечи почти неподвижны, локти сгибаются, запястья сохраняют прямую линию с предплечьями.',info:'Оранжевый цвет меняется по фазе подъёма и опускания. Это учебная иллюстрация, а не измерение электромиографии или силы мышцы.',groups:['arms_front','forearms'],phase:'Сгибание в локте'},squat:{title:'Приседание',desc:'Проверяем сгибание тазобедренных и коленных суставов. Стопы должны оставаться на уровне пола; движение пока не используется как образец техники.',info:'Подсветка: квадрицепсы, ягодичные и мышцы корпуса.',groups:['quads','glutes','abs'],phase:'Приседание'},pushup:{title:'Отжимание',desc:'Проверяем плечи, локти и кисти при положении корпуса почти горизонтально. Эта поза — тест геометрии рига, не эталон упражнения.',info:'Подсветка: грудь, задняя поверхность плеча, передние дельтовидные.',groups:['chest','arms_back','shoulders'],phase:'Отжимание'}};
 function setError(err){ui.status.textContent='Ошибка загрузки';ui.loading.style.display='none';ui.error.classList.add('visible');ui.errorText.textContent=err?.message||String(err)}
 function dimensions(){let w=ui.box.clientWidth,h=ui.box.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}window.addEventListener('resize',dimensions);dimensions();
 // Initialize motion axes before the asynchronous model loader can call setExercise/applyPose.
 const AXIS_X=new THREE.Vector3(1,0,0),AXIS_Y=new THREE.Vector3(0,1,0),AXIS_Z=new THREE.Vector3(0,0,1);
+
+function addDemoDumbbells(){
+ const steel=new THREE.MeshStandardMaterial({color:0x9caebb,metalness:.75,roughness:.26});
+ const grip=new THREE.MeshStandardMaterial({color:0x2f3944,metalness:.45,roughness:.50});
+ const barGeometry=new THREE.CylinderGeometry(.010,.010,.18,14);
+ const plateGeometry=new THREE.CylinderGeometry(.052,.052,.021,24);
+ for(const side of ['L','R']){
+   const wrist=rig['hand.'+side];
+   const group=new THREE.Group();group.name='training-dumbbell-'+side;
+   // Parent to the hand bone: the equipment follows the wrist and forearm bones.
+   // Offsets are a first-pass grip approximation to verify in the viewer.
+   group.position.set(0,.068,.012);
+   const handle=new THREE.Mesh(barGeometry,grip);handle.rotation.z=Math.PI/2;
+   group.add(handle);
+   for(const x of [-.070,.070]){
+     const disk=new THREE.Mesh(plateGeometry,steel);disk.rotation.z=Math.PI/2;disk.position.x=x;
+     group.add(disk);
+   }
+   const collarGeo=new THREE.CylinderGeometry(.019,.019,.012,16);
+   for(const x of [-.092,.092]){
+     const collar=new THREE.Mesh(collarGeo,steel);collar.rotation.z=Math.PI/2;collar.position.x=x;
+     group.add(collar);
+   }
+   wrist.add(group);
+   dumbbells.push(group);
+ }
+}
+function equipmentRefresh(){
+ const visible=active==='curl' && !!document.querySelector('#equipment')?.checked;
+ for(const weight of dumbbells)weight.visible=visible;
+}
 let importedCatalog;
 try{const [gltf,catalog]=await Promise.all([new Promise((resolve,reject)=>new GLTFLoader().load('./assets/body_superficial.glb',resolve,e=>{if(e.total)ui.loadFill.style.width=Math.min(100,Math.round(e.loaded/e.total*100))+'%';},reject)),fetch('./assets/muscles.json').then(r=>{if(!r.ok)throw Error('Каталог мышц недоступен');return r.json()})]); importedCatalog=catalog; model=gltf.scene; orientation.add(model);model.updateMatrixWorld(true);
  // Match bones using the ORIGINAL glTF joint table: GLTFLoader sanitizes names
@@ -74,7 +105,26 @@ try{const [gltf,catalog]=await Promise.all([new Promise((resolve,reject)=>new GL
    console.warn('Anatomy POSITION format differs from expected SHORT quantization');
  partIds=geo.attributes._PART_ID||geo.attributes._part_id||geo.attributes.part_id; tendons=geo.attributes._TENDON||geo.attributes._tendon;
  partGroups=importedCatalog.parts.map(p=>importedCatalog.muscles.find(m=>m.id===p.muscle)?.group||'other');
- if(partIds){colored=new Float32Array(geo.attributes.position.count*3);geo.setAttribute('color',new THREE.BufferAttribute(colored,3));muscleMesh.material=muscleMesh.material.clone();muscleMesh.material.vertexColors=true;muscleMesh.material.color.setRGB(1,1,1);muscleMesh.material.roughness=.84;muscleMesh.material.metalness=0;muscleMesh.material.side=THREE.DoubleSide;}
+ if(partIds){
+ colored=new Float32Array(geo.attributes.position.count*3);
+ exerciseMask=new Float32Array(geo.attributes.position.count);
+ geo.setAttribute('color',new THREE.BufferAttribute(colored,3));
+ geo.setAttribute('aExerciseActivation',new THREE.BufferAttribute(exerciseMask,1));
+ muscleMesh.material=muscleMesh.material.clone();
+ muscleMesh.material.vertexColors=true;muscleMesh.material.color.setRGB(1,1,1);
+ muscleMesh.material.roughness=.92;muscleMesh.material.metalness=0;muscleMesh.material.side=THREE.DoubleSide;
+ // Animate instructional muscle highlighting in the GPU rather than recomputing
+ // all 79k vertex colours every frame. It is NOT physiological EMG data.
+ muscleMesh.material.onBeforeCompile=shader=>{
+   shader.uniforms.uTrainingEffort={value:.10};
+   trainingEffortUniform=shader.uniforms.uTrainingEffort;
+   shader.vertexShader='attribute float aExerciseActivation;\\nvarying float vExerciseActivation;\\n'+shader.vertexShader;
+   shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\\n vExerciseActivation = aExerciseActivation;');
+   shader.fragmentShader='uniform float uTrainingEffort;\\nvarying float vExerciseActivation;\\n'+shader.fragmentShader;
+   shader.fragmentShader=shader.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>\\n diffuseColor.rgb = mix(diffuseColor.rgb, vec3(1.0, .30, .075), clamp(vExerciseActivation*uTrainingEffort*.85, 0.0, .85));');
+ };
+ muscleMesh.material.customProgramCacheKey=()=> 'home-workouts-muscle-activation-v7';
+}
  // Normalize the visual scene dimensions without changing bone-local bind matrices.
  const box=new THREE.Box3().setFromObject(model),size=new THREE.Vector3(),center=new THREE.Vector3();box.getSize(size);box.getCenter(center);
  if(!Number.isFinite(size.y)||size.y<=0)throw Error('Некорректные размеры анатомической сетки');
@@ -83,7 +133,7 @@ try{const [gltf,catalog]=await Promise.all([new Promise((resolve,reject)=>new GL
  // Capture the rest-world quaternion for each parent in order to rotate in anatomical axes.
  for(const [name,bone] of Object.entries(rig)){const parentQ=new THREE.Quaternion();bone.parent.getWorldQuaternion(parentQ);rest[name].parentWorldQ=parentQ;}
  skeletonHelper=new THREE.SkeletonHelper(model);scene.add(skeletonHelper);skeletonHelper.visible=false;skeletonHelper.material.color.setHex(0x8ef4df);skeletonHelper.material.depthTest=false;skeletonHelper.renderOrder=10;
- rigReady=true;ui.status.textContent='✓ Реальный риг · '+Object.keys(rig).length+' костей';ui.loading.style.display='none';ui.joints.textContent='Распознано '+Object.keys(rig).length+' суставов. Скелетная анимация — вращение костей с сохранением привязки мышц.';
+ addDemoDumbbells();rigReady=true;ui.status.textContent='✓ Реальный риг · '+Object.keys(rig).length+' костей';ui.loading.style.display='none';ui.joints.textContent='Распознано '+Object.keys(rig).length+' суставов. Скелетная анимация — вращение костей с сохранением привязки мышц.';
  updateColors();setExercise('curl');
 }catch(e){console.error(e);setError(e)}
 function resetBones(){for(const [name,bone] of Object.entries(rig)){const r=rest[name];bone.position.copy(r.position);bone.quaternion.copy(r.quaternion);bone.scale.copy(r.scale)} orientation.position.set(0,0,0);orientation.rotation.set(0,0,0)}
@@ -92,7 +142,17 @@ function smooth(t){t=Math.max(0,Math.min(1,t));return t*t*(3-2*t)}
 function effort(t){if(t<.10)return 0;if(t<.45)return smooth((t-.1)/.35);if(t<.58)return 1;if(t<.93)return 1-smooth((t-.58)/.35);return 0}
 function applyPose(){if(!rigReady)return;resetBones();const a=effort(progress);
  if(active==='curl'){
-   for(const s of ['L','R']){rotateWorld('upperarm.'+s,AXIS_X,-.07*a);rotateWorld('forearm.'+s,AXIS_X,-2.20*a);rotateWorld('hand.'+s,AXIS_X,.06*a);}
+   for(const side of ['L','R']){
+    // Arm stays alongside torso; elbow flexion carries the dumbbell toward shoulder.
+    rotateWorld('upperarm.'+side,AXIS_X,-.025*a);
+    rotateWorld('forearm.'+side,AXIS_X,-1.95*a);
+    // Supination through the anatomical forearm-twist joint, without wrist flexion.
+    const twist=rig['forearm_twist.'+side];
+    if(twist){
+      twist.quaternion.copy(rest['forearm_twist.'+side].quaternion);
+      twist.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(AXIS_Y,(side==='L'?1:-1)*.68*a));
+    }
+   }
  }
  if(active==='squat'){
    for(const s of ['L','R']){rotateWorld('thigh.'+s,AXIS_X,-1.15*a);rotateWorld('shin.'+s,AXIS_X,1.9*a);rotateWorld('upperarm.'+s,AXIS_X,-.80*a);rotateWorld('forearm.'+s,AXIS_X,-.15*a);}
@@ -113,17 +173,26 @@ function applyPose(){if(!rigReady)return;resetBones();const a=effort(progress);
    rotateWorld('spine_01',AXIS_X,-.05*a);
  }
  scene.updateMatrixWorld(true);if(skeletonHelper)skeletonHelper.updateMatrixWorld(true);}
-function updateColors(){if(!colored||!partIds)return;const groups=exercises[active].groups,enabled=$('#highlight').checked;const color=muscleMesh.geometry.attributes.color;for(let i=0;i<partIds.count;i++){
+function updateColors(){if(!colored||!partIds)return;const groups=exercises[active].groups,enabled=$('#highlight').checked;const color=muscleMesh.geometry.attributes.color,mask=muscleMesh.geometry.attributes.aExerciseActivation;for(let i=0;i<partIds.count;i++){
   const id=Math.round(partIds.getX(i)),idx=Math.floor((id-1)/2),group=id>0?partGroups[idx]:null,t=tendons?tendons.getX(i):0;
   let r=.59,g=.24,b=.27;if(!id){r=.67;g=.61;b=.55} if(enabled && groups.includes(group)){r=1;g=.39;b=.14}else if(enabled&&id){r=.45;g=.20;b=.25}
+  exerciseMask[i]=(enabled && groups.includes(group) && id && t<.9)?1:0;
   const blend=Math.min(1,Math.max(0,t))*0.68;r=r*(1-blend)+.88*blend;g=g*(1-blend)+.84*blend;b=b*(1-blend)+.75*blend;
   colored[i*3]=r;colored[i*3+1]=g;colored[i*3+2]=b;
- }color.needsUpdate=true;}
-function setExercise(name){active=name;progress=0;playing=false;panX=0;panY=0;ui.play.textContent='▶ Запустить';ui.title.textContent=exercises[name].title;ui.desc.textContent=exercises[name].desc;ui.info.textContent=exercises[name].info;document.querySelectorAll('[data-ex]').forEach(b=>b.classList.toggle('active',b.dataset.ex===name));updateColors();applyPose();setView(name==='pushup'?'side':'front')}
+ }color.needsUpdate=true;mask.needsUpdate=true;}
+function setExercise(name){active=name;progress=0;playing=false;panX=0;panY=0;ui.play.textContent='▶ Запустить';ui.title.textContent=exercises[name].title;ui.desc.textContent=exercises[name].desc;ui.info.textContent=exercises[name].info;document.querySelectorAll('[data-ex]').forEach(b=>b.classList.toggle('active',b.dataset.ex===name));updateColors();equipmentRefresh();applyPose();setView(name==='pushup'?'side':'front')}
 function setView(view){yaw=({front:0,side:Math.PI/2,back:Math.PI})[view];pitch=.06;panX=0;panY=0;document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===view))}
-function tick(ts){if(playing&&last)progress=(progress+(ts-last)*speed/9000)%1;last=ts;const b=effort(progress),f=progress<.1?'Исходное положение':progress<.45?'Сгибание':progress<.58?'Контроль позиции':progress<.93?'Разгибание':'Исходное положение';ui.phase.textContent=(active==='pushup'&&b>.85?'Нижняя точка':f);ui.scrub.value=Math.round(progress*1000);const dur=9/speed,fmt=s=>String(Math.floor(s/60)).padStart(2,'0')+':'+String(Math.floor(s%60)).padStart(2,'0');ui.time.textContent=fmt(dur*progress)+' / '+fmt(dur);if(rigReady)applyPose();const target=new THREE.Vector3(panX,(active==='pushup'?.65:.88)+panY,0);camera.position.set(target.x+zoom*Math.sin(yaw)*Math.cos(pitch),target.y+zoom*Math.sin(pitch),target.z+zoom*Math.cos(yaw)*Math.cos(pitch));camera.lookAt(target);renderer.render(scene,camera);requestAnimationFrame(tick)}requestAnimationFrame(tick);
+function tick(ts){if(playing&&last)progress=(progress+(ts-last)*speed/9000)%1;last=ts;const b=effort(progress),f=progress<.1?'Исходное положение':progress<.45?'Сгибание':progress<.58?'Контроль позиции':progress<.93?'Разгибание':'Исходное положение';ui.phase.textContent=(active==='pushup'&&b>.85?'Нижняя точка':f);ui.scrub.value=Math.round(progress*1000);const dur=9/speed,fmt=s=>String(Math.floor(s/60)).padStart(2,'0')+':'+String(Math.floor(s%60)).padStart(2,'0');ui.time.textContent=fmt(dur*progress)+' / '+fmt(dur);if(rigReady)applyPose();
+ if(trainingEffortUniform){
+   const e=active==='curl'?(progress<.10?.10:progress<.45?.20+.80*b:progress<.58?1:progress<.93?.40+.42*b:.10):.35+.55*b;
+   trainingEffortUniform.value=$('#highlight').checked?e:0;
+ }
+ if(active==='curl'){
+   ui.phase.textContent=progress<.10?'Подготовка':progress<.45?'Подъём · бицепс':progress<.58?'Верхняя точка':progress<.93?'Медленное опускание':'Исходное положение';
+ }
+ const target=new THREE.Vector3(panX,(active==='pushup'?.65:.88)+panY,0);camera.position.set(target.x+zoom*Math.sin(yaw)*Math.cos(pitch),target.y+zoom*Math.sin(pitch),target.z+zoom*Math.cos(yaw)*Math.cos(pitch));camera.lookAt(target);renderer.render(scene,camera);requestAnimationFrame(tick)}requestAnimationFrame(tick);
 $('#play').onclick=()=>{playing=!playing;ui.play.textContent=playing?'Ⅱ Пауза':'▶ Запустить'};$('#restart').onclick=()=>{progress=0;playing=false;ui.play.textContent='▶ Запустить';applyPose()};$('#hold').onclick=()=>{progress=.51;playing=false;ui.play.textContent='▶ Запустить';applyPose()};ui.scrub.addEventListener('input',()=>{progress=+ui.scrub.value/1000;playing=false;ui.play.textContent='▶ Запустить';applyPose()});ui.speed.onchange=()=>speed=+ui.speed.value;
-document.querySelectorAll('[data-ex]').forEach(b=>b.onclick=()=>setExercise(b.dataset.ex));document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>setView(b.dataset.view));$('#highlight').onchange=updateColors;$('#skeleton').onchange=e=>{if(skeletonHelper)skeletonHelper.visible=e.target.checked};
+document.querySelectorAll('[data-ex]').forEach(b=>b.onclick=()=>setExercise(b.dataset.ex));document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>setView(b.dataset.view));$('#highlight').onchange=updateColors;$('#skeleton').onchange=e=>{if(skeletonHelper)skeletonHelper.visible=e.target.checked};$('#equipment').onchange=equipmentRefresh;
 const pointers=new Map();let previous=null,pinch=null,pinchCenter=null;
 ui.box.addEventListener('pointerdown',e=>{
  if(e.target.closest('button'))return;
