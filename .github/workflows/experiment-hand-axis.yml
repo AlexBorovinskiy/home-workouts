@@ -1,0 +1,69 @@
+name: Validate source hand joint axis (experiment only)
+on:
+  push:
+    paths:
+      - '.github/workflows/experiment-hand-axis.yml'
+      - 'anatomy-rigged/hand-lab-axis-debug.html'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  axis-comparison:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: npm install --prefix /tmp/axis-qa --no-fund --no-audit playwright-core@1.56.1
+      - name: Compare axis conventions in mobile rendering
+        shell: bash
+        run: |
+          mkdir -p screenshots
+          python3 -m http.server 8765 --bind 127.0.0.1 >/tmp/server.log 2>&1 &
+          node --input-type=module <<'NODE'
+          import {chromium} from '/tmp/axis-qa/node_modules/playwright-core/index.mjs';
+          import {writeFileSync} from 'node:fs';
+          const browser=await chromium.launch({channel:'chrome',headless:true,args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+          const cases=[['x-positive-pre','x','positive','pre'],['x-negative-pre','x','negative','pre'],['z-positive-pre','z','positive','pre'],['z-negative-pre','z','negative','pre'],['z-positive-post','z','positive','post'],['z-negative-post','z','negative','post']];
+          const results=[];
+          try {
+           for(const [name,axis,sign,order] of cases){
+            const context=await browser.newContext({viewport:{width:430,height:932},deviceScaleFactor:1,isMobile:true,hasTouch:true,serviceWorkers:'block'});
+            const page=await context.newPage(),errors=[];
+            page.on('pageerror',e=>errors.push(e.message));
+            try {
+             const url='http://127.0.0.1:8765/anatomy-rigged/hand-lab-axis-debug.html?axis='+axis+'&sign='+sign+'&order='+order;
+             await page.goto(url,{waitUntil:'domcontentloaded',timeout:45000});
+             await page.waitForFunction(()=>window.__handLabQA?.isReady()||document.querySelector('#error')?.classList.contains('on'),null,{timeout:40000});
+             if(!await page.evaluate(()=>window.__handLabQA?.isReady()))throw Error('Scene failed: '+await page.locator('#error').innerText());
+             await page.locator('[data-pose="0"]').click();
+             await page.locator('[data-view="front"]').click();
+             await page.waitForTimeout(160);
+             await page.locator('canvas').screenshot({path:'screenshots/'+name+'-front.png'});
+             await page.locator('[data-view="thumb"]').click();
+             await page.waitForTimeout(160);
+             await page.locator('canvas').screenshot({path:'screenshots/'+name+'-thumb.png'});
+             await page.locator('[data-view="back"]').click();
+             await page.waitForTimeout(160);
+             await page.locator('canvas').screenshot({path:'screenshots/'+name+'-back.png'});
+             const metric=await page.evaluate(()=>window.__handLabQA.check());
+             results.push({name,metric:{samples:metric.samples,near:metric.near,penetration:metric.penetration,digits:metric.digits},errors});
+             if(errors.length)throw Error(errors.join('\n'));
+            }catch(err){
+             results.push({name,error:String(err),errors});
+            }finally{await context.close()}
+           }
+           writeFileSync('screenshots/results.json',JSON.stringify(results,null,2));
+           console.log(JSON.stringify(results,null,2));
+           if(results.some(r=>r.error||r.errors?.length))throw Error('One or more axis cases failed');
+          }finally{await browser.close()}
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: axis-comparison
+          path: screenshots/
+          retention-days: 2
