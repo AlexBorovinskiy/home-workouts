@@ -129,7 +129,7 @@ const STORAGE='home-workouts-motion-editor-v1',DURATION=6,rad=Math.PI/180;let pl
 const copy=x=>JSON.parse(JSON.stringify(x));
 const defaultFrames=()=>[{}, {}, {}];
 let frames=defaultFrames(),pose={},selected=0,playing=false,playhead=0,lastTime=0,loaded=false,rig={},rest={},mesh=null,dumbbells=[],skel=null,part=null,groups=[],vertexColors=null;
-let yaw=.15,pitch=.06,zoom=4.35,panX=0,panY=0,activeName='Сгибание рук с гантелями',targetGroup='arms_front';
+let yaw=.15,pitch=.06,zoom=3.75,panX=0,panY=0,activeName='Сгибание рук с гантелями',targetGroup='arms_front';
 const scene=new THREE.Scene(),cam=new THREE.PerspectiveCamera(34,1,.02,80),renderer=new THREE.WebGLRenderer({canvas:ui.canvas,antialias:true,alpha:true,powerPreference:'high-performance'});
 renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.7));renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.15;renderer.setClearColor(0x081928,0);
 scene.add(new THREE.HemisphereLight(0xeafafa,0x2e4556,1.8));
@@ -291,12 +291,8 @@ async function loadModel(){
  ui.status.textContent='✓ Модель загружена';ui.status.style.display='none';fitWholeBody();
 }
 const clamp=(x,a,b)=>Math.min(b,Math.max(a,x));
-// Fit normalized body height in portrait without clipping head or feet.
-function fitWholeBody(){
- const bodyHeight=1.76, halfAngle=cam.fov*Math.PI/360;
- zoom=Math.max(4.35,(bodyHeight/2)/Math.tan(halfAngle)*1.5);
- panX=0;panY=0;pitch=.06;
-}
+// Restore the known-good original default framing; user intentionally zooms in to inspect hands.
+function fitWholeBody(){zoom=3.75;panX=0;panY=0;pitch=.06}
 function validateDocument(data){
  if(!data||data.version!==1||!Array.isArray(data.frames)||data.frames.length!==3)throw Error('Неподдерживаемый формат упражнения');
  for(const frame of data.frames){
