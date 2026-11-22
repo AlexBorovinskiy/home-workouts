@@ -1,0 +1,66 @@
+name: QA published five-digit MRI hand
+on:
+  push:
+    paths:
+      - '.github/workflows/qa-live-full-hand.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  mobile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --prefix /tmp/full-hand-live --no-audit --no-fund playwright-core@1.56.1
+      - name: Validate five-finger hand deployed on GitHub Pages
+        shell: bash
+        run: |
+          mkdir -p proof
+          node --input-type=module <<'NODE'
+          import {chromium} from '/tmp/full-hand-live/node_modules/playwright-core/index.mjs';
+          import {writeFileSync} from 'node:fs';
+          const browser=await chromium.launch({channel:'chrome',headless:true,args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+          const page=await browser.newPage({viewport:{width:430,height:932},deviceScaleFactor:1,isMobile:true,hasTouch:true,serviceWorkers:'block'});
+          const errs=[];page.on('pageerror',e=>errs.push(e.message));page.on('console',m=>{if(m.type()==='error')errs.push(m.text())});
+          try{
+            const url='https://alexborovinskiy.github.io/home-workouts/anatomy-first/full-hand-lab.html?v=five-digits-1';
+            let loaded=false;
+            for(let i=0;i<7;i++){
+              const response=await page.goto(url,{waitUntil:'domcontentloaded',timeout:65000});
+              if(response.status()===200){loaded=true;break}
+              await page.waitForTimeout(2500);
+            }
+            if(!loaded)throw Error('Five-digit viewer not published yet');
+            await page.waitForFunction(()=>window.__thumbQA?.ready()||document.querySelector('#error')?.classList.contains('show'),null,{timeout:70000});
+            if(!await page.evaluate(()=>window.__thumbQA?.ready()))throw Error(await page.locator('#error').innerText());
+            const samples={},gap=(a,b)=>Math.hypot(...a.map((v,i)=>v-b[i]));
+            for(const name of ['open','oppose','grasp']){
+              await page.locator('[data-pose="'+name+'"]').click();
+              samples[name]=await page.evaluate(()=>window.__thumbQA.metrics());
+              await page.locator('canvas').screenshot({path:'proof/'+name+'.png'});
+            }
+            if(samples.open.digitCount!==5||samples.open.actualHandBones!==19)throw Error('Not full 5-finger MRI model');
+            if(Object.values(samples.open.digitCurls).some(v=>v!==0))throw Error('Open not neutral');
+            const movements=Object.fromEntries(Object.keys(samples.open.fingerTipPositions).map(k=>[
+              k,gap(samples.open.fingerTipPositions[k],samples.grasp.fingerTipPositions[k])
+            ]));
+            if(Object.values(movements).some(n=>n<.008))throw Error('One digit not moving: '+JSON.stringify(movements));
+            await page.locator('#middleCurl').fill('25');
+            const mid=(await page.evaluate(()=>window.__thumbQA.metrics())).digitCurls.middle;
+            if(Math.abs(mid-.25)>.01)throw Error('Middle slider no response');
+            if(errs.length)throw Error('Browser errors: '+errs.join(';'));
+            writeFileSync('proof/report.json',JSON.stringify({url,movements,poses:samples,errs},null,2));
+            console.log(JSON.stringify({url,movements,success:true},null,2));
+          }catch(e){writeFileSync('proof/error.txt',String(e)+'\n'+errs.join(';'));await page.screenshot({path:'proof/failure.png',fullPage:true}).catch(()=>{});throw e}
+          finally{await browser.close()}
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: published-five-digit-mri-hand
+          path: proof/
+          retention-days: 4
