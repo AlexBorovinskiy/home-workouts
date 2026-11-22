@@ -57,7 +57,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--mint);outline-o
 <div class="buttons">
 <button data-pose="open">Фото 1 · открыта</button>
 <button data-pose="oppose">Фото 2 · оппозиция</button>
-<button data-pose="grasp">Обхват</button>
+<button data-pose="grasp">Проба хвата</button>
 </div>
 </section>
 <section>
@@ -171,7 +171,9 @@ function setAngles(value){
 }
 function selectPreset(name){
  active=name;
- if(name==='grasp'){rig.handle.visible=true;$('#handleToggle').textContent='Скрыть рукоять';$('#handleToggle').setAttribute('aria-pressed','true');}
+ rig.handle.visible=name==='grasp';
+ $('#handleToggle').textContent=rig.handle.visible?'Скрыть рукоять':'Показать рукоять';
+ $('#handleToggle').setAttribute('aria-pressed',String(rig.handle.visible));
  rig.poseReference(name);
  setAngles(rig.referencePresets[name].thumb);
 }
