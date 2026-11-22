@@ -35,6 +35,10 @@ jobs:
               joints=[j for j in model.findall('./JointSet/objects/*') if j.tag.endswith('Joint')]
               muscles=[m for m in model.findall('./ForceSet/objects/*') if m.tag.endswith('Muscle')]
               coords=sum(len(j.findall('.//Coordinate')) for j in joints)
+              if len(out['models'])==0:
+                print('FIRST_MODEL_BODIES',json.dumps([b.attrib.get('name','') for b in bodies]))
+                print('FIRST_MODEL_JOINTS',json.dumps([j.attrib.get('name','') for j in joints]))
+                print('FIRST_MODEL_COORDINATES',json.dumps([c.attrib.get('name','') for j in joints for c in j.findall('.//Coordinate')][:70]))
               labels=[]
               for b in bodies:
                 bn=b.attrib.get('name','')
