@@ -1,0 +1,76 @@
+name: Finger cylinder grip fit (experiment only)
+on:
+  push:
+    paths:
+      - '.github/workflows/experiment-finger-fit.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  fit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --prefix /tmp/grip-fit --no-fund --no-audit playwright-core@1.56.1
+      - name: Find surface fit to 10mm dumbbell handle on real skin
+        shell: bash
+        run: |
+          mkdir -p results
+          python3 -m http.server 8765 --bind 127.0.0.1 >/tmp/server.log 2>&1 &
+          node --input-type=module <<'NODE'
+          import {chromium} from '/tmp/grip-fit/node_modules/playwright-core/index.mjs';
+          import {writeFileSync} from 'node:fs';
+          const browser=await chromium.launch({channel:'chrome',headless:true,args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+          const context=await browser.newContext({viewport:{width:430,height:932},deviceScaleFactor:1,isMobile:true,hasTouch:true,serviceWorkers:'block'});
+          const page=await context.newPage(),errors=[];
+          page.on('pageerror',e=>errors.push(e.message));
+          try{
+           await page.goto('http://127.0.0.1:8765/anatomy-rigged/hand-lab-axis-debug.html?axis=z&sign=negative&order=post',{waitUntil:'domcontentloaded'});
+           await page.waitForFunction(()=>window.__handLabQA?.isReady(),null,{timeout:80000});
+           const result=await page.evaluate(()=>{
+            const rows=[],names=['index','middle','ring','pinky'];
+            for(const factor of [.4,.5,.6,.7,.8,.9,1]){
+              for(const z of [.019,.025,.031,.037,.043,.049]){
+                for(const y of [.065,.075,.085]){
+                  const metric=window.__configureGrip({factor,z,y});
+                  const digits=names.map(n=>metric.digits[n]);
+                  const near=digits.map(d=>d.near);
+                  const inside=digits.reduce((s,d)=>s+d.penetration,0);
+                  const missed=digits.filter(d=>d.near<2).length;
+                  const score=near.reduce((s,n)=>s+Math.min(n,120),0)-inside*6-missed*60;
+                  rows.push({factor,z,y,near,inside,missed,score});
+                }
+              }
+            }
+            return rows.sort((a,b)=>b.score-a.score);
+           });
+           writeFileSync('results/fit-grid.json',JSON.stringify(result,null,2));
+           console.log(JSON.stringify(result.slice(0,12),null,2));
+           const picks=result.filter(r=>r.inside<10).slice(0,6);
+           if(!picks.length)picks.push(...result.slice(0,4));
+           for(let i=0;i<picks.length;i++){
+             const data=picks[i];
+             await page.evaluate(p=>window.__configureGrip(p),data);
+             await page.evaluate(()=>window.__handLabQA.setView('front'));
+             await page.waitForTimeout(140);
+             await page.locator('canvas').screenshot({path:'results/candidate-'+i+'-front.png'});
+             await page.evaluate(()=>window.__handLabQA.setView('thumb'));
+             await page.waitForTimeout(140);
+             await page.locator('canvas').screenshot({path:'results/candidate-'+i+'-thumb.png'});
+           }
+           if(errors.length)throw Error(errors.join('; '));
+          }catch(e){
+            writeFileSync('results/error.txt',String(e)+'\n'+errors.join('; '));
+            throw e;
+          }finally{await browser.close()}
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: finger-fit-grid
+          path: results/
+          retention-days: 2
