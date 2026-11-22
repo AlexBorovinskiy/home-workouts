@@ -1,0 +1,44 @@
+name: Inspect licensed static dumbbell curl as grasp reference
+on:
+  push:
+    paths:
+      - '.github/workflows/inspect-curl-reference.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download original static curl study (CC0)
+        shell: bash
+        run: |
+          mkdir -p reference
+          curl --fail --location --retry 3 --max-time 180 \
+            'https://www.innerscene.com/api/library/dumbbell-biceps-curl-3d-person-9306c6d0/download' \
+            -o reference/curl-static-reference.glb
+          echo "https://www.innerscene.com/tools/library/3d-parts/dumbbell-biceps-curl-3d-person-9306c6d0" > reference/source-url.txt
+          sha256sum reference/curl-static-reference.glb > reference/sha256.txt
+      - name: Inspect geometry topology
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json,struct,pathlib
+          b=pathlib.Path('reference/curl-static-reference.glb').read_bytes()
+          magic,ver,n=struct.unpack_from('<4sII',b)
+          assert magic==b'glTF' and ver==2 and len(b)==n
+          jsz,ct=struct.unpack_from('<I4s',b,12)
+          j=json.loads(b[20:20+jsz])
+          data={'bytes':len(b),'skins':len(j.get('skins',[])),'meshes':len(j.get('meshes',[])),
+            'nodes':[{'name':v.get('name'),'mesh':v.get('mesh')} for v in j.get('nodes',[])],
+            'primitives':[{'attributes':p.get('attributes'),'vertices':j['accessors'][p['attributes']['POSITION']]['count']} for mesh in j['meshes'] for p in mesh['primitives']]}
+          pathlib.Path('reference/summary.json').write_text(json.dumps(data,indent=2))
+          print('STATIC REFERENCE:',data)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: licensed-static-curl-reference
+          path: reference/
+          retention-days: 2
