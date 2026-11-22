@@ -1,0 +1,148 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Единая модель руки · проверка</title><link rel="icon" href="data:,">
+<style>
+*{box-sizing:border-box}body{margin:0;background:#081b27;color:#e9f5f6;font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+main{max-width:900px;margin:auto;padding:16px 12px 35px}.top{display:flex;align-items:center;justify-content:space-between;gap:8px}.top span{color:#87dbd0;letter-spacing:.14em;font-weight:800;font-size:10px}.top a{color:#cde9e9}
+h1{font-size:26px;margin:20px 0 6px}.lead{color:#aabfc7;line-height:1.6;font-size:13px}
+.notice{border-left:3px solid #dca977;background:#42342e;padding:12px;border-radius:9px;color:#f8dfca;font-size:12px;line-height:1.6;margin:13px 0}
+.viewer{height:min(68vh,680px);min-height:390px;border-radius:16px;overflow:hidden;position:relative;background:radial-gradient(ellipse at center,#2d5061,#0b1c2b 75%);touch-action:none;border:1px solid #315363}
+canvas{width:100%;height:100%;display:block;touch-action:none}.label{position:absolute;top:12px;left:12px;background:#092638eb;border-radius:20px;padding:8px 13px;color:#a8dedb;font-size:11px;pointer-events:none}
+#error{display:none;position:absolute;inset:0;background:#151e27e7;padding:30px;justify-content:center;align-items:center;text-align:center;line-height:1.5}#error.on{display:flex}
+.buttons{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:13px 0}button{min-height:45px;background:#173849;color:#def1ed;border:1px solid #426a77;border-radius:12px;font:inherit;font-size:12px;font-weight:600}
+p.note{color:#a8c6c9;font-size:12px;line-height:1.6}.stats{font-size:11px;color:#e2ded0;white-space:pre-wrap;background:#102a3a;padding:11px;border-radius:10px}
+</style></head><body><main>
+<div class="top"><span>HOME WORKOUTS / NEW RIG LAB</span><a href="./lesson.html">Основной урок ↗</a></div>
+<h1>Единая кисть и предплечье</h1>
+<p class="lead">Проверка цельной CC0-модели MakeHuman с собственными суставами пальцев и локтя. На этом этапе тестируем захват, не обучаем технике упражнения.</p>
+<div class="notice"><strong>Экспериментальная версия, не образец техники.</strong> Цельная модель кожи и настоящий сустав локтя уже работают. Захват большого пальца, положение рукоятки и супинация предплечья ещё требуют визуальной и анатомической проверки. Основное упражнение не изменено.</div>
+<div id="viewer" class="viewer"><canvas id="c"></canvas><div id="hud" class="label">Загрузка цельного рига…</div><div id="error" role="alert"></div></div>
+<div class="buttons"><button data-stage="0">1 · Старт</button><button data-stage="1">2 · Середина</button><button data-stage="2">3 · Пик</button></div>
+<div class="buttons"><button data-view="palm">Ладонь</button><button data-view="thumb">Большой палец</button><button data-view="back">Тыльная сторона</button><button data-view="side">Профиль</button><button data-view="wrist">Запястье</button><button data-view="whole">Вся модель</button></div>
+<p class="note">Вращай одним пальцем, масштабируй двумя. Гантель закреплена относительно кости кисти. Кожа запястья и предплечья принадлежит одной сетке.</p><pre id="info" class="stats">Данные проверки появятся после загрузки.</pre>
+</main>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+const $=s=>document.querySelector(s),scene=new THREE.Scene(),canvas=$('#c'),box=$('#viewer'),hud=$('#hud');
+const camera=new THREE.PerspectiveCamera(40,1,.01,100),renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true,preserveDrawingBuffer:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.8));renderer.setClearColor(0x091b2b,0);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;
+scene.add(new THREE.HemisphereLight(0xffffff,0x486077,2.15));
+const a=new THREE.DirectionalLight(0xfff0dd,2.7);a.position.set(3,4,5);scene.add(a);
+const b=new THREE.DirectionalLight(0x8ad7e4,1.5);b.position.set(-4,3,-3);scene.add(b);
+const orbit=new OrbitControls(camera,canvas);orbit.enableDamping=true;orbit.dampingFactor=.08;orbit.minDistance=.15;orbit.maxDistance=4;
+const params=new URLSearchParams(location.search);
+const axis=(params.get('axis')||'x').toLowerCase(),sign=params.get('sign')==='neg'?-1:1;
+const method=params.get('order')==='pre'?'premultiply':'multiply';
+let model=null,skin=null,hand=null,bar=null,ready=false,rest={},jointMap={},poseVersion=0,forearm=null,restElbow=null,elbowDelta=null,stage=0;
+const fingers=['index','middle','ring','pinky','thumb'];
+const baseFlex={index:[48,65,28],middle:[50,63,33],ring:[50,67,34],pinky:[46,59,30],thumb:[12,26,18]};
+const flex=Object.fromEntries(Object.entries(baseFlex).map(([k,v])=>[k,[...v]]));
+const handCenter=new THREE.Vector3(-.014,.075,.016);
+const direction=new THREE.Vector3(.78,.32,.54).normalize();
+function resize(){const w=box.clientWidth,h=box.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}
+new ResizeObserver(resize).observe(box);resize();
+function getCamTarget(){const p=new THREE.Vector3(0,.045,.015);return hand.localToWorld(p)}
+function view(type='palm'){
+ if(!ready)return;
+ scene.updateMatrixWorld(true);
+ const t=type==='whole'?new THREE.Vector3(0,.98,0):getCamTarget();
+ const local={palm:[0,.08,.44],thumb:[.28,.14,.32],back:[0,.05,-.46],side:[.38,.12,.15],wrist:[-.09,.19,.43],whole:[0,.85,2.35]}[type]||[0,.08,.44];
+ let off=new THREE.Vector3(...local);
+ if(type!=='whole'){off.applyQuaternion(hand.getWorldQuaternion(new THREE.Quaternion()));}
+ for(const item of bar?.children||[])if(item.userData.isPlate)item.visible=type!=='thumb';
+ camera.position.copy(t).add(off);
+ camera.up.set(0,1,0);camera.lookAt(t);orbit.target.copy(t);orbit.update();
+ hud.textContent=type==='whole'?'Одна непрерывная поверхность тела':'Новая модель · '+type;
+}
+function grip(){
+ const ax=axis==='x'?new THREE.Vector3(1,0,0):axis==='y'?new THREE.Vector3(0,1,0):new THREE.Vector3(0,0,1);
+ for(const digit of fingers)for(let j=1;j<=3;j++){
+   const bone=jointMap[digit+'_0'+j+'_r'],q=rest[bone.name];if(!bone||!q)throw Error('Нет сустава '+digit+j);
+   const rot=new THREE.Quaternion().setFromAxisAngle(ax,THREE.MathUtils.degToRad(sign*flex[digit][j-1]));
+   bone.quaternion.copy(q)[method](rot);
+ }
+ poseVersion++;scene.updateMatrixWorld(true);skin.skeleton.update();
+}
+function setStage(next){
+ if(!ready)return;
+ stage=Number(next);
+ const t=[0,.5,1][stage]??0;
+ const worldRot=new THREE.Quaternion().slerpQuaternions(new THREE.Quaternion(),elbowDelta,t);
+ const parentQ=forearm.parent.getWorldQuaternion(new THREE.Quaternion());
+ const localDelta=parentQ.clone().invert().multiply(worldRot).multiply(parentQ);
+ forearm.quaternion.copy(restElbow).premultiply(localDelta);
+ // Experimental forearm-axis rotation keeps the dumbbell shaft approximately level.
+ // Final anatomy review will determine whether the forearm should handle the twist.
+ const wristRoll=THREE.MathUtils.degToRad(-35-8*t);
+ hand.quaternion.copy(rest.hand_r).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),wristRoll));
+ scene.updateMatrixWorld(true);skin.skeleton.update();view('palm');contacts();
+ for(const btn of document.querySelectorAll('[data-stage]'))btn.classList.toggle('active',Number(btn.dataset.stage)===stage);
+ hud.textContent=['Старт · настоящий локоть','Середина · настоящий локоть','Пик · настоящий локоть'][stage];
+}
+function makeDumbbell(){
+ bar=new THREE.Group();bar.name='hand-anchored-dumbbell';
+ bar.position.copy(handCenter);bar.quaternion.setFromUnitVectors(new THREE.Vector3(1,0,0),direction);
+ const material=new THREE.MeshStandardMaterial({color:0x243b4a,metalness:.4,roughness:.42});
+ const metal=new THREE.MeshStandardMaterial({color:0x8799ab,metalness:.7,roughness:.32});
+ const h=new THREE.Mesh(new THREE.CylinderGeometry(.011,.011,.205,32),material);
+ h.rotation.z=Math.PI/2;bar.add(h);
+ for(const x of [-.077,.077]){
+   const disc=new THREE.Mesh(new THREE.CylinderGeometry(.042,.042,.022,32),metal);
+   disc.rotation.z=Math.PI/2;disc.position.x=x;disc.userData.isPlate=true;bar.add(disc);
+   const c=new THREE.Mesh(new THREE.CylinderGeometry(.016,.016,.012,24),material);
+   c.rotation.z=Math.PI/2;c.position.x=x*1.27;c.userData.isPlate=true;bar.add(c);
+ }
+ hand.add(bar);
+}
+function contacts(){
+ if(!ready)return null;
+ scene.updateMatrixWorld(true);skin.skeleton.update();
+ const p=skin.geometry.getAttribute('position'),I=skin.geometry.getAttribute('skinIndex'),W=skin.geometry.getAttribute('skinWeight');
+ const out=Object.fromEntries(fingers.map(k=>[k,{sample:0,near:0,inside:0,minimum:100,closest:100}]));
+ const nameByJoint=skin.skeleton.bones.map(b=>{const m=/^(index|middle|ring|pinky|thumb)_/.exec(b.name);return m?.[1]||null});
+ const v=new THREE.Vector3(),worldToBar=bar.matrixWorld.clone().invert();
+ const stride=Math.max(1,Math.ceil(p.count/22000));
+ for(let i=0;i<p.count;i+=stride){
+   const counts={index:0,middle:0,ring:0,pinky:0,thumb:0};
+   for(let j=0;j<4;j++){const name=nameByJoint[I.getComponent(i,j)];if(name)counts[name]+=W.getComponent(i,j)}
+   const group=fingers.reduce((a,b)=>counts[a]>counts[b]?a:b);
+   if(counts[group]<.57)continue;
+   v.fromBufferAttribute(p,i);skin.applyBoneTransform(i,v);skin.localToWorld(v);v.applyMatrix4(worldToBar);
+   if(Math.abs(v.x)>.064)continue;
+   const d=Math.hypot(v.y,v.z)-.011,part=out[group];
+   part.sample++;if(Math.abs(d)<=.003)part.near++;if(d<-.002)part.inside++;
+   part.minimum=Math.min(part.minimum,d);part.closest=Math.min(part.closest,Math.abs(d));
+ }
+ $('#info').textContent=Object.entries(out).map(([k,v])=>k+': рядом '+v.near+'/'+v.sample+'; внутри '+v.inside).join('\n')+'\nОсь '+axis+', знак '+sign+', порядок '+method;
+ return out;
+}
+async function init(){
+ const gltf=await new GLTFLoader().loadAsync('./assets/unified-makehuman-cc0.glb');
+ model=gltf.scene;scene.add(model);
+ model.traverse(o=>{if(o.isSkinnedMesh){skin=o;o.frustumCulled=false;o.material=new THREE.MeshStandardMaterial({color:0xd2b8ac,roughness:.88,metalness:0,side:THREE.DoubleSide})}if(o.isBone){jointMap[o.name]=o;rest[o.name]=o.quaternion.clone()}});
+ if(!skin)throw Error('Скиннинг модели отсутствует');
+ hand=jointMap.hand_r;forearm=jointMap.lowerarm_r;
+ if(!hand||!forearm||!jointMap.upperarm_r)throw Error('Недостаточно суставов руки');
+ restElbow=forearm.quaternion.clone();
+ scene.updateMatrixWorld(true);
+ const origin=forearm.getWorldPosition(new THREE.Vector3()),wrist=hand.getWorldPosition(new THREE.Vector3());
+ const startDir=wrist.sub(origin).normalize(),targetDir=new THREE.Vector3(-.045,.16,.19).normalize();
+ elbowDelta=new THREE.Quaternion().setFromUnitVectors(startDir,targetDir);
+ for(const digit of fingers)for(let j=1;j<=3;j++)if(!jointMap[digit+'_0'+j+'_r'])throw Error('Нет фаланги '+digit+j);
+ makeDumbbell();grip();ready=true;setStage(0);
+ window.__unifiedQA={ready:()=>ready,view,contacts,setStage,getPose:()=>({stage,elbow:forearm.getWorldPosition(new THREE.Vector3()).toArray(),wrist:hand.getWorldPosition(new THREE.Vector3()).toArray(),bar:bar.getWorldPosition(new THREE.Vector3()).toArray()}),configure(options={}){
+  if(options.center){handCenter.fromArray(options.center);bar.position.copy(handCenter)}
+  if(options.direction){direction.fromArray(options.direction).normalize();bar.quaternion.setFromUnitVectors(new THREE.Vector3(1,0,0),direction)}
+  if(options.factor!==undefined)for(const [digit,angles]of Object.entries(baseFlex))flex[digit]=angles.map((a)=>a*options.factor);
+  if(options.factors)for(const [digit,f]of Object.entries(options.factors))flex[digit]=baseFlex[digit].map(a=>a*f);
+  if(options.fingers)for(const [digit,angles]of Object.entries(options.fingers))flex[digit]=angles;
+  grip();return contacts();
+ },getNodes:()=>Object.keys(jointMap),getArm:()=>({upper:jointMap.upperarm_r.position.toArray(),lower:jointMap.lowerarm_r.position.toArray(),hand:hand.position.toArray()})};
+}
+for(const btn of document.querySelectorAll('[data-view]'))btn.addEventListener('click',()=>view(btn.dataset.view));
+for(const btn of document.querySelectorAll('[data-stage]'))btn.addEventListener('click',()=>setStage(btn.dataset.stage));
+function error(e){console.error(e);$('#error').classList.add('on');$('#error').textContent='Ошибка теста: '+e.message;hud.textContent='Не удалось загрузить риг'}
+(function animate(){requestAnimationFrame(animate);orbit.update();renderer.render(scene,camera)})();
+init().catch(error);
+</script></body></html>
