@@ -120,7 +120,17 @@ export function createFullMRIHandRigV6(THREE,gltf,landmarks,jointData){
     index:{y:-.030,z:-.004},middle:{y:-.031,z:-.004},
     ring:{y:-.029,z:-.005},little:{y:-.027,z:-.006}
   };
-  let fitted=null;
+  // Offline-fitted IK joint angles from mobile visual + bone-surface QA.
+  // Do NOT rerun a multi-second optimizer on the user's iPhone.
+  let fitted={
+    fingers:{
+      index:{angles:[69.4,88.4,68],residualMm:4.28},
+      middle:{angles:[59,110,45],residualMm:3.15},
+      ring:{angles:[54.4,110,49.8],residualMm:4.21},
+      little:{angles:[35,88.4,56.6],residualMm:25.07}
+    },
+    thumb:{pose:{abduct:-16,cmcFlex:41,cmcRotate:18,mcpFlex:30,ipFlex:45},residualMm:13.42}
+  };
   function fitDigit(name){
     const f=fingers[name],expected=digitAngles[name],goal=targets[name];
     const bounds=[[35,78],[88,128],[25,68]];
