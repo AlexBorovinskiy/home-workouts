@@ -1,0 +1,183 @@
+<!doctype html><html lang="ru"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0b2331"><link rel="icon" href="data:,">
+<title>OpenSim — движения позвоночника (расчёт кинематики)</title>
+<style>
+:root{color-scheme:dark;--ink:#e6f4f5;--muted:#a9c7cb;--mint:#89dccc;--line:#38626e;--panel:#163747}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(135deg,#102b3d,#091b28);color:var(--ink);font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+main{max-width:1110px;margin:auto;padding:16px 12px 56px}
+header{display:flex;justify-content:space-between;align-items:center;gap:7px;font-size:11px;font-weight:750;letter-spacing:.09em;color:var(--mint)}
+a{color:var(--mint)}header a{font-weight:500;color:var(--ink);text-decoration:none;border:1px solid var(--line);border-radius:16px;padding:8px 10px;letter-spacing:normal}
+h1{font-size:clamp(26px,4vw,37px);margin:25px 0 8px;letter-spacing:-.045em}
+.lead{color:var(--muted);line-height:1.6;max-width:830px}
+.layout{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(275px,.8fr);gap:13px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:17px;overflow:hidden;margin:15px 0}
+.stage{height:min(68vh,690px);min-height:415px;position:relative;background:radial-gradient(ellipse at 50% 40%,#224655,#0c1e2d 70%);touch-action:none}
+canvas{height:100%;width:100%;display:block;touch-action:none}
+.pill{position:absolute;top:13px;left:12px;background:#0c2737dc;border:1px solid #426b76;border-radius:25px;padding:8px 10px;font-size:11px;color:#c4eee4}
+.hint{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);border-radius:20px;background:#0b2837dd;padding:7px 10px;font-size:10px;color:#b9d7d5;white-space:nowrap}
+.error{position:absolute;inset:0;padding:25px;background:#132c3af2;display:none;align-items:center;justify-content:center;line-height:1.7;color:#ffe3c6;text-align:center}
+.error.show{display:flex}
+.controls{padding:15px;display:grid;gap:13px}p{line-height:1.6;color:var(--muted)}
+.sub{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--mint);font-weight:800}
+.btns{display:flex;flex-wrap:wrap;gap:7px}
+button{background:#234b59;border:1px solid #50717d;color:var(--ink);font:inherit;font-weight:650;border-radius:11px;padding:9px 12px;min-height:40px;cursor:pointer}
+button.on{background:var(--mint);border-color:var(--mint);color:#082b35}
+button:disabled{opacity:.5}
+input[type=range]{width:100%;accent-color:var(--mint)}
+aside{margin-top:15px}.sidecard{padding:16px;border-radius:17px;border:1px solid var(--line);background:var(--panel);margin-bottom:13px}
+h2{font-size:16px;margin:0 0 11px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.stats div{padding:13px;background:#102d3a;border-radius:10px}
+.stats b{display:block;font-size:25px}
+.stats small{color:var(--muted)}
+.audit{background:#122e39;padding:12px;border-radius:10px;font-size:12px;line-height:1.65;color:#c8e3e4}
+.warning{color:#f4c498;font-size:12px;line-height:1.6;border-top:1px solid #385866;margin-top:12px;padding-top:11px}
+@media(max-width:820px){.layout{grid-template-columns:1fr}.stage{height:57vh;min-height:395px}}
+</style></head><body><main>
+<header><span>HOME WORKOUTS / OPEN SIM MOTION</span><a href="./">Исходные .osim</a></header>
+<h1>Позвоночник: нативный расчёт OpenSim</h1>
+<p class="lead">Визуализация положений управляющих тел, полученных действительным движком OpenSim из исследовательской модели позвоночника. Это **диагностические изменения суставных координат**, а не запись упражнения, не настоящие позвонки и не оценка нагрузки.</p>
+<div class="layout">
+<section class="card">
+<div class="stage" id="stage">
+<canvas id="canvas" aria-label="Трёхмерная схема суставных тел позвоночника в OpenSim"></canvas>
+<div class="pill" id="heading">OpenSim • загрузка данных</div>
+<div class="hint">Пальцем — вращение · двумя — масштаб</div>
+<div class="error" id="error"></div></div>
+<div class="controls">
+<div class="sub">Диагностический режим</div>
+<div class="btns" id="modes">
+<button class="on" data-mode="neutral">Исходное положение</button>
+<button data-mode="flexion_diagnostic">Сгибание</button>
+<button data-mode="extension_diagnostic">Разгибание</button>
+<button data-mode="sidebend_diagnostic">Боковой наклон</button>
+<button data-mode="twist_diagnostic">Вращение</button>
+</div>
+<div class="sub">Переход между исходным и изменённым положением: <output id="pct">0%</output></div>
+<input id="intensity" type="range" min="0" max="100" step="1" value="0" aria-label="Степень диагностического изменения">
+<div class="btns"><button id="play">Воспроизвести переход</button><button data-view="front" class="on">Спереди</button><button data-view="side">В профиль</button><button data-view="back">Сзади</button></div>
+</div>
+</section>
+<aside>
+<section class="sidecard">
+<h2>Что действительно рассчитано</h2>
+<div class="stats">
+<div><b id="levels">—</b><small>тел позвоночника</small></div>
+<div><b id="poses">—</b><small>диагностических положений</small></div>
+</div>
+<div class="audit" id="audit">Открываем данные OpenSim…</div>
+<p class="warning">Показаны только центры координатных систем сегментов, соединённые для наглядности. Это не трёхмерные поверхности костей. Даже при успешном расчёте ограничений модель не подтверждает правильность техники отжиманий.</p>
+</section>
+<section class="sidecard"><h2>Что нужно для отжиманий</h2>
+<p>Исходная научная модель содержит только верхнюю часть тела. Для полноценного отжимания понадобятся совместимая модель нижней части тела, опора ладоней и стоп, контактные силы и измеренные движения. Результаты этого стенда не дают оснований судить о риске травмы.</p>
+<p><a href="https://zenodo.org/records/18259702">Первоисточник научных моделей FHS</a> · <a href="https://opensim.stanford.edu/">Платформа OpenSim</a></p>
+</section>
+</aside></div></main>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+const $=s=>document.querySelector(s),stage=$('#stage'),canvas=$('#canvas');
+const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(36,1,.005,20);
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true,preserveDrawingBuffer:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.7));renderer.setClearColor(0x122b3b,0);
+scene.add(new THREE.HemisphereLight(0xd8eeef,0x375566,2.0));
+const light=new THREE.DirectionalLight(0xfff1df,2.0);light.position.set(2,4,4);scene.add(light);
+const orbit=new OrbitControls(camera,canvas);orbit.enableDamping=true;orbit.minDistance=.12;orbit.maxDistance=4;
+let data=null,current='neutral',power=0,playing=false,geometry=null;
+let jointMarkers=[],segments=[],suppMarkers=[],suppLinks=[],map=new Map();
+const P=new THREE.Vector3();
+function resize(){const w=stage.clientWidth,h=stage.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/Math.max(h,1);camera.updateProjectionMatrix();}
+new ResizeObserver(resize).observe(stage);resize();
+function vec(arr){return new THREE.Vector3(...arr);}
+function fit(){
+ const pts=Object.values(data.frames[0].bodyFrameOriginsM).map(vec);
+ const bbox=new THREE.Box3().setFromPoints(pts), center=bbox.getCenter(new THREE.Vector3()),size=bbox.getSize(new THREE.Vector3());
+ const span=Math.max(size.y,size.x,size.z,.4);
+ orbit.target.copy(center);
+ camera.position.copy(center).add(new THREE.Vector3(0,.07,span*2.7));orbit.update();
+ return {center,span};
+}
+function view(name){
+ const f=fit(),c=f.center,d=f.span*2.7;
+ const delta=name==='side'?new THREE.Vector3(d,.04,0):name==='back'?new THREE.Vector3(0,.04,-d):new THREE.Vector3(0,.04,d);
+ camera.position.copy(c).add(delta);camera.lookAt(c);orbit.update();
+ document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('on',b.dataset.view===name));
+}
+function point(name,frame){return vec(frame.bodyFrameOriginsM[name]);}
+function makeMarker(col,r=.011){
+ const mat=new THREE.MeshStandardMaterial({color:col,roughness:.43,metalness:.05});
+ const mesh=new THREE.Mesh(new THREE.SphereGeometry(r,16,12),mat);scene.add(mesh);return mesh;
+}
+function makeLine(col,opacity=1){
+ const geom=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(),new THREE.Vector3()]);
+ const mat=new THREE.LineBasicMaterial({color:col,transparent:opacity<1,opacity});
+ const line=new THREE.Line(geom,mat);scene.add(line);return line;
+}
+function updateLine(item,a,b){
+ const attr=item.geometry.attributes.position;
+ attr.setXYZ(0,a.x,a.y,a.z);attr.setXYZ(1,b.x,b.y,b.z);attr.needsUpdate=true;
+ item.geometry.computeBoundingSphere();
+}
+function create(){
+ const ids=data.spineLevels,first=data.frames[0];
+ for(let i=0;i<ids.length;i++){
+   jointMarkers.push(makeMarker(ids[i].startsWith('lumbar')?0xe2aa78:0x8de1d0,.013));
+   if(i)segments.push(makeLine(0x94bccc));
+ }
+ const extras=['clavicle_R','scapula_R','clavicle_L','scapula_L','sternum'];
+ for(const name of extras)if(first.bodyFrameOriginsM[name]){const marker=makeMarker(name.includes('scapula')?0xe2c39b:0xb4aeea,.009);suppMarkers.push({name,mesh:marker});}
+ for(const [a,b] of [['thoracic1','clavicle_R'],['clavicle_R','scapula_R'],['thoracic1','clavicle_L'],['clavicle_L','scapula_L'],['thoracic6','sternum']]){
+  if(first.bodyFrameOriginsM[a]&&first.bodyFrameOriginsM[b])suppLinks.push({a,b,line:makeLine(0x7c91ac,.7)});
+ }
+ update();view('front');
+}
+function update(){
+ if(!data)return;
+ const start=data.frames[0],end=data.frames.find(f=>f.id===current)||start;
+ const t=current==='neutral'?0:power;
+ const pos=new Map();
+ for(const name of Object.keys(start.bodyFrameOriginsM)){
+  if(!end.bodyFrameOriginsM[name])continue;
+  pos.set(name,point(name,start).lerp(point(name,end),t));
+ }
+ data.spineLevels.forEach((name,i)=>{
+  const p=pos.get(name);if(!p)return;
+  jointMarkers[i].position.copy(p);if(i&&pos.has(data.spineLevels[i-1]))updateLine(segments[i-1],pos.get(data.spineLevels[i-1]),p);
+ });
+ suppMarkers.forEach(e=>e.mesh.position.copy(pos.get(e.name)||new THREE.Vector3()));
+ suppLinks.forEach(e=>{if(pos.has(e.a)&&pos.has(e.b))updateLine(e.line,pos.get(e.a),pos.get(e.b))});
+ $('#pct').textContent=Math.round(t*100)+'%';
+ $('#heading').textContent='OpenSim • '+(current==='neutral'?'исходная геометрия':'диагностическая поза')+' • '+Math.round(t*100)+'%';
+ const a=pos.get('thoracic1'),b=pos.get('lumbar5');
+ const base=point('thoracic1',start),deltaMm=a?base.distanceTo(a)*1000:0;
+ $('#audit').textContent='Уровней: '+data.spineLevels.length+
+ '. Изменение положения начала координат T1: '+deltaMm.toFixed(2)+' мм.'+
+ ' Движение рассчитано по исходным связям OpenSim, но промежуточные кадры линейно интерполированы для отображения, а не пересчитаны движком.';
+}
+function choose(mode){
+ current=mode;
+ if(mode==='neutral'){power=0;$('#intensity').value='0'}
+ else{power=1;$('#intensity').value='100'}
+ document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('on',b.dataset.mode===mode));
+ update();
+}
+document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>choose(b.dataset.mode)));
+document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>view(b.dataset.view)));
+$('#intensity').addEventListener('input',v=>{power=Number(v.target.value)/100;playing=false;$('#play').textContent='Воспроизвести переход';update()});
+$('#play').addEventListener('click',()=>{if(current==='neutral')choose('flexion_diagnostic');playing=!playing;$('#play').textContent=playing?'Остановить':'Воспроизвести переход'});
+let last=0;
+function render(t){requestAnimationFrame(render);const dt=last?Math.min(.06,(t-last)/1000):0;last=t;
+ if(playing){power=(1+Math.sin(t*.00165-Math.PI/2))/2;$('#intensity').value=String(Math.round(power*100));update()}
+ orbit.update();renderer.render(scene,camera)}
+requestAnimationFrame(render);
+fetch('./assets/native-spine-samples.json').then(r=>{if(!r.ok)throw Error('Файл рассчитанных координат не опубликован: HTTP '+r.status);return r.json()})
+.then(j=>{
+ if(j.kind!=='opensim-native-kinematic-diagnostic'||!Array.isArray(j.frames)||j.frames.length<2||j.spineLevels.length!==17)throw Error('Неверная структура данных OpenSim');
+ data=j;
+ $('#levels').textContent=j.spineLevels.length;
+ $('#poses').textContent=j.frames.length;
+ create();window.__spineQA={ready:()=>true,model:()=>data,mode:choose,view};
+}).catch(e=>{$('#error').classList.add('show');$('#error').textContent='Ошибка: '+e.message});
+</script></body></html>
