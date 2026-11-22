@@ -69,7 +69,7 @@ jobs:
               await page.evaluate(angles=>{
                 window.__anatomyQA.setPose({opposition:1,grip:.85});
                 window.__anatomyQA.calibrate(angles);
-                document.getElementById('barSwitch')?.click();
+                if(!window.__anatomyQA.getBarVisible())document.getElementById('barSwitch')?.click();
               },p.angles);
               for(const view of views){
                 await page.evaluate(v=>window.__anatomyQA.view(v),view);
