@@ -6,6 +6,9 @@ import {createMRIThumbRig} from './thumb-mri-rig.js';
 export function createReferenceGripRig(THREE,gltf,landmarks){
  const base=createMRIThumbRig(THREE,gltf,landmarks);
  const root=base.root;
+ // This is a joint study, not a dumbbell product render: weight plates obstruct
+ // the bones in mobile side-view. Keep only the handle as a passive reference.
+ for(const part of base.handle.children.slice(1))part.visible=false;
  const all=new Map();
  root.traverse(o=>{if(o.isMesh&&o.name.startsWith('segment_'))all.set(o.name,o)});
  const names={
