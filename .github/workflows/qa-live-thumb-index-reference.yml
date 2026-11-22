@@ -1,0 +1,59 @@
+name: Verify published MRI thumb/index photo comparison on mobile
+on:
+  push:
+    paths:
+      - '.github/workflows/qa-live-thumb-index-reference.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  site:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --prefix /tmp/ref-live --no-audit --no-fund playwright-core@1.56.1
+      - name: Verify actual deployed page and photo-reference transition
+        shell: bash
+        run: |
+          mkdir -p proof
+          node --input-type=module <<'NODE'
+          import {chromium} from '/tmp/ref-live/node_modules/playwright-core/index.mjs';
+          import {writeFileSync} from 'node:fs';
+          const browser=await chromium.launch({channel:'chrome',headless:true,args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+          const page=await browser.newPage({viewport:{width:430,height:932},deviceScaleFactor:1,isMobile:true,hasTouch:true,serviceWorkers:'block'});
+          const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+          try{
+            const url='https://alexborovinskiy.github.io/home-workouts/anatomy-first/thumb-lab-reference.html';
+            const r=await page.goto(url+'?v=reference-2',{waitUntil:'domcontentloaded',timeout:65000});
+            if(r.status()!==200)throw Error('Page not published: '+r.status());
+            await page.waitForFunction(()=>window.__thumbQA?.ready()||document.querySelector('#error')?.classList.contains('show'),null,{timeout:70000});
+            if(!await page.evaluate(()=>window.__thumbQA?.ready()))throw Error('Site failed: '+await page.locator('#error').innerText());
+            const poses={},delta=(a,b)=>Math.hypot(...a.map((v,i)=>v-b[i]));
+            for(const preset of ['open','oppose','grasp']){
+              await page.locator('[data-pose="'+preset+'"]').click();
+              poses[preset]=await page.evaluate(()=>window.__thumbQA.metrics());
+              if(preset==='grasp'){
+                if(!await page.evaluate(()=>window.__thumbQA.toggleHandle(true)))throw Error('No handle');
+              }
+              await page.locator('canvas').screenshot({path:'proof/'+preset+'.png'});
+            }
+            if(poses.oppose.indexCurl<65||poses.open.indexCurl!==0)throw Error('Reference pose index rig not loaded');
+            if(Number(poses.oppose.boneTipDistanceMm)>=Number(poses.open.boneTipDistanceMm)-5)throw Error('No thumb-index convergence');
+            if(delta(poses.open.pivotCMC,poses.oppose.pivotCMC)>.00001)throw Error('CMC drifted');
+            const report={url,poses,errors};
+            writeFileSync('proof/report.json',JSON.stringify(report,null,2));
+            console.log(JSON.stringify({url,oppositionGap:poses.oppose.boneTipDistanceMm,openingGap:poses.open.boneTipDistanceMm,errors},null,2));
+            if(errors.length)throw Error(errors.join('|'));
+          }catch(e){writeFileSync('proof/error.txt',String(e)+'\n'+errors.join('; '));await page.screenshot({path:'proof/failure.png',fullPage:true}).catch(()=>{});throw e}
+          finally{await browser.close()}
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: published-thumb-index-photo-comparison
+          path: proof/
+          retention-days: 4
