@@ -1,10 +1,10 @@
-name: QA MRI hand v4 grip motion
+name: QA reference-fitted MRI hand
 on:
   push:
     paths:
       - '.github/workflows/qa-anatomy-first-grip.yml'
-      - 'anatomy-first/full-hand-lab-v4.html'
-      - 'anatomy-first/full-mri-hand-rig-v3.js'
+      - 'anatomy-first/grip-reference.html'
+      - 'anatomy-first/full-mri-hand-rig-v5.js'
       - 'anatomy-first/full-mri-hand-rig-v2.js'
   workflow_dispatch:
 permissions:
