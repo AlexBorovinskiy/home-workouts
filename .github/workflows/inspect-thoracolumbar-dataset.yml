@@ -36,6 +36,14 @@ jobs:
             first=ET.fromstring(z.read(names[0])).find('Model')
             geometryRefs=[n.text for n in first.findall('.//mesh_file') if n.text]
             print('FIRST_OSIM_MESH_REFERENCES',json.dumps(Counter(geometryRefs).most_common(30)))
+            for target in ('skull.vtp','thumbprox.vtp','cerv1.vtp'):
+              path0=next((n for n in z.namelist() if n.endswith('/Geometry/'+target)),None)
+              if path0:
+                data=z.read(path0)
+                print('MESH_SAMPLE',target,'BYTES',len(data),'HEAD',repr(data[:800]))
+            for b in first.findall('./BodySet/objects/Body'):
+              if b.get('name') in ('head_neck','hand_R'):
+                print('BODY_ATTACHED_SAMPLE',b.get('name'),ET.tostring(b.find('attached_geometry'),encoding='unicode')[:3300])
             print('FIRST_OSIM_HEAD_BODY',json.dumps([
                {'name':b.get('name'), 'attached':len(b.findall('./attached_geometry/*')),
                 'meshrefs':[m.text for m in b.findall('.//mesh_file')]}
