@@ -17,18 +17,18 @@
 <body><main class="layout">
 <div class="top"><div class="eyebrow">HOME WORKOUTS / 3D-ЛАБОРАТОРИЯ</div><a class="back" href="../">← Журнал</a></div>
 <div class="h1">Приседание · анатомия движения</div>
-<p class="intro">Настоящая мужская модель мышц и костей. Вращай её пальцем, выбирай мышцы, останавливай движение в любой точке. Геометрия основана на открытом анатомическом атласе.</p>
+<p class="intro">Настоящая мужская модель мышц и костей. Вращай её пальцем, выбирай мышцы, останавливай движение в любой точке. Геометрия основана на открытом анатомическом атласе. Анимация экспериментальная: она лишь показывает общее движение сегментов.</p>
 <div class="cols"><div class="viewer">
 <div class="canvasBox" id="dragZone"><canvas id="scene" aria-label="Вращаемая мужская анатомическая 3D-модель"></canvas><div class="floor"></div><div class="status" id="status"><span class="dot"></span> Загрузка анатомии…</div><div class="viewbar" id="views"><button data-view="front">Фас</button><button data-view="side">Профиль</button><button data-view="back">Спина</button></div><div class="gesture">↔ Вращай · Разведи пальцы для масштаба</div><div class="notice" id="error"><div><h3>Модель пока не загрузилась</h3><p>При первом открытии нужно скачать анатомию (~6 МБ) и графический модуль. После загрузки на этом устройстве данные сохраняются для повторного офлайн-доступа.</p><a href="https://charleeh.github.io/ecorche/" target="_blank" rel="noopener">Посмотреть оригинальный 3D-атлас</a></div></div><div class="loadingBar" id="bar"><b id="barFill"></b></div></div>
-<div class="controls"><div class="labelrow"><span class="phase" id="phase">Подготовка</span><span class="clock" id="clock">00:00 / 00:18</span></div><input type="range" class="timeline" id="scrub" min="0" max="1000" value="0" aria-label="Фаза приседания"><div class="actions"><button class="action main" id="play">Ⅱ Пауза</button><button class="action" id="restart">↺ Сначала</button><button class="action" id="still">Стоп-кадр</button><div class="speed">Скорость <select id="speed"><option value="0.25">0,25×</option><option value="0.5" selected>0,5×</option><option value="0.75">0,75×</option><option value="1">1×</option></select></div></div></div>
+<div class="controls"><div class="labelrow"><span class="phase" id="phase">Подготовка</span><span class="clock" id="clock">00:00 / 00:18</span></div><input type="range" class="timeline" id="scrub" min="0" max="1000" value="0" aria-label="Фаза приседания"><div class="actions"><button class="action main" id="play">▶ Смотреть движение</button><button class="action" id="restart">↺ Сначала</button><button class="action" id="still">Стоп-кадр</button><div class="speed">Скорость <select id="speed"><option value="0.25" selected>0,25×</option><option value="0.5">0,5×</option><option value="0.75">0,75×</option><option value="1">1×</option></select></div></div></div>
 </div>
 <div class="info"><div class="full"><div class="section">Слои тела</div><div class="tabs"><button class="tab active" data-layer="muscles">Мышцы</button><button class="tab" data-layer="mix">Мышцы + кости</button><button class="tab" data-layer="bones">Скелет</button></div></div>
 <div><div class="section">Техника выполнения</div><h2 id="step">01 / Подготовка</h2><p class="desc" id="desc">Стопы устойчивы, корпус собран. Движение начинается сгибанием тазобедренных и коленных суставов.</p><div class="explain" id="mechanics">Основное усилие создают квадрицепсы и ягодичные. Мышцы спины и живота поддерживают стабильность корпуса.</div></div>
 <hr class="divider"/>
 <div><div class="section">Подсветить мышечную группу</div><div class="muscles" id="muscles"><button class="mus active" data-focus="all"><span class="swatch"></span>Все основные мышцы</button><button class="mus" data-focus="quad"><span class="swatch"></span>Квадрицепсы (передняя поверхность бедра)</button><button class="mus" data-focus="glute"><span class="swatch"></span>Большие ягодичные</button><button class="mus" data-focus="core"><span class="swatch"></span>Стабилизаторы корпуса</button></div><label class="toggle">Показывать глубокие мышцы <input id="deep" type="checkbox"></label></div>
-<div class="full"><hr class="divider"><div class="skeletoninfo"><strong>Важно:</strong> мышечная геометрия анатомическая, но движение сейчас получено экспериментальной деформацией сетки, а не валидированной моделью суставов. Это демонстрация интерфейса, а не медицински точный расчёт биомеханики. Для итоговой библиотеки упражнений потребуется полноценный риг и проверка движений.</div></div>
+<div class="full"><hr class="divider"><div class="skeletoninfo"><strong>Важно:</strong> геометрия мышц взята из анатомического атласа, однако движения приблизительны. Суставная анимация сохраняет длину сегментов ног и корпуса, но не моделирует сокращение мышц и не заменяет проверенную биомеханику. Это прототип интерфейса, а не инструкция по выполнению приседания.</div></div>
 </div></div>
-<div class="credits">Анатомический источник: <a href="https://github.com/Charleeh/ecorche" target="_blank" rel="noopener">Écorché</a> (CC BY-SA 4.0), на основе BodyParts3D © The Database Center for Life Science (CC BY 4.0) и Z-Anatomy by Gauthier Kervyn (CC BY-SA 4.0). Изменения: экспериментальная анимация и подсветка. Производные части модели — CC BY-SA 4.0. Код прототипа — самостоятельная демонстрация. Для обучения, не клинического применения.</div>
+<div class="credits">Анатомический источник: <a href="https://github.com/Charleeh/ecorche" target="_blank" rel="noopener">Écorché</a> (CC BY-SA 4.0), на основе BodyParts3D © The Database Center for Life Science (CC BY 4.0) и Z-Anatomy by Gauthier Kervyn (CC BY-SA 4.0). Изменения: экспериментальная суставная анимация и подсветка. Производные части модели — CC BY-SA 4.0. Код прототипа — самостоятельная демонстрация. Для обучения, не клинического применения.</div>
 </main>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"}}</script>
 <script type="module">
@@ -49,29 +49,60 @@ scene.add(new THREE.HemisphereLight(0xe3f8ff,0x334354,2.1));const key=new THREE.
 const platform=new THREE.Mesh(new THREE.CylinderGeometry(.72,.78,.026,84),new THREE.MeshStandardMaterial({color:0x193544,roughness:1}));platform.position.y=-.026;scene.add(platform);
 const ring=new THREE.Mesh(new THREE.TorusGeometry(.77,.006,8,90),new THREE.MeshBasicMaterial({color:0x427c85}));ring.rotation.x=Math.PI/2;ring.position.y=-.015;scene.add(ring);
 // Import real anatomical meshes and prepare them for a lightweight vertex shader pose experiment.
-const loader=new GLTFLoader();loader.setMeshoptDecoder(MeshoptDecoder);let meshes=[],mode='muscles',focus='all',deep=false,progress=0,playing=true,speed=.5,yaw=.42,pitch=.07,zoom=3.6,last=0,loaded=false;
+const loader=new GLTFLoader();loader.setMeshoptDecoder(MeshoptDecoder);let meshes=[],mode='muscles',focus='all',deep=false,progress=0,playing=false,speed=.25,yaw=.42,pitch=.07,zoom=3.2,last=0,loaded=false;
 const highList=[/vastus|rectus femoris/i,/gluteus maximus/i,/erector spinae|transversus abdominis|rectus abdominis|obliquus externus|external oblique|multifidus/i];
 const muscleType=name =>highList[0].test(name)?'quad':highList[1].test(name)?'glute':highList[2].test(name)?'core':'other';
 const shaderUniforms=[];
-function augmentedMaterial(src){const mat=src.clone();mat.roughness=.91;mat.metalness=0;mat.side=THREE.DoubleSide;mat.transparent=false;mat.depthWrite=true;mat.onBeforeCompile=shader=>{
- shader.uniforms.uSquat={value:0};shaderUniforms.push(shader.uniforms.uSquat);
- shader.vertexShader='uniform float uSquat;\n'+shader.vertexShader;
- shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
- float s=uSquat; vec3 p=transformed; float y=p.y; float ay=0.10;float ky=0.51;float hy=0.99;
- float targetKneeY=ky-.048*s, targetKneeZ=.25*s;
- float targetHipY=hy-.40*s, targetHipZ=-.19*s;
- vec3 lower=vec3(p.x, mix(ay,targetKneeY,clamp((y-ay)/(ky-ay),0.,1.)),p.z+targetKneeZ*clamp((y-ay)/(ky-ay),0.,1.));
- float v=clamp((y-ky)/(hy-ky),0.,1.);
- vec3 upper=vec3(p.x,mix(targetKneeY,targetHipY,v),p.z+mix(targetKneeZ,targetHipZ,v));
- float lean=.42*s;float dy=y-hy;
- vec3 torso=vec3(p.x,targetHipY+dy*cos(lean)-p.z*sin(lean),targetHipZ+dy*sin(lean)+p.z*cos(lean));
- vec3 posed=y<ay?p:y<ky?lower:y<hy?upper:torso;
- // Arms should remain linked to the shoulder rather than deform as thigh sections.
- float arm=1.-smoothstep(.24,.34,abs(p.x));
- if(y>.70) posed=mix(torso,posed,arm);
- transformed=posed;
- `);
- };mat.customProgramCacheKey=()=> 'home-workouts-anatomy-squat-v2';return mat}
+// Pose prototype v3: rotate rigid-length anatomical segments around their
+// joints, instead of shearing vertex positions by height (which crushed legs).
+// This is an illustrative kinematic rig, NOT a validated muscle simulation.
+function augmentedMaterial(src,region){
+ const mat=src.clone();mat.roughness=.91;mat.metalness=0;mat.side=THREE.DoubleSide;mat.transparent=false;mat.depthWrite=true;
+ mat.onBeforeCompile=shader=>{
+  shader.uniforms.uSquat={value:0};shader.uniforms.uRigRegion={value:region};
+  shaderUniforms.push(shader.uniforms.uSquat);
+  const poseFns=`
+ uniform float uSquat;
+ uniform float uRigRegion;
+ vec3 squatRotX(vec3 v, float a){float c=cos(a),sn=sin(a);return vec3(v.x,v.y*c-v.z*sn,v.y*sn+v.z*c);}
+ float squatArmWeight(vec3 p){return max(uRigRegion,smoothstep(0.23,0.34,abs(p.x))*smoothstep(0.66,0.82,p.y));}
+ vec3 squatBlend(vec3 p,vec3 foot,vec3 shin,vec3 thigh,vec3 torso){
+  vec3 leg=mix(foot,shin,smoothstep(0.105,0.17,p.y));
+  leg=mix(leg,thigh,smoothstep(0.47,0.55,p.y));
+  leg=mix(leg,torso,smoothstep(0.94,1.04,p.y));
+  return mix(leg,torso,squatArmWeight(p));
+ }
+ `;
+  shader.vertexShader=poseFns+shader.vertexShader;
+  shader.vertexShader=shader.vertexShader.replace('#include <beginnormal_vertex>',`#include <beginnormal_vertex>
+    float sn_s=uSquat;
+    vec3 sn_pos=position;
+    vec3 sn_shin=squatRotX(objectNormal,0.59*sn_s);
+    vec3 sn_thigh=squatRotX(objectNormal,-1.10*sn_s);
+    vec3 sn_torso=squatRotX(objectNormal,0.27*sn_s);
+    objectNormal=normalize(squatBlend(sn_pos,objectNormal,sn_shin,sn_thigh,sn_torso));
+  `);
+  shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
+   // Keep the ankle, knee-to-hip and trunk segment lengths constant.
+   // Positive Z is the front of the anatomical model.
+   float s=uSquat;
+   vec3 p=transformed;
+   float ankleY=0.10, kneeY=0.51, hipY=0.99;
+   float shinA=0.59*s, thighA=-1.10*s, torsoA=0.27*s;
+   vec3 ankle=vec3(0.0,ankleY,0.0);
+   vec3 knee0=vec3(0.0,kneeY,0.0);
+   vec3 hip0=vec3(0.0,hipY,0.0);
+   vec3 knee=ankle+squatRotX(knee0-ankle,shinA);
+   vec3 hip=knee+squatRotX(hip0-knee0,thighA);
+   vec3 shin=ankle+squatRotX(p-ankle,shinA);
+   vec3 thigh=knee+squatRotX(p-knee0,thighA);
+   vec3 torso=hip+squatRotX(p-hip0,torsoA);
+   transformed=squatBlend(p,p,shin,thigh,torso);
+  `);
+ };
+ mat.customProgramCacheKey=()=> 'home-workouts-anatomy-articulated-v3';return mat;
+}
+const armRegion=/\b(arm|hand|finger|thumb|wrist|forearm|humerus|radius|ulna|metacarp|carpal|phalange|biceps|triceps|brachial|brachioradial|anconeus|deltoid|pronator|supinator|flexor digitorum|extensor digitorum|pectoral|pectoralis|scapula|clavicle|rotator cuff|teres major|teres minor|supraspinatus|infraspinatus)\b/i;
 const gltf=await loader.loadAsync('https://charleeh.github.io/ecorche/model/ecorche.meshopt.glb',(e)=>{if(e.total)el.barFill.style.width=Math.round(e.loaded/e.total*100)+'%';}).catch(e=>{el.error.classList.add('visible');el.status.textContent='Загрузка не удалась';el.bar.style.display='none';console.error(e);return null});
 if(gltf){gltf.scene.updateMatrixWorld(true);const body=new THREE.Group();scene.add(body);
  gltf.scene.traverse(src=>{if(!src.isMesh)return;const name=src.userData?.name||src.name||'';const layer=src.userData?.layer||'';const geometry=new THREE.BufferGeometry();
@@ -85,8 +116,8 @@ if(gltf){gltf.scene.updateMatrixWorld(true);const body=new THREE.Group();scene.a
  }
  if(src.geometry.index)geometry.setIndex(src.geometry.index.clone());
  geometry.applyMatrix4(src.matrixWorld);
- const material=augmentedMaterial(src.material);const mesh=new THREE.Mesh(geometry,material);mesh.frustumCulled=false;mesh.userData={name,layer,muscle:muscleType(name),sourceMaterial:material.color.clone(),baseEmissive:material.emissive.clone()};body.add(mesh);meshes.push(mesh);});
- loaded=true;el.bar.style.display='none';el.status.innerHTML='<span class="dot"></span> Анатомическая 3D-модель · '+meshes.length+' структур';layerRefresh();
+ const material=augmentedMaterial(src.material,armRegion.test(name)?1:0);const mesh=new THREE.Mesh(geometry,material);mesh.frustumCulled=false;mesh.userData={name,layer,muscle:muscleType(name),sourceMaterial:material.color.clone(),baseEmissive:material.emissive.clone()};body.add(mesh);meshes.push(mesh);});
+ loaded=true;el.bar.style.display='none';el.status.innerHTML='<span class="dot"></span> 3D-анатомия · '+meshes.length+' структур · тест движения';layerRefresh();
 }
 function layerRefresh(){for(const m of meshes){const tissue=m.userData.layer||'';const bone=tissue==='skeleton',d=tissue==='deep muscles',s=tissue==='superficial muscles';m.visible=mode==='bones'?bone:mode==='mix'?(bone||s||(d&&deep)):(s||(d&&deep));m.material.transparent=mode==='mix' && !bone;m.material.opacity=(mode==='mix'&&!bone)?.80:1;m.material.depthWrite=!(mode==='mix'&&!bone);let group=m.userData.muscle;const selected=focus==='all'?['quad','glute','core'].includes(group):group===focus;const isMuscle=!bone;
  m.material.emissive.setHex(selected&&isMuscle?0xd64d31:0x0a0706);m.material.emissiveIntensity=selected&&isMuscle? .33 : .03; m.material.color.copy(m.userData.sourceMaterial);if(focus!=='all' && !selected && isMuscle)m.material.color.multiplyScalar(.54);m.material.needsUpdate=true;}}
