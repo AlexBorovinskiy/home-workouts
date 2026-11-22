@@ -35,7 +35,8 @@ const axis=(params.get('axis')||'x').toLowerCase(),sign=params.get('sign')==='ne
 const method=params.get('order')==='pre'?'premultiply':'multiply';
 let model=null,skin=null,hand=null,bar=null,ready=false,rest={},jointMap={},poseVersion=0;
 const fingers=['index','middle','ring','pinky','thumb'];
-const flex={index:[48,65,28],middle:[50,63,33],ring:[50,67,34],pinky:[46,59,30],thumb:[12,26,18]};
+const baseFlex={index:[48,65,28],middle:[50,63,33],ring:[50,67,34],pinky:[46,59,30],thumb:[12,26,18]};
+const flex=Object.fromEntries(Object.entries(baseFlex).map(([k,v])=>[k,[...v]]));
 const handCenter=new THREE.Vector3(-.014,.075,.016);
 const direction=new THREE.Vector3(.78,.32,.54).normalize();
 function resize(){const w=box.clientWidth,h=box.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}
@@ -48,6 +49,7 @@ function view(type='palm'){
  const local={palm:[0,.08,.44],thumb:[.28,.14,.32],back:[0,.05,-.46],side:[.38,.12,.15],wrist:[-.09,.19,.43],whole:[0,.85,2.35]}[type]||[0,.08,.44];
  let off=new THREE.Vector3(...local);
  if(type!=='whole'){off.applyQuaternion(hand.getWorldQuaternion(new THREE.Quaternion()));}
+ for(const item of bar?.children||[])if(item.userData.isPlate)item.visible=type!=='thumb';
  camera.position.copy(t).add(off);
  camera.up.set(0,1,0);camera.lookAt(t);orbit.target.copy(t);orbit.update();
  hud.textContent=type==='whole'?'Одна непрерывная поверхность тела':'Новая модель · '+type;
@@ -70,9 +72,9 @@ function makeDumbbell(){
  h.rotation.z=Math.PI/2;bar.add(h);
  for(const x of [-.077,.077]){
    const disc=new THREE.Mesh(new THREE.CylinderGeometry(.042,.042,.022,32),metal);
-   disc.rotation.z=Math.PI/2;disc.position.x=x;bar.add(disc);
+   disc.rotation.z=Math.PI/2;disc.position.x=x;disc.userData.isPlate=true;bar.add(disc);
    const c=new THREE.Mesh(new THREE.CylinderGeometry(.016,.016,.012,24),material);
-   c.rotation.z=Math.PI/2;c.position.x=x*1.27;bar.add(c);
+   c.rotation.z=Math.PI/2;c.position.x=x*1.27;c.userData.isPlate=true;bar.add(c);
  }
  hand.add(bar);
 }
@@ -80,7 +82,7 @@ function contacts(){
  if(!ready)return null;
  scene.updateMatrixWorld(true);skin.skeleton.update();
  const p=skin.geometry.getAttribute('position'),I=skin.geometry.getAttribute('skinIndex'),W=skin.geometry.getAttribute('skinWeight');
- const out=Object.fromEntries(fingers.map(k=>[k,{sample:0,near:0,inside:0,minimum:100}]));
+ const out=Object.fromEntries(fingers.map(k=>[k,{sample:0,near:0,inside:0,minimum:100,closest:100}]));
  const nameByJoint=skin.skeleton.bones.map(b=>{const m=/^(index|middle|ring|pinky|thumb)_/.exec(b.name);return m?.[1]||null});
  const v=new THREE.Vector3(),worldToBar=bar.matrixWorld.clone().invert();
  const stride=Math.max(1,Math.ceil(p.count/22000));
@@ -93,7 +95,7 @@ function contacts(){
    if(Math.abs(v.x)>.064)continue;
    const d=Math.hypot(v.y,v.z)-.011,part=out[group];
    part.sample++;if(Math.abs(d)<=.003)part.near++;if(d<-.002)part.inside++;
-   part.minimum=Math.min(part.minimum,d);
+   part.minimum=Math.min(part.minimum,d);part.closest=Math.min(part.closest,Math.abs(d));
  }
  $('#info').textContent=Object.entries(out).map(([k,v])=>k+': рядом '+v.near+'/'+v.sample+'; внутри '+v.inside).join('\n')+'\nОсь '+axis+', знак '+sign+', порядок '+method;
  return out;
@@ -109,7 +111,8 @@ async function init(){
  window.__unifiedQA={ready:()=>ready,view,contacts,configure(options={}){
   if(options.center){handCenter.fromArray(options.center);bar.position.copy(handCenter)}
   if(options.direction){direction.fromArray(options.direction).normalize();bar.quaternion.setFromUnitVectors(new THREE.Vector3(1,0,0),direction)}
-  if(options.factor!==undefined)for(const [digit,angles]of Object.entries(flex))flex[digit]=angles.map((a)=>a*options.factor);
+  if(options.factor!==undefined)for(const [digit,angles]of Object.entries(baseFlex))flex[digit]=angles.map((a)=>a*options.factor);
+  if(options.factors)for(const [digit,f]of Object.entries(options.factors))flex[digit]=baseFlex[digit].map(a=>a*f);
   if(options.fingers)for(const [digit,angles]of Object.entries(options.fingers))flex[digit]=angles;
   grip();return contacts();
  },getNodes:()=>Object.keys(jointMap),getArm:()=>({upper:jointMap.upperarm_r.position.toArray(),lower:jointMap.lowerarm_r.position.toArray(),hand:hand.position.toArray()})};
