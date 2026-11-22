@@ -80,7 +80,7 @@ export function createMRIThumbRig(THREE, gltf, landmarks) {
   }
   const handle=new THREE.Group();handle.name='fixed handle reference';
   handle.position.set(.010,-.011,.028);root.add(handle);
-  const metal=new THREE.MeshStandardMaterial({color:0x172c3a,metalness:.57,roughness:.36});
+  const metal=new THREE.MeshStandardMaterial({color:0x172c3a,metalness:.43,roughness:.4,transparent:true,opacity:.67,depthWrite:false});
   const shaft=new THREE.Mesh(new THREE.CylinderGeometry(.011,.011,.158,36),metal);
   shaft.rotation.z=Math.PI/2;handle.add(shaft);
   for(const x of [-.073,.073]){
@@ -90,8 +90,8 @@ export function createMRIThumbRig(THREE, gltf, landmarks) {
   }
   const PRESETS={
     neutral:{abduct:0,cmcFlex:0,cmcRotate:0,mcpFlex:0,ipFlex:0},
-    oppose:{abduct:4,cmcFlex:14,cmcRotate:8,mcpFlex:4,ipFlex:4},
-    grasp:{abduct:8,cmcFlex:20,cmcRotate:10,mcpFlex:4,ipFlex:8}
+    oppose:{abduct:7,cmcFlex:14,cmcRotate:16,mcpFlex:8,ipFlex:4},
+    grasp:{abduct:8,cmcFlex:20,cmcRotate:10,mcpFlex:8,ipFlex:8}
   };
   const ranges={abduct:[-25,35],cmcFlex:[-15,55],cmcRotate:[-45,45],
     mcpFlex:[-15,65],ipFlex:[-15,75]};
@@ -126,6 +126,7 @@ export function createMRIThumbRig(THREE, gltf, landmarks) {
       pivotCMC:pivotCMC.toArray(),pivotMCP:pivotMCP.toArray(),pivotIP:pivotIP.toArray(),
       distalBoneTip:tip.toArray(),
       tipToShaftMm:Number((clearance*1000).toFixed(2)),
+      insideReferenceShaft:outOfLength===0 && radial<.011,
       shaftRadialMm:Number((radial*1000).toFixed(2)),
       tipX:tipInShaft.x,position:{...current},
       bonesFromMRI:4,rigValidated:false
