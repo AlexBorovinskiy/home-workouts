@@ -1,4 +1,4 @@
-const CACHE='home-workouts-anatomy-v1';
+const CACHE='home-workouts-anatomy-v2';
 const CORE=['./','./index.html','./manifest.webmanifest'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting()))});
 self.addEventListener('activate',e=>{e.waitUntil(Promise.all([self.clients.claim(),caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('home-workouts-anatomy-')&&k!==CACHE).map(k=>caches.delete(k))))]))});
