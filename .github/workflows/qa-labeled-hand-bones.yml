@@ -1,0 +1,66 @@
+name: Verify MRI bone identification and selection UI
+on:
+  push:
+    paths:
+      - '.github/workflows/qa-labeled-hand-bones.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --prefix /tmp/labeled-hand --no-audit --no-fund playwright-core@1.56.1
+      - name: Test published labeled hand viewer and capture pictures
+        shell: bash
+        run: |
+          mkdir -p proof
+          node --input-type=module <<'NODE'
+          import {chromium} from '/tmp/labeled-hand/node_modules/playwright-core/index.mjs';
+          import {writeFileSync} from 'node:fs';
+          const browser=await chromium.launch({channel:'chrome',headless:true,args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+          const page=await browser.newPage({viewport:{width:430,height:932},deviceScaleFactor:1,isMobile:true,hasTouch:true,serviceWorkers:'block'});
+          const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+          try{
+            const url='https://alexborovinskiy.github.io/home-workouts/anatomy-first/real-bones-labeled.html?qa=v1';
+            const r=await page.goto(url,{waitUntil:'domcontentloaded',timeout:65000});
+            if(r.status()!==200)throw Error('HTTP '+r.status());
+            await page.waitForFunction(()=>window.__realBonesQA?.ready()||document.querySelector('#error')?.classList.contains('on'),null,{timeout:75000});
+            if(!await page.evaluate(()=>window.__realBonesQA?.ready()))throw Error('Viewer load: '+await page.locator('#error').innerText());
+            const count=await page.evaluate(()=>window.__realBonesQA.count());
+            const labels=await page.evaluate(()=>window.__realBonesQA.labels());
+            if(count!==34||labels.hand_bone!==19||labels.carpal_candidate!==7||labels.forearm_candidate!==2||labels.small_fragment!==6)
+             throw Error('Wrong mesh/identification counts '+JSON.stringify({count,labels}));
+            if(await page.locator('#segments button').count()!==34)throw Error('UI bone list not complete');
+            await page.evaluate(()=>window.__realBonesQA.view('front'));
+            await page.waitForTimeout(230);
+            await page.locator('canvas').screenshot({path:'proof/labeled-full-hand.png'});
+            const finger=await page.evaluate(()=>window.__realBonesQA.select('segment_19_unlabeled'));
+            if(!finger||!finger.includes('Дистальная фаланга большого'))throw Error('Thumb identification mismatch '+finger);
+            if(!await page.locator('#selection').innerText().then(s=>s.includes('Дистальная фаланга большого')))throw Error('Selection text missing');
+            await page.waitForTimeout(220);
+            await page.locator('canvas').screenshot({path:'proof/thumb-distal-selected.png'});
+            const carpal=await page.evaluate(()=>window.__realBonesQA.select('segment_13_unlabeled'));
+            if(!carpal||!carpal.includes('Кость запястья'))throw Error('Unverified carpal falsely labeled');
+            await page.waitForTimeout(180);
+            await page.locator('canvas').screenshot({path:'proof/unverified-wrist-bone.png'});
+            await page.locator('#explode').click();await page.waitForTimeout(240);
+            await page.locator('canvas').screenshot({path:'proof/labeled-separated.png'});
+            const report={url,count,labels,thumbLabel:finger,carpalLabel:carpal,errors};
+            writeFileSync('proof/report.json',JSON.stringify(report,null,2));
+            console.log(JSON.stringify(report,null,2));
+            if(errors.length)throw Error('Browser errors: '+errors.join(' | '));
+          }catch(e){writeFileSync('proof/error.txt',String(e)+'\n'+errors.join('\n'));await page.screenshot({path:'proof/error.png',fullPage:true}).catch(()=>{});throw e}
+          finally{await browser.close()}
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: labeled-real-hand-mobile
+          path: proof/
+          retention-days: 3
