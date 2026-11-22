@@ -13,7 +13,7 @@ p.note{color:#a8c6c9;font-size:12px;line-height:1.6}.stats{font-size:11px;color:
 <div class="top"><span>HOME WORKOUTS / NEW RIG LAB</span><a href="./lesson.html">Основной урок ↗</a></div>
 <h1>Единая кисть и предплечье</h1>
 <p class="lead">Проверка цельной CC0-модели MakeHuman с собственными суставами пальцев и локтя. На этом этапе тестируем захват, не обучаем технике упражнения.</p>
-<div class="notice"><strong>Экспериментальная версия, не образец техники.</strong> Цельная модель кожи и настоящий сустав локтя уже работают. Захват большого пальца, положение рукоятки и супинация предплечья ещё требуют визуальной и анатомической проверки. Основное упражнение не изменено.</div>
+<div class="notice"><strong>Экспериментальная версия 2.</strong> Сгибание вокруг оси локтя и поворот предплечья проверены. Кисть удерживает гантель, но достоверность хвата всё ещё уточняется. Основное приложение не меняется.</div>
 <div id="viewer" class="viewer"><canvas id="c"></canvas><div id="hud" class="label">Загрузка цельного рига…</div><div id="error" role="alert"></div></div>
 <div class="buttons"><button data-stage="0">1 · Старт</button><button data-stage="1">2 · Середина</button><button data-stage="2">3 · Пик</button></div>
 <div class="buttons"><button data-view="palm">Ладонь</button><button data-view="thumb">Большой палец</button><button data-view="back">Тыльная сторона</button><button data-view="side">Профиль</button><button data-view="wrist">Запястье</button><button data-view="whole">Вся модель</button></div>
@@ -34,7 +34,10 @@ const orbit=new OrbitControls(camera,canvas);orbit.enableDamping=true;orbit.damp
 const params=new URLSearchParams(location.search);
 const axis=(params.get('axis')||'x').toLowerCase(),sign=params.get('sign')==='neg'?-1:1;
 const method=params.get('order')==='pre'?'premultiply':'multiply';
+const twistSign=(params.get('twist')==='negative'?-1:1);
 let model=null,skin=null,hand=null,bar=null,ready=false,rest={},jointMap={},poseVersion=0,forearm=null,restElbow=null,elbowDelta=null,stage=0;
+const thumbSetup={baseX:-8,baseY:-19,baseZ:35,middle:17,tip:78};
+const thumbDefault={...thumbSetup};
 const fingers=['index','middle','ring','pinky','thumb'];
 const baseFlex={index:[48,65,28],middle:[50,63,33],ring:[50,67,34],pinky:[46,59,30],thumb:[12,26,18]};
 const flex=Object.fromEntries(Object.entries(baseFlex).map(([k,v])=>[k,[...v]]));
@@ -47,7 +50,7 @@ function view(type='palm'){
  if(!ready)return;
  scene.updateMatrixWorld(true);
  const t=type==='whole'?new THREE.Vector3(0,.98,0):getCamTarget();
- const local={palm:[0,.08,.44],thumb:[.28,.14,.32],back:[0,.05,-.46],side:[.38,.12,.15],wrist:[-.09,.19,.43],whole:[0,.85,2.35]}[type]||[0,.08,.44];
+ const local={palm:[0,.06,.35],thumb:[.20,.095,.265],back:[0,.04,-.39],side:[.32,.08,.16],wrist:[-.065,.12,.32],whole:[0,.85,2.35]}[type]||[0,.08,.44];
  let off=new THREE.Vector3(...local);
  if(type!=='whole'){off.applyQuaternion(hand.getWorldQuaternion(new THREE.Quaternion()));}
  for(const item of bar?.children||[])if(item.userData.isPlate)item.visible=type!=='thumb';
@@ -59,27 +62,49 @@ function grip(){
  const ax=axis==='x'?new THREE.Vector3(1,0,0):axis==='y'?new THREE.Vector3(0,1,0):new THREE.Vector3(0,0,1);
  for(const digit of fingers)for(let j=1;j<=3;j++){
    const bone=jointMap[digit+'_0'+j+'_r'],q=rest[bone.name];if(!bone||!q)throw Error('Нет сустава '+digit+j);
-   const rot=new THREE.Quaternion().setFromAxisAngle(ax,THREE.MathUtils.degToRad(sign*flex[digit][j-1]));
-   bone.quaternion.copy(q)[method](rot);
+   let rot;
+   if(digit==='thumb'){
+     if(j===1)rot=new THREE.Quaternion().setFromEuler(new THREE.Euler(
+       THREE.MathUtils.degToRad(thumbSetup.baseX),
+       THREE.MathUtils.degToRad(thumbSetup.baseY),
+       THREE.MathUtils.degToRad(thumbSetup.baseZ),'XYZ'));
+     else rot=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0),
+       THREE.MathUtils.degToRad(j===2?thumbSetup.middle:thumbSetup.tip));
+   }else{
+     rot=new THREE.Quaternion().setFromAxisAngle(ax,THREE.MathUtils.degToRad(sign*flex[digit][j-1]));
+   }
+   bone.quaternion.copy(q);
+   if(digit==='thumb')bone.quaternion.multiply(rot);
+   else bone.quaternion[method](rot);
  }
  poseVersion++;scene.updateMatrixWorld(true);skin.skeleton.update();
 }
+
 function setStage(next){
  if(!ready)return;
  stage=Number(next);
  const t=[0,.5,1][stage]??0;
  const worldRot=new THREE.Quaternion().slerpQuaternions(new THREE.Quaternion(),elbowDelta,t);
- const parentQ=forearm.parent.getWorldQuaternion(new THREE.Quaternion());
- const localDelta=parentQ.clone().invert().multiply(worldRot).multiply(parentQ);
+ let parentQ=forearm.parent.getWorldQuaternion(new THREE.Quaternion());
+ let localDelta=parentQ.clone().invert().multiply(worldRot).multiply(parentQ);
  forearm.quaternion.copy(restElbow).premultiply(localDelta);
- // Experimental forearm-axis rotation keeps the dumbbell shaft approximately level.
- // Final anatomy review will determine whether the forearm should handle the twist.
- const wristRoll=THREE.MathUtils.degToRad(-35-8*t);
- hand.quaternion.copy(rest.hand_r).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),wristRoll));
+ // Rotate the FOREARM around its true elbow-to-wrist axis, never the wrist joint.
+ scene.updateMatrixWorld(true);
+ const elbow=forearm.getWorldPosition(new THREE.Vector3());
+ const wrist=hand.getWorldPosition(new THREE.Vector3());
+ const axisWorld=wrist.sub(elbow).normalize();
+ const twistWorld=new THREE.Quaternion().setFromAxisAngle(axisWorld,
+   THREE.MathUtils.degToRad(twistSign*25*t));
+ parentQ=forearm.parent.getWorldQuaternion(new THREE.Quaternion());
+ localDelta=parentQ.clone().invert().multiply(twistWorld).multiply(parentQ);
+ forearm.quaternion.premultiply(localDelta);
+ // Wrist remains in its rest anatomical frame; forearm twist carries the entire hand.
+ hand.quaternion.copy(rest.hand_r);
  scene.updateMatrixWorld(true);skin.skeleton.update();view('palm');contacts();
  for(const btn of document.querySelectorAll('[data-stage]'))btn.classList.toggle('active',Number(btn.dataset.stage)===stage);
- hud.textContent=['Старт · настоящий локоть','Середина · настоящий локоть','Пик · настоящий локоть'][stage];
+ hud.textContent=['Старт · локоть','Середина · локоть + супинация','Пик · локоть + супинация'][stage];
 }
+
 function makeDumbbell(){
  bar=new THREE.Group();bar.name='hand-anchored-dumbbell';
  bar.position.copy(handCenter);bar.quaternion.setFromUnitVectors(new THREE.Vector3(1,0,0),direction);
@@ -94,6 +119,12 @@ function makeDumbbell(){
    c.rotation.z=Math.PI/2;c.position.x=x*1.27;c.userData.isPlate=true;bar.add(c);
  }
  hand.add(bar);
+}
+function getThumbTip(){
+  scene.updateMatrixWorld(true);
+  const thumb=jointMap.thumb_03_r,world=thumb.localToWorld(new THREE.Vector3(0,.026,0));
+  const p=bar.worldToLocal(world);
+  return {shaftX:p.x,shaftRadial:Math.hypot(p.y,p.z),distance:Math.hypot(p.y,p.z)-.011,skinTipApproximation:true};
 }
 function contacts(){
  if(!ready)return null;
@@ -126,12 +157,22 @@ async function init(){
  if(!hand||!forearm||!jointMap.upperarm_r)throw Error('Недостаточно суставов руки');
  restElbow=forearm.quaternion.clone();
  scene.updateMatrixWorld(true);
- const origin=forearm.getWorldPosition(new THREE.Vector3()),wrist=hand.getWorldPosition(new THREE.Vector3());
- const startDir=wrist.sub(origin).normalize(),targetDir=new THREE.Vector3(-.045,.16,.19).normalize();
- elbowDelta=new THREE.Quaternion().setFromUnitVectors(startDir,targetDir);
  for(const digit of fingers)for(let j=1;j<=3;j++)if(!jointMap[digit+'_0'+j+'_r'])throw Error('Нет фаланги '+digit+j);
- makeDumbbell();grip();ready=true;setStage(0);
- window.__unifiedQA={ready:()=>ready,view,contacts,setStage,getPose:()=>({stage,elbow:forearm.getWorldPosition(new THREE.Vector3()).toArray(),wrist:hand.getWorldPosition(new THREE.Vector3()).toArray(),bar:bar.getWorldPosition(new THREE.Vector3()).toArray()}),configure(options={}){
+ makeDumbbell();
+ scene.updateMatrixWorld(true);
+ // An elbow bends about a hinge almost PARALLEL to the grip handle.
+ // This prevents the dumbbell from spinning through 90° during the curl.
+ const hinge= new THREE.Vector3(1,0,0).applyQuaternion(bar.getWorldQuaternion(new THREE.Quaternion())).normalize();
+ elbowDelta=new THREE.Quaternion().setFromAxisAngle(hinge,THREE.MathUtils.degToRad(-92));
+ grip();ready=true;setStage(0);
+ window.__unifiedQA={ready:()=>ready,view,contacts,setStage,getPose:()=>({stage,
+ elbow:forearm.getWorldPosition(new THREE.Vector3()).toArray(),
+ wrist:hand.getWorldPosition(new THREE.Vector3()).toArray(),
+ bar:bar.getWorldPosition(new THREE.Vector3()).toArray(),
+ wristLocalRotation:hand.quaternion.toArray(),
+ shaftDirection:new THREE.Vector3(1,0,0).applyQuaternion(bar.getWorldQuaternion(new THREE.Quaternion())).toArray()
+ }),setThumb(settings){Object.assign(thumbSetup,settings);grip();return {contact:contacts().thumb,tip:getThumbTip()}},
+ getThumb:()=>({...thumbSetup}),getThumbTip:()=>getThumbTip(),configure(options){
   if(options.center){handCenter.fromArray(options.center);bar.position.copy(handCenter)}
   if(options.direction){direction.fromArray(options.direction).normalize();bar.quaternion.setFromUnitVectors(new THREE.Vector3(1,0,0),direction)}
   if(options.factor!==undefined)for(const [digit,angles]of Object.entries(baseFlex))flex[digit]=angles.map((a)=>a*options.factor);
