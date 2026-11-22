@@ -1255,5 +1255,15 @@
         ]
       }
     }
+  ],
+  "rootNodes": [
+    {
+      "index": 57,
+      "name": "body_rig",
+      "translation": null,
+      "rotation": null,
+      "scale": null,
+      "matrix": null
+    }
   ]
 }
