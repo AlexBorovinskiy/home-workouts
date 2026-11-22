@@ -21,7 +21,7 @@ export function createFullMRIHandRigV5(THREE,gltf,landmarks,jointData){
   const rig=createMRIThumbRig(THREE,gltf,landmarks);
   const root=rig.root;
   // Reference video: transverse handle lies over the distal palm, not at fingertips.
-  rig.handle.position.set(.010,-.040,.005);
+  rig.handle.position.set(.010,-.065,-.020);
   root.updateMatrixWorld(true);
   const meshMap=new Map();
   root.traverse(obj=>{if(obj.isMesh&&/^segment_\d+_unlabeled$/.test(obj.name))meshMap.set(obj.name,obj)});
