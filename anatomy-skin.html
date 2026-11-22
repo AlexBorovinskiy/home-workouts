@@ -32,7 +32,7 @@ main{max-width:1100px;padding:20px clamp(12px,3vw,28px) 32px;margin:auto}.eyebro
 <p class="small" id="detail">Цветные области показывают мышцы, участвующие в выбранном упражнении. Это схема вовлечения, а не измерение активности конкретных мышц.</p>
 </div>
 <div class="panel"><h2>Какие мышцы участвуют</h2><div id="muscleList"></div></div>
-<div class="panel"><div class="notice"><b>Это пока неподвижная модель.</b> Поворот доступен, но приседание и другие движения ещё не анимированы. Для обучения технике потребуется отдельная проверенная скелетная анимация.</div><p class="small">Подсветка нанесена на поверхность кожи по расположению мышечных областей; точность не равна медицинскому изображению.</p></div>
+<div class="panel"><div class="notice"><b>Это пока неподвижная модель.</b> Поворот доступен, но приседание и другие движения ещё не анимированы. Для обучения технике потребуется отдельная проверенная скелетная анимация.</div><p class="small">Подсветка окрашивает вершины кожной сетки вблизи мышечных областей; это учебная схема, а не измерение активации мышц.</p></div>
 </aside></div>
 <footer class="footer">3D-модель: <a href="https://github.com/MervinR07/open-anatomy-3d" target="_blank" rel="noopener">Open Anatomy 3D</a> (CC BY 4.0; BodyParts3D © DBCLS, Human Reference Atlas/HuBMAP, MakeHuman). Используется в образовательных целях. При первом запуске модель и библиотека загружаются через сеть. Полная автономность пока не реализована.</footer>
 </main>
@@ -55,34 +55,65 @@ const plans={
  plank:{label:'Планка',notes:[['Мышцы живота','Сопротивляются прогибанию корпуса',1],['Ягодичные','Помогают удерживать таз',.55],['Плечевой пояс','Стабилизирует плечи',.55],['Разгибатели спины','Участвуют в стабилизации',.42]],keys:[['abdominal_muscles',1],['gluteal_l','gluteal_r',.55],['shoulder_muscles_l','shoulder_muscles_r',.55],['back_muscles_l','back_muscles_r',.42]]},
  row:{label:'Тяга в наклоне',notes:[['Мышцы спины','Тянут плечо и лопатку',1],['Задние дельтовидные','Помогают вести локти назад',.75],['Сгибатели предплечья','Помогают удерживать и тянуть вес',.65],['Мышцы кора','Стабилизируют корпус',.45]],keys:[['back_muscles_l','back_muscles_r',1],['trapezius_l','trapezius_r',.9],['deltoid_l','deltoid_r',.75],['upper_arm_muscles_l','upper_arm_muscles_r',.65],['forearm_muscles_l','forearm_muscles_r',.45],['abdominal_muscles',.45]]}
 };
-let mode='highlight',exercise='squat',strength=.8,model=null,muscleRoot=null,skinRoot=null,skinShader=null;
-const MAX_SPOTS=32;
-const spotData={centers:Array.from({length:MAX_SPOTS},()=>new THREE.Vector3(999,999,999)),radii:Array.from({length:MAX_SPOTS},()=>new THREE.Vector3(0.01,0.01,0.01)),weights:new Float32Array(MAX_SPOTS),glow:{value:strength}};
-const skinMaterial=new THREE.MeshStandardMaterial({color:0xcb987e,roughness:.84,metalness:0,side:THREE.FrontSide});
-skinMaterial.onBeforeCompile=shader=>{
- skinShader=shader;
- shader.uniforms.uCenters={value:spotData.centers};shader.uniforms.uRadii={value:spotData.radii};shader.uniforms.uWeights={value:spotData.weights};shader.uniforms.uGlow=spotData.glow;
- shader.vertexShader=shader.vertexShader.replace('#include <common>','#include <common>\nvarying vec3 vAnatPosition;');
- shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvAnatPosition=(modelMatrix*vec4(transformed,1.0)).xyz;');
- shader.fragmentShader=shader.fragmentShader.replace('#include <common>',`#include <common>
-varying vec3 vAnatPosition;
-uniform vec3 uCenters[${MAX_SPOTS}];
-uniform vec3 uRadii[${MAX_SPOTS}];
-uniform float uWeights[${MAX_SPOTS}];
-uniform float uGlow;`);
- shader.fragmentShader=shader.fragmentShader.replace('#include <color_fragment>',`#include <color_fragment>
-float active = 0.0;
-for (int i=0;i<${MAX_SPOTS};i++) {
- if(uWeights[i] > 0.001){
-  vec3 d=(vAnatPosition-uCenters[i])/max(uRadii[i],vec3(.005));
-  active=max(active,exp(-1.55*dot(d,d))*uWeights[i]);
+let mode='highlight',exercise='squat',strength=.8,model=null,muscleRoot=null,skinRoot=null;
+let skinMeshes=[],skinColor=new THREE.Color('#bf947b'),lookTarget=new THREE.Vector3(0,.9,0),viewDistance=3.65;
+// Apply highlights to skin mesh vertex colours on the CPU, rather than compiling
+// a custom GLSL shader. This is compatible with standard WebGL materials.
+const skinMaterial=new THREE.MeshStandardMaterial({color:0xffffff,vertexColors:true,roughness:.83,metalness:0,side:THREE.DoubleSide});
+const weightCache=new Map();
+function collectSpots(){
+ const spots=[];
+ model.updateMatrixWorld(true);
+ for (const set of plans[exercise].keys){
+   const intensity=set[set.length-1];
+   for (const k of set.slice(0,-1)){
+     const m=model.getObjectByName(k);if(!m)continue;
+     const b=new THREE.Box3().setFromObject(m);if(b.isEmpty())continue;
+     const size=b.getSize(new THREE.Vector3()),mid=b.getCenter(new THREE.Vector3());
+     const radius=[Math.max(.075,size.x*.88),Math.max(.09,size.y*.82),Math.max(.23,size.z*1.55)];
+     spots.push({x:mid.x,y:mid.y,z:mid.z,rx:radius[0],ry:radius[1],rz:radius[2],strength:intensity});
+   }
+ }
+ return spots;
+}
+function heatWeights(mesh){
+ const key=exercise+':'+mesh.uuid;
+ if(weightCache.has(key))return weightCache.get(key);
+ const spots=collectSpots(),pos=mesh.geometry.getAttribute('position');
+ const result=new Float32Array(pos.count),world=new THREE.Vector3();
+ for(let i=0;i<pos.count;i++){
+   world.fromBufferAttribute(pos,i).applyMatrix4(mesh.matrixWorld);
+   let peak=0;
+   for(const s of spots){
+     const dx=(world.x-s.x)/s.rx,dy=(world.y-s.y)/s.ry,dz=(world.z-s.z)/s.rz;
+     const d=dx*dx+dy*dy+dz*dz;
+     if(d<7.5)peak=Math.max(peak,Math.exp(-1.45*d)*s.strength);
+   }
+   result[i]=peak;
+ }
+ weightCache.set(key,result);return result;
+}
+function paintSkin(){
+ if(!skinMeshes.length)return;
+ // Skin, highlight and anatomical views use the same actual model.
+ const active=mode==='highlight'?strength:0;
+ const warm=new THREE.Color('#ef6454');
+ for(const mesh of skinMeshes){
+   const geometry=mesh.geometry,pos=geometry.getAttribute('position'),heat=active>0?heatWeights(mesh):null;
+   let col=geometry.getAttribute('color');
+   if(!col || col.count!==pos.count || col.itemSize!==3 || !(col.array instanceof Float32Array)){col=new THREE.BufferAttribute(new Float32Array(pos.count*3),3);geometry.setAttribute('color',col)}
+   const v=col.array;
+   for(let i=0;i<pos.count;i++){
+     const h=heat?Math.min(1,heat[i]*active):0;
+     const t=(h*h*(3-2*h))*.94;
+     const off=i*3;
+     v[off]=skinColor.r+(warm.r-skinColor.r)*t;
+     v[off+1]=skinColor.g+(warm.g-skinColor.g)*t;
+     v[off+2]=skinColor.b+(warm.b-skinColor.b)*t;
+   }
+   col.needsUpdate=true;
  }
 }
-float warm=smoothstep(0.06,0.89,active)*uGlow;
-vec3 highlightTone=mix(vec3(.87,.44,.29),vec3(1.0,.24,.16),smoothstep(.25,.95,active));
-diffuseColor.rgb=mix(diffuseColor.rgb,highlightTone,0.88*warm);`);
-};
-skinMaterial.customProgramCacheKey=()=> 'skin-muscle-heat-v3';
 const scene=new THREE.Scene();
 const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true,powerPreference:'default'});
 renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.6));renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.15;
@@ -93,7 +124,11 @@ const camera=new THREE.PerspectiveCamera(31,1,.05,50);camera.position.set(.1,1.0
 const controls=new OrbitControls(camera,canvas);controls.enableDamping=true;controls.dampingFactor=.085;controls.target.set(0,.89,0);controls.enablePan=false;controls.minDistance=.65;controls.maxDistance=6;controls.maxPolarAngle=Math.PI*.94;
 const fit=()=>{const w=Math.max(stage.clientWidth,50),h=Math.max(stage.clientHeight,50);renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()};new ResizeObserver(fit).observe(stage);fit();
 renderer.setAnimationLoop(()=>{controls.update();renderer.render(scene,camera)});
-function cameraView(dir){const d=3.35;controls.target.set(0,.87,0);camera.position.set(dir==='side'?d:0,1.03,dir==='front'?d:dir==='back'?-d:0);controls.update();$$('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===dir))}
+function cameraView(dir){
+ controls.target.copy(lookTarget);
+ camera.position.set(lookTarget.x+(dir==='side'?viewDistance:0),lookTarget.y+.18,lookTarget.z+(dir==='front'?viewDistance:dir==='back'?-viewDistance:0));
+ controls.update();$$('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===dir));
+}
 $$('[data-view]').forEach(b=>b.addEventListener('click',()=>cameraView(b.dataset.view)));
 $('#reset').addEventListener('click',()=>cameraView('front'));
 function setPlan(){const p=plans[exercise];$('#muscleList').replaceChildren();p.notes.forEach(([name,desc,w])=>{const el=document.createElement('div');el.className='muscle '+(w<.7?'secondary':'');const marker=document.createElement('span');marker.className='dot';const text=document.createElement('div');const b=document.createElement('b');b.textContent=name;const detail=document.createElement('div');detail.className='small';detail.style.margin='1px 0 0';detail.textContent=desc;text.append(b,detail);el.append(marker,text);$('#muscleList').append(el)});updateVisual()}
@@ -102,31 +137,48 @@ $$('[data-mode]').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.mo
 $('#exercise').addEventListener('change',e=>{exercise=e.target.value;setPlan()});
 $('#power').addEventListener('input',e=>{strength=e.target.value/100;$('#powerLabel').textContent=e.target.value+'%';updateVisual()});
 function updateVisual(){
- spotData.weights.fill(0);spotData.centers.forEach(v=>v.set(999,999,999));spotData.glow.value=mode==='highlight'?strength:0;
  if(!model)return;
- skinRoot.visible=mode!=='anatomy';muscleRoot.visible=mode==='anatomy';
- const sets=plans[exercise].keys;let i=0;const chosen=new Set();
- for(const set of sets){const weight=set[set.length-1];for(const k of set.slice(0,-1)){
-   chosen.add(k);const n=model.getObjectByName(k);
-   if(!n||i>=MAX_SPOTS)continue;
-   const box=new THREE.Box3().setFromObject(n);if(box.isEmpty())continue;
-   const size=box.getSize(new THREE.Vector3()),center=box.getCenter(new THREE.Vector3());
-   // Surface heat is approximated from each real muscle's bounds, not hand-drawn anatomy.
-   spotData.centers[i].copy(center);spotData.radii[i].set(Math.max(size.x*.76,.065),Math.max(size.y*.7,.085),Math.max(size.z*.86,.15));spotData.weights[i]=weight;i++;
- }}
- muscleRoot.traverse(o=>{if(o.isMesh){let n=o;while(n&&n!==muscleRoot&&!chosen.has(n.name))n=n.parent;const allowed=n&&chosen.has(n.name);o.visible=!!allowed;
- if(allowed){o.material=o.userData.showMaterial || (o.userData.showMaterial=new THREE.MeshStandardMaterial({color:0xbc5e50,roughness:.75,side:THREE.DoubleSide}));}
- }});
+ skinRoot.visible=mode!=='anatomy';
+ muscleRoot.visible=mode==='anatomy';
+ if(mode==='highlight'||mode==='skin')paintSkin();
+ const wanted=new Set();for(const s of plans[exercise].keys)for(const k of s.slice(0,-1))wanted.add(k);
+ muscleRoot.traverse(o=>{if(!o.isMesh)return;
+   let n=o;while(n&&n!==muscleRoot&&!wanted.has(n.name))n=n.parent;
+   o.visible=!!(n&&wanted.has(n.name));
+   if(o.visible){o.material=o.userData.workMaterial || (o.userData.workMaterial=new THREE.MeshStandardMaterial({color:0xc15c49,roughness:.8,side:THREE.DoubleSide}))}
+ });
 }
-function fail(message){loading.hidden=false;loading.querySelector('.spin').style.display='none';status.textContent=message;}
+function fitBody(){
+ model.updateMatrixWorld(true);
+ const box=new THREE.Box3().setFromObject(skinRoot);
+ if(box.isEmpty())throw Error('Empty skin geometry');
+ const c=box.getCenter(new THREE.Vector3()),sz=box.getSize(new THREE.Vector3());
+ lookTarget.copy(c);controls.target.copy(c);
+ const vFov=(camera.fov*Math.PI/180),hFov=2*Math.atan(Math.tan(vFov/2)*camera.aspect);
+ const neededHeight=sz.y/(2*Math.tan(vFov/2)),neededWidth=sz.x/(2*Math.tan(hFov/2));
+ viewDistance=Math.min(10,Math.max(2.6,neededHeight*1.24,neededWidth*1.18));
+ camera.far=100;camera.updateProjectionMatrix();controls.maxDistance=Math.max(9,viewDistance*2);
+ cameraView('front');
+}
+function fail(message){loading.hidden=false;loading.querySelector('.spin').style.display='none';status.textContent=message;document.getElementById('loading').querySelector('small').textContent='Сообщи эту ошибку, если она повторится.';}
+canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();fail('Потерян 3D-контекст браузера. Перезагрузи страницу.');});
 try{
  const loader=new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
  loader.load(MODEL_URL,gltf=>{
-  model=gltf.scene;scene.add(model);skinRoot=model.getObjectByName('skin');muscleRoot=model.getObjectByName('muscles');
-  if(!skinRoot||!muscleRoot){fail('Модель загружена, но не найдены слои кожи и мышц');return}
-  model.traverse(obj=>{if(obj.isMesh&&obj.parent){let ancestor=obj;while(ancestor&&ancestor!==skinRoot&&ancestor!==muscleRoot)ancestor=ancestor.parent;if(ancestor===skinRoot){obj.material=skinMaterial}}});
-  for(const label of ['skeleton','organs','vessels','nerves']){const n=model.getObjectByName(label);if(n)n.visible=false;}
-  updateVisual();loading.hidden=true;window._loaded=true;
+  try {
+    model=gltf.scene;scene.add(model);
+    skinRoot=model.getObjectByName('skin');muscleRoot=model.getObjectByName('muscles');
+    if(!skinRoot||!muscleRoot)throw Error('Skin or muscle group missing');
+    model.updateMatrixWorld(true);skinMeshes=[];
+    skinRoot.traverse(o=>{if(o.isMesh){o.material=skinMaterial;skinMeshes.push(o)}});
+    if(!skinMeshes.length)throw Error('No skin meshes found');
+    for(const label of ['skeleton','organs','vessels','nerves']){const n=model.getObjectByName(label);if(n)n.visible=false;}
+    fitBody();updateVisual();
+    // Force one real draw before dismissing the loading overlay.
+    renderer.render(scene,camera);
+    if(renderer.getContext().isContextLost())throw Error('WebGL context lost');
+    loading.hidden=true;window._loaded=true;
+  } catch(e){console.error('Anatomy display:',e);fail('Не удалось показать анатомию: '+e.message)}
  },xhr=>{if(xhr.total){status.textContent='Загрузка модели '+Math.min(99,Math.round(xhr.loaded/xhr.total*100))+'%'}},error=>{console.error(error);fail('Модель не загрузилась. Проверь интернет или открой в Safari.')});
 }catch(err){console.error(err);fail('3D-графика недоступна в этом браузере. Открой Safari.')}
 setPlan();
