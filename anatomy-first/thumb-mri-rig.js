@@ -56,7 +56,9 @@ export function createMRIThumbRig(THREE, gltf, landmarks) {
   // A surface point towards the distal end, from actual MRI triangle vertices.
   const geo=bone.distal.geometry,attr=geo.attributes.position;
   bone.distal.updateWorldMatrix(true,false);
-  const forward=bone.distal.getWorldPosition(new THREE.Vector3()).sub(ip).normalize();
+  geo.computeBoundingBox();
+  const centroidLocal=geo.boundingBox.getCenter(new THREE.Vector3());
+  const forward=centroidLocal.applyMatrix4(bone.distal.matrixWorld).sub(ip).normalize();
   let best=-Infinity,tipLocal=new THREE.Vector3(),p=new THREE.Vector3(),pworld=new THREE.Vector3();
   for(let i=0;i<attr.count;i++){
     p.fromBufferAttribute(attr,i);
