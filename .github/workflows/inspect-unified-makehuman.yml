@@ -1,0 +1,58 @@
+name: Inspect unified CC0 MakeHuman rig (experimental)
+on:
+  push:
+    paths:
+      - '.github/workflows/inspect-unified-makehuman.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch original 53-bone CC0 human mesh
+        shell: bash
+        run: |
+          mkdir -p rig-source
+          curl --fail --location --retry 3 --max-time 100 \
+            'https://www.innerscene.com/api/library/human-base-mesh-with-editable-53-bone-rig-8e7c8ab1/download' \
+            -o rig-source/human-base-rigged.glb
+          file rig-source/human-base-rigged.glb
+          sha256sum rig-source/human-base-rigged.glb > rig-source/sha256.txt
+          test "$(head -c 4 rig-source/human-base-rigged.glb)" = "glTF"
+          test "$(stat -c %s rig-source/human-base-rigged.glb)" -gt 100000
+      - name: Inspect geometry and joint hierarchy
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json,struct,pathlib,collections
+          p=pathlib.Path('rig-source/human-base-rigged.glb')
+          blob=p.read_bytes()
+          magic,version,total=struct.unpack_from('<4sII',blob,0)
+          assert magic==b'glTF' and version==2 and total==len(blob)
+          size,chunk=struct.unpack_from('<I4s',blob,12)
+          assert chunk==b'JSON'
+          gltf=json.loads(blob[20:20+size])
+          nodes=gltf.get('nodes',[])
+          skins=gltf.get('skins',[])
+          joints=skins[0]['joints'] if skins else []
+          meshes=gltf.get('meshes',[])
+          attrs=[list(p['attributes']) for m in meshes for p in m.get('primitives',[])]
+          report={'bytes':len(blob),'meshCount':len(meshes),'meshAttributes':attrs,
+            'skinCount':len(skins),'jointCount':len(joints),
+            'joints':[{'index':i,'name':nodes[i].get('name'),'children':nodes[i].get('children',[])} for i in joints],
+            'namedNodes':[{'index':i,'name':n.get('name'),'translation':n.get('translation'),'rotation':n.get('rotation')} for i,n in enumerate(nodes)],
+            'extensions':gltf.get('extensionsUsed',[])}
+          pathlib.Path('rig-source/report.json').write_text(json.dumps(report,ensure_ascii=False,indent=2))
+          print('GLB summary:',len(blob),'bytes',len(meshes),'meshes',len(joints),'joints')
+          print('Named joints:',[nodes[i].get('name') for i in joints])
+          if len(joints)<40:raise RuntimeError('Expected articulated finger skeleton')
+          PY
+      - name: Export original rig for local geometry verification
+        uses: actions/upload-artifact@v4
+        with:
+          name: unified-makehuman-source-rig
+          path: rig-source/
+          retention-days: 3
