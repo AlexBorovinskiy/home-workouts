@@ -5,7 +5,7 @@
   "anatomicalOrientation": "MRI template coordinate frame. +Z toward fingertips; +X thumb side; handedness not yet confirmed",
   "annotated": "2026-11-22",
   "status": "preliminary geometric identification",
-  "caution": "Labels are reasoned from geometry and arrangement, not verified with authors or CT/clinical expert. No joint centres or kinematic axes validated.",
+  "caution": "Labels are reasoned from geometry and arrangement, not verified with authors or CT/clinical expert. No joint centres or kinematic axes validated. Seven carpal candidate names are assigned provisionally from adjacency to metacarpals and forearm, not from original source labels.",
   "counts": {
     "hand_bone": 19,
     "carpal_candidate": 7,
@@ -37,9 +37,9 @@
       "id": "segment_03_unlabeled",
       "index": 3,
       "classification": "forearm_candidate",
-      "name_ru": "Кость предплечья — сегмент 3",
-      "confidence": "unverified",
-      "note": "Лучевая/локтевая пока не различены"
+      "name_ru": "Лучевая кость предплечья — предположительно",
+      "confidence": "tentative",
+      "note": "Расположена ближе к лучевой стороне кисти; не была подписана в исходном STL."
     },
     {
       "id": "segment_04_unlabeled",
@@ -105,9 +105,9 @@
       "id": "segment_10_unlabeled",
       "index": 10,
       "classification": "forearm_candidate",
-      "name_ru": "Кость предплечья — сегмент 10",
-      "confidence": "unverified",
-      "note": "Лучевая/локтевая пока не различены"
+      "name_ru": "Локтевая кость предплечья — предположительно",
+      "confidence": "tentative",
+      "note": "Расположена ближе к локтевой стороне кисти; не была подписана в исходном STL."
     },
     {
       "id": "segment_11_unlabeled",
@@ -133,25 +133,25 @@
       "id": "segment_13_unlabeled",
       "index": 13,
       "classification": "carpal_candidate",
-      "name_ru": "Кость запястья — сегмент 13",
-      "confidence": "unverified",
-      "note": "Точное название не подтверждено"
+      "name_ru": "Головчатая кость — предположительно",
+      "confidence": "tentative",
+      "note": "Ближе всего к III пястной; центральное положение в дистальном ряду. Требует сопоставления формы суставных поверхностей с атласом."
     },
     {
       "id": "segment_14_unlabeled",
       "index": 14,
       "classification": "carpal_candidate",
-      "name_ru": "Кость запястья — сегмент 14",
-      "confidence": "unverified",
-      "note": "Точное название не подтверждено"
+      "name_ru": "Ладьевидная кость — предположительно",
+      "confidence": "tentative",
+      "note": "Лучевая часть проксимального ряда, близко к дистальному отделу лучевой кости. Требует сопоставления формы суставных поверхностей с атласом."
     },
     {
       "id": "segment_15_unlabeled",
       "index": 15,
       "classification": "carpal_candidate",
-      "name_ru": "Кость запястья — сегмент 15",
-      "confidence": "unverified",
-      "note": "Точное название не подтверждено"
+      "name_ru": "Крючковидная кость — предположительно",
+      "confidence": "tentative",
+      "note": "Соприкасается с основаниями IV и V пястных костей. Требует сопоставления формы суставных поверхностей с атласом."
     },
     {
       "id": "segment_16_unlabeled",
@@ -177,9 +177,9 @@
       "id": "segment_18_unlabeled",
       "index": 18,
       "classification": "carpal_candidate",
-      "name_ru": "Кость запястья — сегмент 18",
-      "confidence": "unverified",
-      "note": "Точное название не подтверждено"
+      "name_ru": "Кость-трапеция — предположительно",
+      "confidence": "tentative",
+      "note": "Близко к основанию I пястной кости большого пальца. Требует сопоставления формы суставных поверхностей с атласом."
     },
     {
       "id": "segment_19_unlabeled",
@@ -205,25 +205,25 @@
       "id": "segment_21_unlabeled",
       "index": 21,
       "classification": "carpal_candidate",
-      "name_ru": "Кость запястья — сегмент 21",
-      "confidence": "unverified",
-      "note": "Точное название не подтверждено"
+      "name_ru": "Полулунная кость — предположительно",
+      "confidence": "tentative",
+      "note": "Центральная часть проксимального ряда, рядом с лучевой костью. Требует сопоставления формы суставных поверхностей с атласом."
     },
     {
       "id": "segment_22_unlabeled",
       "index": 22,
       "classification": "carpal_candidate",
-      "name_ru": "Кость запястья — сегмент 22",
-      "confidence": "unverified",
-      "note": "Точное название не подтверждено"
+      "name_ru": "Трёхгранная кость — предположительно",
+      "confidence": "tentative",
+      "note": "Локтевая сторона проксимального ряда. Требует сопоставления формы суставных поверхностей с атласом."
     },
     {
       "id": "segment_23_unlabeled",
       "index": 23,
       "classification": "carpal_candidate",
-      "name_ru": "Кость запястья — сегмент 23",
-      "confidence": "unverified",
-      "note": "Точное название не подтверждено"
+      "name_ru": "Трапециевидная кость — предположительно",
+      "confidence": "tentative",
+      "note": "Под основанием II пястной кости, рядом с III. Требует сопоставления формы суставных поверхностей с атласом."
     },
     {
       "id": "segment_24_unlabeled",
@@ -323,5 +323,6 @@
       "confidence": "unverified",
       "note": "Может быть артефактом сегментации или костным фрагментом; не считать отдельной костью"
     }
-  ]
+  ],
+  "unresolved": "No separately segmented pisiform is found among the 34 substantial connected components. This does not establish absence of the bone in the original MRI."
 }
