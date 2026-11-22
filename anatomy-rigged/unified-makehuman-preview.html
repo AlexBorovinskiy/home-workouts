@@ -155,11 +155,14 @@ async function init(){
  if(!hand||!forearm||!jointMap.upperarm_r)throw Error('Недостаточно суставов руки');
  restElbow=forearm.quaternion.clone();
  scene.updateMatrixWorld(true);
- const origin=forearm.getWorldPosition(new THREE.Vector3()),wrist=hand.getWorldPosition(new THREE.Vector3());
- const startDir=wrist.sub(origin).normalize(),targetDir=new THREE.Vector3(-.045,.16,.19).normalize();
- elbowDelta=new THREE.Quaternion().setFromUnitVectors(startDir,targetDir);
  for(const digit of fingers)for(let j=1;j<=3;j++)if(!jointMap[digit+'_0'+j+'_r'])throw Error('Нет фаланги '+digit+j);
- makeDumbbell();grip();ready=true;setStage(0);
+ makeDumbbell();
+ scene.updateMatrixWorld(true);
+ // An elbow bends about a hinge almost PARALLEL to the grip handle.
+ // This prevents the dumbbell from spinning through 90° during the curl.
+ const hinge= new THREE.Vector3(1,0,0).applyQuaternion(bar.getWorldQuaternion(new THREE.Quaternion())).normalize();
+ elbowDelta=new THREE.Quaternion().setFromAxisAngle(hinge,THREE.MathUtils.degToRad(-92));
+ grip();ready=true;setStage(0);
  window.__unifiedQA={ready:()=>ready,view,contacts,setStage,getPose:()=>({stage,
  elbow:forearm.getWorldPosition(new THREE.Vector3()).toArray(),
  wrist:hand.getWorldPosition(new THREE.Vector3()).toArray(),
