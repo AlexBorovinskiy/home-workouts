@@ -1,0 +1,206 @@
+<!doctype html><html lang="ru"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0a1c2b"><link rel="icon" href="data:,">
+<title>Анатомическая разметка кисти · Anatomy First</title>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color-scheme:dark;--ink:#e9f5f4;--muted:#afc7cb;--line:#2f5266;--teal:#8bddd0}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 5% 0%,#214352,#091929 62%);color:var(--ink)}
+main{padding:17px 13px 55px;max-width:920px;margin:auto}
+header{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.eyebrow{font-size:10px;font-weight:800;letter-spacing:.16em;color:var(--teal)}header a{color:var(--teal);font-size:12px;text-decoration:none}
+h1{font-size:clamp(25px,5vw,37px);margin:22px 0 8px;letter-spacing:-.04em}
+.lead{font-size:13px;line-height:1.65;color:var(--muted);margin:0 0 15px}
+.notice{background:#49372d;border:1px solid #87604c;color:#f3dcca;border-radius:12px;padding:12px;font-size:12px;line-height:1.6;margin-bottom:14px}
+.panel{border:1px solid var(--line);border-radius:18px;overflow:hidden;background:#0f2b3c}
+.stage{height:min(66vh,610px);min-height:350px;position:relative;touch-action:none;background:radial-gradient(ellipse at center,#234859,#091c2c 75%)}
+canvas{width:100%;height:100%;touch-action:none;display:block}
+.status{position:absolute;left:12px;top:12px;border:1px solid #437382;border-radius:22px;background:#0a2c3edb;padding:8px 11px;color:#c6eeeb;font-size:11px;pointer-events:none}
+.tip{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);font-size:10px;background:#0a2536db;border-radius:18px;padding:6px 11px;white-space:nowrap;color:#c0d6db;pointer-events:none}
+.error{display:none;position:absolute;inset:0;align-items:center;justify-content:center;padding:22px;text-align:center;background:#112938ef;line-height:1.6}.error.on{display:flex}
+.controls{padding:13px;display:grid;gap:12px}
+.heading{color:var(--teal);text-transform:uppercase;font-size:11px;font-weight:750;letter-spacing:.11em}
+.buttons{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+button{min-height:43px;padding:8px;border-radius:10px;background:#1a3c4e;color:var(--ink);border:1px solid #40677b;font:inherit;font-weight:650;font-size:12px}
+button.active{background:var(--teal);color:#08252e;border-color:var(--teal)}
+.stats{font-size:12px;line-height:1.55;border:1px solid #2b4b5d;background:#0a2232;padding:12px;border-radius:11px}
+.segment-list{max-height:155px;overflow-y:auto;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:9px}
+.segment-list .entry{font-size:11px;background:#112c3b;border-radius:8px;padding:6px;display:flex;gap:6px;align-items:center;min-width:0}
+.segment-list button{flex:1;text-align:left;min-height:34px;padding:5px;border:0;background:transparent;font-size:11px;font-weight:550;overflow-wrap:anywhere}
+.segment-list button.selected{background:#346276;color:white}
+.select-status{font-size:10px;color:var(--muted);margin-top:5px}
+.segment-legend{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 10px}
+.segment-legend span{padding:6px 8px;background:#12364a;border-radius:15px;color:#c5e6e5;font-size:10px}
+.selection{font-size:12px;background:#133243;border:1px solid #41677b;border-radius:12px;padding:12px;line-height:1.55}
+.selection strong{display:block;font-size:15px;margin-bottom:4px}
+.selection small{display:block;color:var(--muted);margin-top:6px}
+.segment-list input{accent-color:var(--teal)}
+footer{font-size:11px;line-height:1.65;color:var(--muted);padding:18px 1px}footer a{color:var(--teal)}
+@media(min-width:740px){.controls{grid-template-columns:1fr 1fr}}
+</style></head><body><main>
+<header><span class="eyebrow">HOME WORKOUTS / ANATOMY FIRST</span><a href="./hand-lab.html">← Предыдущий эксперимент</a></header>
+<h1>Разметка настоящего скелета кисти</h1>
+<p class="lead">На исходной МРТ-модели сопоставляем отдельные поверхности с костями пальцев и пясти. Коснись кости, чтобы узнать её предварительное название, или выбери её в списке.</p>
+<div class="notice"><strong>Предварительная анатомическая разметка.</strong> По расположению и форме определены 19 костей пальцев и пясти. Семь костей запястья пока без окончательных названий; два сегмента у предплечья тоже не подписаны. Эта версия не показывает анатомически проверенное движение.</div>
+<section class="panel">
+<div class="stage" id="stage"><canvas id="scene"></canvas><div class="status" id="status">Загрузка настоящей 3D-геометрии…</div><div class="tip">Коснись кости · проведи — вращение · два пальца — масштаб</div><div class="error" id="error" role="alert"></div></div>
+<div class="controls">
+<div><div class="heading">Положение камеры</div><div class="buttons" style="margin-top:8px">
+<button data-view="front">Кисть целиком</button><button data-view="side">Сбоку</button><button data-view="top">Вдоль кисти</button>
+</div></div>
+<div><div class="heading">Геометрия</div><div class="buttons" style="margin-top:8px">
+<button id="explode">Раздвинуть</button><button id="reset">Собрать</button><button id="resetCamera">Вся кисть</button>
+</div></div>
+<div>
+<div class="segment-legend"><span>19 — установлены предварительно</span><span>7 — запястье</span><span>2 — предплечье</span><span>6 — малые фрагменты</span></div>
+<div class="selection" id="selection"><strong>Выбери кость</strong>Нажми на 3D-поверхность или название в списке. <small>Названия основаны на геометрии и требуют окончательной анатомической верификации.</small></div>
+</div>
+<div class="stats" id="stats">Загрузка разметки…</div>
+<div><div class="heading">Сегменты и подтверждение</div><div class="segment-list" id="segments"></div><p class="select-status">Галочка скрывает или показывает поверхность, название выделяет её на модели.</p></div>
+</div>
+</section>
+<footer>Исходник: <a href="https://github.com/HegdeUSA/Hand_template">Hegdé et al., Hand Template</a>, построен на основе МРТ 27 рук. Исходный репозиторий помечен MIT, однако для версии NIH 3D указана GPLv3; условия повторного распространения проверяются отдельно. Названия 19 костей предварительно сопоставлены по геометрии и последовательности пальцев. Разметка открыта для уточнения; клиническая точность не подтверждена.</footer>
+</main>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+const $=sel=>document.querySelector(sel);
+const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(42,1,.0005,100);
+const renderer=new THREE.WebGLRenderer({canvas:$('#scene'),antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.7));renderer.outputColorSpace=THREE.SRGBColorSpace;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.25;
+renderer.setClearColor(0x091d2b,0);
+scene.add(new THREE.HemisphereLight(0xfefcf2,0x37596d,2.25));
+const light=new THREE.DirectionalLight(0xffeccf,2.3);light.position.set(4,7,5);scene.add(light);
+const rim=new THREE.DirectionalLight(0x9fe5e9,1.2);rim.position.set(-4,3,-6);scene.add(rim);
+const control=new OrbitControls(camera,renderer.domElement);control.enableDamping=true;control.dampingFactor=.07;
+let model,meshes=[],center=new THREE.Vector3(),maxSize=.24,exploded=false,ready=false,selected=null,manifest=null;
+const byId=new Map(),byMesh=new Map();
+const originalPos=new Map(),originCentres=new Map();
+function resize(){const w=$('#stage').clientWidth,h=$('#stage').clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}
+new ResizeObserver(resize).observe($('#stage'));resize();
+function view(which='front'){
+ if(!ready)return;
+ // MRI STL is flat along Y: anatomical long axis is Z, not Three.js Y.
+ const poses={
+   front:{position:[0,1,.09],up:[0,0,1]},
+   side:{position:[1,.12,0],up:[0,0,1]},
+   top:{position:[0,.15,1],up:[0,1,0]}
+ };
+ const p=poses[which]||poses.front;
+ const v=new THREE.Vector3(...p.position).normalize().multiplyScalar(maxSize*1.65);
+ camera.up.set(...p.up);
+ camera.position.copy(center).add(v);control.target.copy(center);camera.lookAt(center);control.update();
+}
+const colorByGroup={
+ thumb:0xdfb17f,index:0x94c4e6,middle:0x9fcba8,ring:0xd2a7dc,little:0xe0c68d
+};
+function choose(mesh,zoom=false){
+ if(!mesh)return;
+ if(selected){selected.material.emissive.setHex(0);selected.material.emissiveIntensity=0;}
+ selected=mesh;
+ selected.material.emissive.setHex(0x39bcb8);
+ selected.material.emissiveIntensity=.42;
+ const info=byMesh.get(mesh)||{};
+ const status=info.confidence==='high'?'Определено по форме и последовательности костей; требует экспертной проверки.':
+   info.classification==='small_fragment'?'Малый фрагмент: не считать отдельной костью без проверки.':
+   'Точное анатомическое название пока не подтверждено.';
+ $('#selection').innerHTML='';
+ const h=document.createElement('strong');h.textContent=info.name_ru||mesh.name;
+ const desc=document.createElement('div');desc.textContent=status;
+ const tail=document.createElement('small');tail.textContent='ID: '+mesh.name+' · '+(info.classification||'без класса');
+ $('#selection').append(h,desc,tail);
+ for(const b of document.querySelectorAll('.segment-list button'))b.classList.toggle('selected',b.dataset.id===mesh.name);
+ if(zoom){
+   const bb=new THREE.Box3().setFromObject(mesh),mid=bb.getCenter(new THREE.Vector3()),size=bb.getSize(new THREE.Vector3()).length();
+   const offset=camera.position.clone().sub(control.target).normalize();
+   control.target.copy(mid);
+   camera.position.copy(mid).addScaledVector(offset,Math.max(size*3.0,maxSize*.35));
+   camera.lookAt(mid);control.update();
+ }
+}
+const raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2();let tapOrigin=null;
+renderer.domElement.addEventListener('pointerdown',e=>{tapOrigin={x:e.clientX,y:e.clientY,id:e.pointerId};});
+renderer.domElement.addEventListener('pointerup',e=>{
+ if(!tapOrigin||tapOrigin.id!==e.pointerId)return;
+ const dx=e.clientX-tapOrigin.x,dy=e.clientY-tapOrigin.y;tapOrigin=null;
+ if(Math.hypot(dx,dy)>9)return;
+ const bounds=renderer.domElement.getBoundingClientRect();
+ pointer.set((e.clientX-bounds.left)/bounds.width*2-1,-(e.clientY-bounds.top)/bounds.height*2+1);
+ raycaster.setFromCamera(pointer,camera);
+ const hits=raycaster.intersectObjects(meshes.filter(m=>m.visible),false);
+ if(hits.length)choose(hits[0].object);
+});
+function explode(flag){
+ exploded=flag;
+ meshes.forEach(m=>{
+   const c=originCentres.get(m),original=originalPos.get(m);
+   const dir=c.clone().sub(center);
+   if(dir.lengthSq()<1e-9)dir.set(.5,.5,.5);
+   dir.normalize();m.position.copy(original).addScaledVector(dir,flag?maxSize*.20:0);
+ });
+ const offset=camera.position.clone().sub(control.target);
+ offset.setLength(maxSize*(flag?2.65:1.65));
+ camera.position.copy(control.target).add(offset);
+ camera.lookAt(control.target);control.update();
+ $('#explode').classList.toggle('active',flag);
+ $('#reset').classList.toggle('active',!flag);
+}
+async function init(){
+ const [gltf,metadata]=await Promise.all([
+ new GLTFLoader().loadAsync('./assets/research-hand-segments.glb'),
+ fetch('./assets/hand-segment-labels.json').then(r=>{if(!r.ok)throw Error('Не удалось загрузить разметку');return r.json()})
+]);
+ manifest=metadata;
+ if(metadata.segments.length!==34)throw Error('Несовпадение количества меток и сегментов');
+ for(const entry of metadata.segments)byId.set(entry.id,entry);
+ model=gltf.scene;
+ model.traverse(o=>{if(o.isMesh){meshes.push(o);o.frustumCulled=false;
+   const info=byId.get(o.name);
+   if(!info)throw Error('Нет описания для поверхности '+o.name);
+   byMesh.set(o,info);
+   const tint=info.digit?colorByGroup[info.digit]:
+     info.classification==='carpal_candidate'?0xbabac8:
+     info.classification==='forearm_candidate'?0xd6ccba:0x7d929c;
+   o.material=new THREE.MeshStandardMaterial({color:tint,roughness:.86,side:THREE.DoubleSide,emissive:0x000000});
+ }});
+ if(meshes.length===0)throw Error('В данных нет поверхностей костей');
+ scene.add(model);model.updateMatrixWorld(true);
+ const b=new THREE.Box3().setFromObject(model);
+ b.getCenter(center);maxSize=b.getSize(new THREE.Vector3()).length();
+ if(!Number.isFinite(maxSize)||maxSize<=0)throw Error('Некорректные размеры 3D-модели');
+ for(const m of meshes){
+   originalPos.set(m,m.position.clone());
+   const localBounds=new THREE.Box3().setFromObject(m);
+   originCentres.set(m,localBounds.getCenter(new THREE.Vector3()));
+ }
+ ready=true;view('front');
+ const id=$('#segments');meshes.sort((a,b)=>a.name.localeCompare(b.name));
+ meshes.forEach((m,i)=>{
+   const info=byMesh.get(m),line=document.createElement('div');
+   line.className='entry';
+   const cb=document.createElement('input');cb.type='checkbox';cb.checked=info.classification!=='small_fragment';
+   m.visible=cb.checked;
+   cb.setAttribute('aria-label','Показать или скрыть '+info.name_ru);
+   cb.addEventListener('change',()=>{m.visible=cb.checked;});
+   const label=document.createElement('button');label.type='button';
+   label.dataset.id=m.name;
+   label.textContent=info.name_ru;
+   label.addEventListener('click',()=>{if(!m.visible){m.visible=true;cb.checked=true;}choose(m,true);});
+   line.append(cb,label);id.appendChild(line);
+ });
+ $('#stats').textContent='19 костей пальцев и пясти сопоставлены по форме и положению.\n'+
+   '7 костей запястья и 2 фрагмента предплечья требуют точных названий.\n'+
+   'Ещё 6 маленьких частей по умолчанию скрыты.\n'+
+   'Всего поверхностей: '+meshes.length+'. Ни одна сетка не была перерисована.';
+ $('#status').textContent='МРТ-геометрия · 19 костей предварительно размечены';
+ window.__realBonesQA={ready:()=>ready,count:()=>meshes.length,explode:()=>explode(true),assemble:()=>explode(false),view,
+ bounds:()=>b.getSize(new THREE.Vector3()).toArray(),labels:()=>manifest.counts,
+ select:(n)=>{const m=meshes.find(x=>x.name===n);if(m){m.visible=true;choose(m,true);return byMesh.get(m).name_ru;}return null;}};
+}
+for(const b of document.querySelectorAll('[data-view]'))b.onclick=()=>view(b.dataset.view);
+$('#explode').onclick=()=>explode(true);$('#reset').onclick=()=>explode(false);$('#resetCamera').onclick=()=>view('front');
+(function render(){requestAnimationFrame(render);control.update();renderer.render(scene,camera)})();
+init().catch(e=>{console.error(e);$('#error').classList.add('on');$('#error').textContent=e.message;$('#status').textContent='Ошибка данных'});
+</script></body></html>
