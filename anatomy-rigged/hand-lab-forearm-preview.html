@@ -89,8 +89,8 @@ function setView(view='front'){
  assembly.updateMatrixWorld(true);
  const center=assembly.localToWorld(new THREE.Vector3(0,view==='thumb'?.080:.035,.020));
  const d=.43;
- const p={front:[0,.035,d],side:[d*.78,.045,d*.63],back:[0,.035,-d],thumb:[.19,.065,.31]}[view]||[0,.035,d];
- for(const part of bar.children){if(part.userData.isPlate){part.material.transparent=view==='thumb';part.material.opacity=view==='thumb'?.16:1;part.material.depthWrite=view!=='thumb';}}
+ const p={front:[0,.035,d],side:[d*.78,.045,d*.63],back:[0,.035,-d],thumb:[.10,.12,.28]}[view]||[0,.035,d];
+ for(const part of bar.children){if(part.userData.isPlate)part.visible=view!=='thumb';}
  orbit.target.copy(center);camera.position.copy(center).add(new THREE.Vector3(...p));camera.lookAt(center);orbit.update();
 }
 function setStage(i){
