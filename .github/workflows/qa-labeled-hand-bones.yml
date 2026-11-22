@@ -27,7 +27,7 @@ jobs:
           const page=await browser.newPage({viewport:{width:430,height:932},deviceScaleFactor:1,isMobile:true,hasTouch:true,serviceWorkers:'block'});
           const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
           try{
-            const url='https://alexborovinskiy.github.io/home-workouts/anatomy-first/real-bones-labeled.html?qa=v1';
+            const url='https://alexborovinskiy.github.io/home-workouts/anatomy-first/real-bones-labeled.html?qa=v2';
             const r=await page.goto(url,{waitUntil:'domcontentloaded',timeout:65000});
             if(r.status()!==200)throw Error('HTTP '+r.status());
             await page.waitForFunction(()=>window.__realBonesQA?.ready()||document.querySelector('#error')?.classList.contains('on'),null,{timeout:75000});
@@ -46,12 +46,14 @@ jobs:
             await page.waitForTimeout(220);
             await page.locator('canvas').screenshot({path:'proof/thumb-distal-selected.png'});
             const carpal=await page.evaluate(()=>window.__realBonesQA.select('segment_13_unlabeled'));
-            if(!carpal||!carpal.includes('Кость запястья'))throw Error('Unverified carpal falsely labeled');
+            if(!carpal||!carpal.includes('Головчатая')||!carpal.includes('предположительно'))throw Error('Carpal candidate missing tentative qualification: '+carpal);
             await page.waitForTimeout(180);
             await page.locator('canvas').screenshot({path:'proof/unverified-wrist-bone.png'});
             await page.locator('#explode').click();await page.waitForTimeout(240);
             await page.locator('canvas').screenshot({path:'proof/labeled-separated.png'});
-            const report={url,count,labels,thumbLabel:finger,carpalLabel:carpal,errors};
+            const trapezium=await page.evaluate(()=>window.__realBonesQA.select('segment_18_unlabeled'));
+            if(!trapezium||!trapezium.includes('Кость-трапеция')||!trapezium.includes('предположительно'))throw Error('CMC carpal candidate not marked tentative: '+trapezium);
+            const report={url,count,labels,thumbLabel:finger,carpalLabel:carpal,trapezium,errors};
             writeFileSync('proof/report.json',JSON.stringify(report,null,2));
             console.log(JSON.stringify(report,null,2));
             if(errors.length)throw Error('Browser errors: '+errors.join(' | '));
