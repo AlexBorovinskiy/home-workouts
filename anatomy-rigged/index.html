@@ -141,6 +141,8 @@ try{const [gltf,catalog]=await Promise.all([new Promise((resolve,reject)=>new GL
 }catch(e){console.error(e);setError(e)}
 function resetBones(){for(const [name,bone] of Object.entries(rig)){const r=rest[name];bone.position.copy(r.position);bone.quaternion.copy(r.quaternion);bone.scale.copy(r.scale)} orientation.position.set(0,0,0);orientation.rotation.set(0,0,0)}
 function rotateWorld(name,axis,angle){const bone=rig[name];if(!bone)return;const r=rest[name],parentAxis=axis.clone().applyQuaternion(r.parentWorldQ.clone().invert()).normalize();const dq=new THREE.Quaternion().setFromAxisAngle(parentAxis,angle);bone.quaternion.copy(dq.multiply(r.quaternion))}
+// Combined world-axis rotations for thumb opposition without overwriting either axis.
+function rotateWorldXYZ(name,x,y,z){const bone=rig[name];if(!bone)return;const r=rest[name];const w=new THREE.Quaternion().setFromEuler(new THREE.Euler(x,y,z,'XYZ'));const local=r.parentWorldQ.clone().invert().multiply(w).multiply(r.parentWorldQ);bone.quaternion.copy(local.multiply(r.quaternion))}
 function smooth(t){t=Math.max(0,Math.min(1,t));return t*t*(3-2*t)}
 function effort(t){if(t<.10)return 0;if(t<.45)return smooth((t-.1)/.35);if(t<.58)return 1;if(t<.93)return 1-smooth((t-.58)/.35);return 0}
 function applyPose(){if(!rigReady)return;resetBones();const a=effort(progress);
@@ -163,8 +165,9 @@ function applyPose(){if(!rigReady)return;resetBones();const a=effort(progress);
           if(rig[joint])rotateWorld(joint,AXIS_X,angle);
         }
       }
-      if(rig['thumb_01.'+side])rotateWorld('thumb_01.'+side,AXIS_Z,(side==='L'?.24:-.24));
-      if(rig['thumb_02.'+side])rotateWorld('thumb_02.'+side,AXIS_X,-.63);
+      // Bring thumb across the handle, then flex the second phalanx toward the grip.
+      rotateWorldXYZ('thumb_01.'+side,THREE.MathUtils.degToRad(-15),0,THREE.MathUtils.degToRad(side==='L'?-70:70));
+      rotateWorld('thumb_02.'+side,AXIS_X,THREE.MathUtils.degToRad(42));
     }
    }
  }
