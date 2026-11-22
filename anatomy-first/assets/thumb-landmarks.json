@@ -1,0 +1,64 @@
+{
+  "schema": "home-workouts/thumb-lab/mri-landmarks-v1",
+  "source": "HegdeUSA/Hand_template MRI-derived bone STL, converted to GLB",
+  "glbSha256": "00b1aa268a656172ba2e9648e5465955f3862bc4221b79eaa9607753bd5e2e38",
+  "units": "meters",
+  "frame": "source MRI GLB: +Z toward fingers, +X toward thumb, Y palmar/dorsal not clinically verified",
+  "meshIds": {
+    "trapezium": "segment_18_unlabeled",
+    "metacarpal1": "segment_06_unlabeled",
+    "proximal": "segment_12_unlabeled",
+    "distal": "segment_19_unlabeled",
+    "indexMetacarpal": "segment_01_unlabeled",
+    "indexProximal": "segment_09_unlabeled"
+  },
+  "landmarks": {
+    "cmc": {
+      "xyz": [
+        0.013929,
+        -0.006784,
+        -0.058365
+      ],
+      "gap_mm": 3.2,
+      "sourcePair": [
+        18,
+        6
+      ],
+      "basis": "Mean midpoint of near-minimum surface vertices"
+    },
+    "mcp": {
+      "xyz": [
+        0.044813,
+        -0.003234,
+        -0.025825
+      ],
+      "gap_mm": 2.153,
+      "sourcePair": [
+        6,
+        12
+      ],
+      "basis": "Mean midpoint of near-minimum surface vertices"
+    },
+    "ip": {
+      "xyz": [
+        0.059162,
+        -0.001902,
+        0.002244
+      ],
+      "gap_mm": 1.882,
+      "sourcePair": [
+        12,
+        19
+      ],
+      "basis": "Mean midpoint of near-minimum surface vertices"
+    }
+  },
+  "status": {
+    "boneNames": "provisional",
+    "jointCenters": "unverified approximate surface midpoints",
+    "jointAxes": "engineering estimate, not measured",
+    "ranges": "demonstration only; not physiological limits",
+    "contact": "cannot claim without soft-tissue model"
+  },
+  "guidance": "Use immutable source mesh geometry and hierarchical pivots; verify sagittal/palmar orientation and anatomical opposition visually; do not treat nearest-surface midpoints as actual articular rotation centres."
+}
