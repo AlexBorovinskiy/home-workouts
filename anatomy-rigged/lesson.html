@@ -27,7 +27,7 @@
 <div class="top"><div class="eyebrow">HOME WORKOUTS / 3D-ТЕХНИКА</div><a class="back" href="../">← Журнал</a></div>
 <h1>Сгибание рук с гантелями</h1>
 <p class="lead">Учебная анимация: вращай мужскую анатомическую модель, меняй скорость и останавливай движение в нужной точке. Настраивать суставы самостоятельно не требуется.</p>
-<div class="warning"><strong>Тест симметричного захвата.</strong> Положение пальцев и гантели левой руки зеркально перенесено с правой на симметричный скелет. Объёмные кисти CC0 сохраняются. Это опытный вариант: анатомическая точность ещё требует проверки.</div>
+<div class="warning"><strong>Тест симметричного захвата.</strong> Положение пальцев и гантели правой руки зеркально перенесено с левой на симметричный скелет. Объёмные кисти CC0 сохраняются. Это опытный вариант: анатомическая точность ещё требует проверки.</div>
 <div class="cols">
 <section class="panel">
  <div class="scene" id="touchScene">
@@ -315,7 +315,7 @@ async function loadModel(){
  const compare=document.getElementById('compareGrip'),status=document.getElementById('gripStatus');
  ui.status.textContent='Загрузка отдельно рассчитанных поз захвата…';
  try{
-   const gripResponse=await fetch('./assets/handhold-dumbbell-grips.json?v=25');
+   const gripResponse=await fetch('./assets/handhold-dumbbell-grips.json?v=26');
    if(!gripResponse.ok)throw Error('Файл с позами кистей недоступен');
    const data=await gripResponse.json();
    if(data.format!=='home-workouts-handhold'||data.version!==1)throw Error('Неподдерживаемая версия поз');
@@ -339,7 +339,7 @@ async function loadModel(){
      pose=poseAt(playhead);applyAngles();drawAxes();
      compare.textContent=handholdEnabled?'Хват · симметрия':'Старый хват';
    };
-   status.textContent='Для ровного захвата левая кисть и гантель зеркально повторяют правую на симметричном скелете. Сравни с прежним хватом кнопкой на модели. Визуализация экспериментальная, не эталон техники.';
+   status.textContent='Для ровного захвата правая кисть и гантель зеркально повторяют левую на симметричном скелете. Сравни с прежним хватом кнопкой на модели. Визуализация экспериментальная, не эталон техники.';
  }catch(error){
    handholdEnabled=false;handholdGrips=null;setHandholdDumbbells(false);
    compare.style.display='none';status.textContent='Не удалось загрузить альтернативный захват: '+error.message+'. Используется прежняя модель.';
