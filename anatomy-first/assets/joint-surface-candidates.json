@@ -1,0 +1,220 @@
+{
+  "schema": "anatomy-first/joint-proximity/0.1",
+  "model": "HegdeUSA/Hand_template MRI-derived bones GLB",
+  "reference_sha256": "00b1aa268a656172ba2e9648e5465955f3862bc4221b79eaa9607753bd5e2e38",
+  "method": "Closest-vertex distances across 14 pairs of geometrically identified bones. Near-area midpoint averages vertex pairs lying within min(minGap+2 mm, 4 mm).",
+  "important": "Surface-proximity points are NOT anatomical joint centres, axes or motion limits. Do not use directly as rotation pivots before validation.",
+  "count": 14,
+  "joints": [
+    {
+      "joint": "thumb_mcp",
+      "between": [
+        "segment_06_unlabeled",
+        "segment_12_unlabeled"
+      ],
+      "minSurfaceGap_mm": 2.15,
+      "approx_near_surface_midpoint_mm": [
+        44.82,
+        -3.8,
+        -26.03
+      ],
+      "verifiedJointCentre": false,
+      "verifiedAxis": false
+    },
+    {
+      "joint": "thumb_ip",
+      "between": [
+        "segment_12_unlabeled",
+        "segment_19_unlabeled"
+      ],
+      "minSurfaceGap_mm": 1.88,
+      "approx_near_surface_midpoint_mm": [
+        59.16,
+        -2.08,
+        2.01
+      ],
+      "verifiedJointCentre": false,
+      "verifiedAxis": false
+    },
+    {
+      "joint": "index_mcp",
+      "between": [
+        "segment_01_unlabeled",
+        "segment_09_unlabeled"
+      ],
+      "minSurfaceGap_mm": 2.13,
+      "approx_near_surface_midpoint_mm": [
+        20.6,
+        5.42,
+        11.68
+      ],
+      "verifiedJointCentre": false,
+      "verifiedAxis": false
+    },
+    {
+      "joint": "index_pip",
+      "between": [
+        "segment_09_unlabeled",
+        "segment_20_unlabeled"
+      ],
+      "minSurfaceGap_mm": 1.42,
+      "approx_near_surface_midpoint_mm": [
+        28.58,
+        7.66,
+        52.86
+      ],
+      "verifiedJointCentre": false,
+      "verifiedAxis": false
+    },
+    {
+      "joint": "index_dip",
+      "between": [
+        "segment_20_unlabeled",
+        "segment_27_unlabeled"
+      ],
+      "minSurfaceGap_mm": 1.47,
+      "approx_near_surface_midpoint_mm": [
+        31.21,
+        8.04,
+        76.4
+      ],
+      "verifiedJointCentre": false,
+      "verifiedAxis": false
+    },
+    {
+      "joint": "middle_mcp",
+      "between": [
+        "segment_02_unlabeled",
+        "segment_08_unlabeled"
+      ],
+      "minSurfaceGap_mm": 1.99,
+      "approx_near_surface_midpoint_mm": [
+        -2.96,
+        5.29,
+        13.31
+      ],
+      "verifiedJointCentre": false,
+      "verifiedAxis": false
+    },
+    {
+      "joint": "middle_pip",
+      "between": [
+        "segment_08_unlabeled",
+        "segment_16_unlabeled"
+      ],
+      "minSurfaceGap_mm": 1.52,
+      "approx_near_surface_midpoint_mm": [
+        -2.34,
+        7.07,
+        59.96
+      ],
+      "verifiedJointCentre": false,
+      "verifiedAxis": false
+    },
+    {
+      "joint": "middle_dip",
+      "between": [
+        "segment_16_unlabeled",
+        "segment_25_unlabeled"
+      ],
+      "minSurfaceGap_mm": 1.41,
+      "approx_near_surface_midpoint_mm": [
+        -3.62,
+        8.93,
+        88.53
+      ],
+      "verifiedJointCentre": false,
+      "verifiedAxis": false
+    },
+    {
+      "joint": "ring_mcp",
+      "between": [
+        "segment_04_unlabeled",
+        "segment_07_unlabeled"
+      ],
+      "minSurfaceGap_mm": 1.91,
+      "approx_near_surface_midpoint_mm": [
+        -23.39,
+        3.51,
+        7.49
+      ],
+      "verifiedJointCentre": false,
+      "verifiedAxis": false
+    },
+    {
+      "joint": "ring_pip",
+      "between": [
+        "segment_07_unlabeled",
+        "segment_17_unlabeled"
+      ],
+      "minSurfaceGap_mm": 1.14,
+      "approx_near_surface_midpoint_mm": [
+        -29.42,
+        5.45,
+        50.92
+      ],
+      "verifiedJointCentre": false,
+      "verifiedAxis": false
+    },
+    {
+      "joint": "ring_dip",
+      "between": [
+        "segment_17_unlabeled",
+        "segment_26_unlabeled"
+      ],
+      "minSurfaceGap_mm": 1.43,
+      "approx_near_surface_midpoint_mm": [
+        -33.43,
+        6.99,
+        77.82
+      ],
+      "verifiedJointCentre": false,
+      "verifiedAxis": false
+    },
+    {
+      "joint": "little_mcp",
+      "between": [
+        "segment_05_unlabeled",
+        "segment_11_unlabeled"
+      ],
+      "minSurfaceGap_mm": 1.95,
+      "approx_near_surface_midpoint_mm": [
+        -42.18,
+        -0.17,
+        0.02
+      ],
+      "verifiedJointCentre": false,
+      "verifiedAxis": false
+    },
+    {
+      "joint": "little_pip",
+      "between": [
+        "segment_11_unlabeled",
+        "segment_24_unlabeled"
+      ],
+      "minSurfaceGap_mm": 1.1,
+      "approx_near_surface_midpoint_mm": [
+        -56.27,
+        1.17,
+        31.06
+      ],
+      "verifiedJointCentre": false,
+      "verifiedAxis": false
+    },
+    {
+      "joint": "little_dip",
+      "between": [
+        "segment_24_unlabeled",
+        "segment_28_unlabeled"
+      ],
+      "minSurfaceGap_mm": 1.25,
+      "approx_near_surface_midpoint_mm": [
+        -64.12,
+        1.97,
+        48.72
+      ],
+      "verifiedJointCentre": false,
+      "verifiedAxis": false
+    }
+  ]
+}
