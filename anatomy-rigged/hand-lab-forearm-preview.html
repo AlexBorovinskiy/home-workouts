@@ -135,7 +135,11 @@ async function init(){
  forearm=createForearmExtension({THREE,mesh,root,material:skinMat,scene});
  ready=true;setStage(0);
  checkContact();
- window.__handLabQA={isReady:()=>ready,setView,setStage,check:checkContact,getForearm:()=>forearm?.wrist||null};
+ window.__handLabQA={isReady:()=>ready,setView,setStage,check:checkContact,getForearm:()=>forearm?.wrist||null,getThumbTip:()=>{
+ const node=donor.getObjectByName('thumb_03_r'),p=new THREE.Vector3(0,.028,0);
+ node.localToWorld(p);bar.worldToLocal(p);
+ return {x:p.x,y:p.y,z:p.z,radial:Math.hypot(p.y,p.z)};
+}};
 }
 function checkContact(){
  if(!ready)return null;
