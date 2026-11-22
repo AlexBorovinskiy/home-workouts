@@ -1,0 +1,85 @@
+name: Publish isolated research hand bone preview
+on:
+  push:
+    paths:
+      - '.github/workflows/publish-real-hand-preview.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Prepare exact verified original MRI bone STL
+        shell: bash
+        run: |
+          mkdir -p /tmp/research-hand-release
+          cp anatomy-first/real-bones-preview.html /tmp/research-hand-release/index.html
+          cp anatomy-first/REAL-HAND-SOURCE.md /tmp/research-hand-release/SOURCE.md
+          curl --fail --location --retry 3 --max-time 75 \
+            'https://raw.githubusercontent.com/HegdeUSA/Hand_template/main/3D_model_of_segmented_bones.zip' \
+            -o /tmp/source.zip
+          echo '9e2022f7fea4e7473dc22d01eefe1510bca73e316d44f45e6732ca33336558f6  /tmp/source.zip' | sha256sum --check
+          unzip -p /tmp/source.zip Hand_template_Bones_only_3D_printable.stl > /tmp/source.stl
+          curl --fail --location \
+            'https://raw.githubusercontent.com/HegdeUSA/Hand_template/main/LICENSE' \
+            -o /tmp/research-hand-release/UPSTREAM-MIT-LICENSE.txt
+      - name: Extract original connected facet groups
+        shell: bash
+        run: |
+          g++ -std=c++17 -O2 anatomy-first/data/split_stl_exact.cpp -o /tmp/split_stl
+          /tmp/split_stl /tmp/source.stl /tmp/parts | tee /tmp/research-hand-release/source-counts.txt
+          python3 -m pip install --quiet trimesh==4.10.0 numpy==2.2.6 scipy==1.15.3
+          python3 - <<'PY'
+          import pathlib,trimesh,numpy as np,json,hashlib
+          source=pathlib.Path('/tmp/parts')
+          manifest=json.loads((source/'components.json').read_text())
+          assert manifest['substantial_segments']==34
+          p=sorted(source.glob('segment_*.stl'))
+          assert len(p)==34
+          meshes=[trimesh.load(f,force='mesh',process=False) for f in p]
+          bounds=np.array([m.bounds for m in meshes])
+          center=(bounds[:,0].min(0)+bounds[:,1].max(0))/2
+          scale=0.001
+          scene=trimesh.Scene()
+          colors=[[222,205,175,255],[203,188,158,255],[233,217,191,255],[196,208,198,255]]
+          for i,m in enumerate(meshes):
+            m.apply_translation(-center)
+            m.apply_scale(scale)
+            m.merge_vertices()
+            m.visual.face_colors=colors[i%4]
+            name=f'segment_{i+1:02d}_unlabeled'
+            scene.add_geometry(m,geom_name=name,node_name=name)
+          data=scene.export(file_type='glb')
+          sha=hashlib.sha256(data).hexdigest()
+          print('GLB_SIZE',len(data),'SHA256',sha)
+          assert len(data)>5_000_000
+          assert sha=='00b1aa268a656172ba2e9648e5465955f3862bc4221b79eaa9607753bd5e2e38'
+          pathlib.Path('/tmp/research-hand-release/research-hand-segments.glb').write_bytes(data)
+          pathlib.Path('/tmp/research-hand-release/segment-inventory.json').write_text(json.dumps(manifest,indent=2))
+          PY
+      - name: Publish only the isolated viewer and licensed research source
+        shell: bash
+        run: |
+          git fetch origin main
+          git checkout -B main origin/main
+          mkdir -p anatomy-first/assets
+          cp /tmp/research-hand-release/index.html anatomy-first/real-bones-preview.html
+          cp /tmp/research-hand-release/SOURCE.md anatomy-first/REAL-HAND-SOURCE.md
+          cp /tmp/research-hand-release/UPSTREAM-MIT-LICENSE.txt anatomy-first/assets/RESEARCH-HAND-MIT-LICENSE.txt
+          cp /tmp/research-hand-release/research-hand-segments.glb anatomy-first/assets/research-hand-segments.glb
+          cp /tmp/research-hand-release/segment-inventory.json anatomy-first/assets/segment-inventory.json
+          test -f anatomy-rigged/lesson.html
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add anatomy-first/real-bones-preview.html anatomy-first/REAL-HAND-SOURCE.md \
+            anatomy-first/assets/RESEARCH-HAND-MIT-LICENSE.txt \
+            anatomy-first/assets/research-hand-segments.glb \
+            anatomy-first/assets/segment-inventory.json
+          git commit -m 'Add separate MRI-derived hand bone viewer with source provenance'
+          git push origin HEAD:main
