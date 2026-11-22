@@ -8,7 +8,7 @@
 <link rel="manifest" href="./manifest.webmanifest">
 <style>
 :root{color-scheme:dark;--bg:#081321;--panel:#112637;--stroke:#2b4a5b;--muted:#9cb5c3;--text:#eaf5f5;--accent:#87e1d3;--orange:#f5a176;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
-*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 35% 0%,#19384b,var(--bg) 58%);color:var(--text)}main{max-width:1140px;margin:auto;padding:17px 13px calc(135px + env(safe-area-inset-bottom,0px))}button,input,select{font:inherit}button{cursor:pointer}button:disabled{opacity:.35;cursor:default}button,a{touch-action:manipulation}a{color:var(--accent)}.top{display:flex;align-items:center;justify-content:space-between;gap:12px}.eyebrow{font-size:11px;letter-spacing:1.2px;color:var(--accent);font-weight:750}.back{text-decoration:none;color:#cde6e9;border:1px solid #416272;border-radius:50px;padding:9px 13px;font-size:12px}h1{font-size:clamp(26px,4vw,35px);line-height:1.13;letter-spacing:-.8px;margin:13px 0 6px}.lead{font-size:13px;line-height:1.6;color:#bbd1d8;max-width:850px;margin:0 0 14px}.warning{background:#332c2a;color:#f6d5b4;border:1px solid #725342;border-radius:13px;padding:11px 13px;font-size:12px;line-height:1.55;margin-bottom:13px}.cols{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(310px,.9fr);gap:14px}.panel{background:var(--panel);border:1px solid var(--stroke);border-radius:19px;overflow:hidden}.scene{height:490px;position:relative;touch-action:none;background:radial-gradient(ellipse at 50% 36%,#1b4956,#0b1c29 67%)}.scene canvas{width:100%;height:100%;display:block;touch-action:none}.status{position:absolute;left:11px;top:11px;background:#0b2332e8;border:1px solid #3d606c;border-radius:50px;color:#b4f5df;padding:7px 11px;font-size:11px;max-width:65%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.views{position:absolute;right:10px;top:10px;display:flex;gap:4px;max-width:calc(100% - 20px);flex-wrap:wrap;justify-content:flex-end}.views button{background:#1e3847db;border:1px solid #3f6071;border-radius:9px;padding:7px 8px;color:#dceeee;font-size:11px}.hint{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);background:#0b2332cc;border:1px solid #3a5a68;border-radius:25px;padding:6px 9px;font-size:10px;color:#c9dbe3;white-space:nowrap;pointer-events:none}.error{display:none;position:absolute;inset:0;z-index:2;background:#081522ef;padding:30px;align-items:center;justify-content:center;text-align:center;line-height:1.5}.error.show{display:flex}.bottom{padding:14px}.row{display:flex;align-items:center;justify-content:space-between;gap:9px}.buttons{display:flex;flex-wrap:wrap;gap:7px}.btn{border:1px solid #3b5d6f;border-radius:10px;padding:10px 12px;background:#1c394b;color:#e9f6f4;font-weight:650;font-size:12px;min-height:40px}.btn.main{background:var(--accent);border-color:var(--accent);color:#0b2830}.btn.selected{border-color:#91e4d6;background:#28535b;color:#f5ffff}.btn.warn{color:#ffcfbe}.btn.small{padding:8px 9px;min-height:34px}input[type=range]{width:100%;accent-color:var(--accent);height:27px}input[type=text],select{background:#0c1e2c;border:1px solid #39576a;border-radius:10px;color:#f1f8f9;min-height:42px;padding:8px 10px;max-width:100%;width:100%;font-size:13px}.field{display:block;margin:12px 0}.field span,.field-label{display:block;font-size:11px;color:var(--muted);margin-bottom:5px;font-weight:650}.box{padding:15px;border-bottom:1px solid #28485b}.box:last-child{border:0}.tag{font-size:10px;text-transform:uppercase;letter-spacing:1.4px;color:#a2d9d3;font-weight:800}.box h2{margin:8px 0 12px;font-size:17px;letter-spacing:-.3px}.note{font-size:11px;line-height:1.55;color:#a8c1c9}.pair{display:grid;grid-template-columns:1fr 1fr;gap:9px}.axis{display:grid;grid-template-columns:24px 1fr 53px;align-items:center;gap:8px;padding:5px 0}.axis strong{font-size:12px;color:#d9eae7}.axis output{font-size:11px;text-align:right;color:#adf1dd;font-variant-numeric:tabular-nums}.frame-buttons{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.frame-buttons button{min-width:0}.frame-buttons strong{display:block}.frame-buttons span{display:block;font-size:10px;opacity:.75;margin-top:3px}.check{display:flex;gap:8px;align-items:center;font-size:12px;color:#d8edf0}.check input{accent-color:var(--accent);width:18px;height:18px}.fieldrow{display:flex;align-items:center;justify-content:space-between;gap:8px}.fieldrow span{color:var(--muted);font-size:11px}.right{padding:0}.fine{font-size:10px;color:#a1b5c2;line-height:1.5}.filename{font-size:11px;color:#a0d5cf;overflow-wrap:anywhere}#jsonFile{display:none}.divider{border-top:1px solid #305269;margin:12px 0}.hide{display:none}@media(max-width:850px){.cols{grid-template-columns:1fr}.scene{height:min(61vh,500px)}}@media(max-width:520px){main{padding:15px 10px 40px}.scene{height:430px}.views button{padding:6px}.box{padding:12px}.buttons{gap:6px}.btn{padding:9px 10px}.axis{grid-template-columns:17px 1fr 47px}}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 35% 0%,#19384b,var(--bg) 58%);color:var(--text)}main{max-width:1140px;margin:auto;padding:17px 13px calc(135px + env(safe-area-inset-bottom,0px))}button,input,select{font:inherit}button{cursor:pointer}button:disabled{opacity:.35;cursor:default}button,a{touch-action:manipulation}a{color:var(--accent)}.top{display:flex;align-items:center;justify-content:space-between;gap:12px}.eyebrow{font-size:11px;letter-spacing:1.2px;color:var(--accent);font-weight:750}.back{text-decoration:none;color:#cde6e9;border:1px solid #416272;border-radius:50px;padding:9px 13px;font-size:12px}h1{font-size:clamp(26px,4vw,35px);line-height:1.13;letter-spacing:-.8px;margin:13px 0 6px}.lead{font-size:13px;line-height:1.6;color:#bbd1d8;max-width:850px;margin:0 0 14px}.warning{background:#332c2a;color:#f6d5b4;border:1px solid #725342;border-radius:13px;padding:11px 13px;font-size:12px;line-height:1.55;margin-bottom:13px}.cols{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(310px,.9fr);gap:14px}.panel{background:var(--panel);border:1px solid var(--stroke);border-radius:19px;overflow:hidden}.scene{height:490px;position:relative;touch-action:none;background:radial-gradient(ellipse at 50% 36%,#1b4956,#0b1c29 67%)}.scene canvas{width:100%;height:100%;display:block;touch-action:none}.compare-grip{position:absolute;left:11px;top:11px;z-index:1;background:#214c59e8;border:1px solid #7dc6bb;color:#f0fffa;border-radius:9px;padding:8px 10px;font-size:11px;font-weight:700;max-width:38%}.status{position:absolute;left:11px;top:11px;background:#0b2332e8;border:1px solid #3d606c;border-radius:50px;color:#b4f5df;padding:7px 11px;font-size:11px;max-width:65%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.views{position:absolute;right:10px;top:10px;display:flex;gap:4px;max-width:calc(100% - 20px);flex-wrap:wrap;justify-content:flex-end}.views button{background:#1e3847db;border:1px solid #3f6071;border-radius:9px;padding:7px 8px;color:#dceeee;font-size:11px}.hint{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);background:#0b2332cc;border:1px solid #3a5a68;border-radius:25px;padding:6px 9px;font-size:10px;color:#c9dbe3;white-space:nowrap;pointer-events:none}.error{display:none;position:absolute;inset:0;z-index:2;background:#081522ef;padding:30px;align-items:center;justify-content:center;text-align:center;line-height:1.5}.error.show{display:flex}.bottom{padding:14px}.row{display:flex;align-items:center;justify-content:space-between;gap:9px}.buttons{display:flex;flex-wrap:wrap;gap:7px}.btn{border:1px solid #3b5d6f;border-radius:10px;padding:10px 12px;background:#1c394b;color:#e9f6f4;font-weight:650;font-size:12px;min-height:40px}.btn.main{background:var(--accent);border-color:var(--accent);color:#0b2830}.btn.selected{border-color:#91e4d6;background:#28535b;color:#f5ffff}.btn.warn{color:#ffcfbe}.btn.small{padding:8px 9px;min-height:34px}input[type=range]{width:100%;accent-color:var(--accent);height:27px}input[type=text],select{background:#0c1e2c;border:1px solid #39576a;border-radius:10px;color:#f1f8f9;min-height:42px;padding:8px 10px;max-width:100%;width:100%;font-size:13px}.field{display:block;margin:12px 0}.field span,.field-label{display:block;font-size:11px;color:var(--muted);margin-bottom:5px;font-weight:650}.box{padding:15px;border-bottom:1px solid #28485b}.box:last-child{border:0}.tag{font-size:10px;text-transform:uppercase;letter-spacing:1.4px;color:#a2d9d3;font-weight:800}.box h2{margin:8px 0 12px;font-size:17px;letter-spacing:-.3px}.note{font-size:11px;line-height:1.55;color:#a8c1c9}.pair{display:grid;grid-template-columns:1fr 1fr;gap:9px}.axis{display:grid;grid-template-columns:24px 1fr 53px;align-items:center;gap:8px;padding:5px 0}.axis strong{font-size:12px;color:#d9eae7}.axis output{font-size:11px;text-align:right;color:#adf1dd;font-variant-numeric:tabular-nums}.frame-buttons{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.frame-buttons button{min-width:0}.frame-buttons strong{display:block}.frame-buttons span{display:block;font-size:10px;opacity:.75;margin-top:3px}.check{display:flex;gap:8px;align-items:center;font-size:12px;color:#d8edf0}.check input{accent-color:var(--accent);width:18px;height:18px}.fieldrow{display:flex;align-items:center;justify-content:space-between;gap:8px}.fieldrow span{color:var(--muted);font-size:11px}.right{padding:0}.fine{font-size:10px;color:#a1b5c2;line-height:1.5}.filename{font-size:11px;color:#a0d5cf;overflow-wrap:anywhere}#jsonFile{display:none}.divider{border-top:1px solid #305269;margin:12px 0}.hide{display:none}@media(max-width:850px){.cols{grid-template-columns:1fr}.scene{height:min(61vh,500px)}}@media(max-width:520px){main{padding:15px 10px 40px}.scene{height:430px}.views button{padding:6px}.box{padding:12px}.buttons{gap:6px}.btn{padding:9px 10px}.axis{grid-template-columns:17px 1fr 47px}}
 .right{display:none}
 .lesson{padding:17px;overflow:visible}.lesson h2{font-size:18px;margin:4px 0 10px}
 .lesson h3{font-size:13px;margin:13px 0 5px;color:var(--accent)}
@@ -31,7 +31,7 @@
 <section class="panel">
  <div class="scene" id="touchScene">
   <canvas id="canvas" aria-label="Анатомическая 3D-модель для редактирования движений"></canvas>
-  <div class="status" id="status">Загрузка анатомии…</div>
+  <div class="status" id="status">Загрузка анатомии…</div><button id="compareGrip" type="button" class="compare-grip" style="display:none">Новый хват · опытный</button>
   <div class="views"><button data-view="front">Фас</button><button data-view="side">Профиль</button><button data-view="back">Спина</button><button id="resetCam" title="Вернуть всю фигуру в кадр" aria-label="Показать всю фигуру">⤢ Вся фигура</button></div>
   <div class="hint">Проведи: вращение · 2 пальца: масштаб / сдвиг</div>
   <div class="error" id="error"><div><strong>Не удалось загрузить модель</strong><p id="errorText"></p><button class="btn" onclick="location.reload()">Повторить</button></div></div>
@@ -123,7 +123,7 @@
 <script type="module">
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
-import {fitDumbbellGrip} from './grip-constraints.js';
+import {fitDumbbellGrip} from './grip-constraints.js?v=22';
 const $=s=>document.querySelector(s);
 const ui={box:$('#touchScene'),canvas:$('#canvas'),status:$('#status'),error:$('#error'),errorText:$('#errorText'),time:$('#timeLabel'),timeline:$('#timeline'),play:$('#play'),phase:$('#currentPhase'),name:$('#exerciseName'),equip:$('#equipment'),muscle:$('#muscle'),joint:$('#joint'),mirror:$('#mirror'),saveState:$('#saveState')};
 const STORAGE='home-workouts-motion-editor-v1',DURATION=6,rad=Math.PI/180;let playbackSpeed=1;
@@ -285,23 +285,43 @@ async function loadModel(){
  orientation.scale.setScalar(1.76/size.y);
  skel=new THREE.SkeletonHelper(model);scene.add(skel);skel.visible=false;skel.material.color.setHex(0x8de5d6);skel.material.depthTest=false;skel.renderOrder=9;
  populateJoints();addDumbbells();loaded=true;
- const response=await fetch('./exercises/dumbbell-curl.json?v=21');
+ const response=await fetch('./exercises/dumbbell-curl.json?v=22');
  if(!response.ok)throw Error('Не удалось загрузить сценарий упражнения');
  restoreDocument(await response.json(),false);
+ const originalFrames=copy(frames);
  ui.status.textContent='Подгонка захвата к гантелям…';
  const fit=await fitDumbbellGrip({
    THREE,rig,dumbbells,initialPose:copy(frames[0]),
    applyPose:calibrationPose=>{pose=calibrationPose;applyAngles()}
  });
- if(Object.keys(fit.patch).length){
+ const changed=Object.entries(fit.patch).filter(([joint,angles])=>{
+   const old=originalFrames[0][joint];
+   return !old||angles.some((n,i)=>Math.abs(n-old[i])>.1);
+ }).length;
+ if(changed){
    for(const frame of frames)Object.assign(frame,copy(fit.patch));
+ }
+ const fittedFrames=copy(frames);
+ const compare=document.getElementById('compareGrip');
+ if(changed){
+   let showingNew=true;
+   compare.style.display='block';
+   compare.textContent='Новый хват · опытный';
+   compare.onclick=()=>{
+     const savedPosition=playhead;
+     playing=false;ui.play.textContent='▶ Воспроизвести';
+     showingNew=!showingNew;
+     frames=copy(showingNew?fittedFrames:originalFrames);
+     pose=poseAt(savedPosition);applyAngles();drawAxes();
+     compare.textContent=showingNew?'Новый хват · опытный':'Прежний хват';
+   };
  }
  selectFrame(0);
  const validCount=fit.measurements.filter(item=>item.valid).length;
  const status=document.getElementById('gripStatus');
- status.textContent=fit.ok?'Захват: пальцы автоматически подогнаны к рукояткам. Визуальная проверка ещё необходима.':
-   'Захват: автоматическая подгонка не завершена ('+validCount+'/'+fit.measurements.length+
-   '). Часть пальцев оставлена в исходном положении. Не используй это как образец хвата.';
+ status.textContent=changed
+   ?'Экспериментальный хват: изменено '+changed+' суставов, успешно подогнано '+validCount+'/'+fit.measurements.length+'. Кнопка в углу модели переключает старый и новый варианты. Правильность ещё не подтверждена.'
+   :'Захват не изменён: расчёт не нашёл допустимое улучшение. Прежние пальцы оставлены без изменений. '+(fit.reason||'');
  ui.saveState.textContent='Открыта готовая анимация упражнения.';
  ui.status.textContent='✓ Модель загружена';ui.status.style.display='none';fitWholeBody();
 }
