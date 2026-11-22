@@ -1,9 +1,10 @@
-name: QA MRI hand contact and motion
+name: QA MRI hand v4 grip motion
 on:
   push:
     paths:
       - '.github/workflows/qa-anatomy-first-grip.yml'
-      - 'anatomy-first/full-hand-lab-v3.html'
+      - 'anatomy-first/full-hand-lab-v4.html'
+      - 'anatomy-first/full-mri-hand-rig-v3.js'
       - 'anatomy-first/full-mri-hand-rig-v2.js'
   workflow_dispatch:
 permissions:
@@ -35,13 +36,13 @@ jobs:
           const poses=['open','oppose','grasp'];
           const results={};
           try{
-            await page.goto('http://127.0.0.1:8781/anatomy-first/full-hand-lab-v3.html',{waitUntil:'domcontentloaded',timeout:90000});
+            await page.goto('http://127.0.0.1:8781/anatomy-first/full-hand-lab-v4.html',{waitUntil:'domcontentloaded',timeout:90000});
             await page.waitForFunction(()=>window.__thumbQA?.ready()||document.querySelector('#error')?.classList.contains('show'),null,{timeout:90000});
             if(!await page.evaluate(()=>window.__thumbQA?.ready()))throw new Error('Model did not initialize');
             for(const pose of poses){
               await page.locator('[data-pose="'+pose+'"]').click();
               await page.waitForTimeout(400);
-              results[pose]={metrics:await page.evaluate(()=>window.__thumbQA.metrics()),audit:await page.locator('#audit').innerText()};
+              results[pose]={metrics:await page.evaluate(()=>window.__thumbQA.metrics()),gaps:await page.evaluate(()=>window.__thumbQA.gripGaps()),audit:await page.locator('#audit').innerText()};
               await page.locator('#stage canvas').screenshot({path:'qa-shots/'+pose+'.png'});
               await page.locator('[data-view="side"]').click();
               await page.waitForTimeout(300);
