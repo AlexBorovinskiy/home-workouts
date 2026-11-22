@@ -79,6 +79,7 @@ const shaftMat=new THREE.MeshStandardMaterial({color:0x364d5b,metalness:.56,roug
 const discMat=new THREE.MeshStandardMaterial({color:0x899dac,metalness:.72,roughness:.32});
 const handleCenter=new THREE.Vector3(0,.07657357,.03055974),handleQ=new THREE.Quaternion(0,0,.10713777,.99424418).normalize();
 const bends={index:[53,50,27],middle:[56,50,28],ring:[53,48,24],pinky:[15,35,20]};
+const initialBends=Object.fromEntries(Object.entries(bends).map(([k,v])=>[k,[...v]]));
 const defaultThumb={baseX:-13,baseY:-50,baseZ:7,middle:-20,tip:51};
 const thumbSettings={...defaultThumb};
 const stages=[{name:'Старт',angle:0},{name:'Середина',angle:45},{name:'Пик',angle:90}];
@@ -115,6 +116,12 @@ function gripFingers(){
  const rot=new THREE.Quaternion(),axis=new THREE.Vector3(localAxis==='x'?1:0,0,localAxis==='z'?1:0);
  if(axis.lengthSq()===0)throw Error('Unsupported debug axis');
  window.__axisDebugConfig={axis:localAxis,sign,order};
+ window.__configureGrip=({factor=1,y=.07657357,z=.03055974,shiftX=0})=>{
+   for(const [digit,angles] of Object.entries(initialBends))bends[digit]=angles.map(v=>v*factor);
+   bar.position.set(shiftX,y,z);
+   gripFingers();
+   return checkContact();
+ };
  const thumbAngles=[thumbSettings.baseX,thumbSettings.middle,thumbSettings.tip];
  for(const [digit,angles] of [...Object.entries(bends),['thumb',thumbAngles]])for(let j=1;j<=3;j++){
   const joint=donor.getObjectByName(digit+'_0'+j+'_r');
