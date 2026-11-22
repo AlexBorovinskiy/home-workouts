@@ -1,0 +1,254 @@
+<!doctype html><html lang="ru"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0a1d2b"><link rel="icon" href="data:,">
+<title>Anatomy First — контроль осей пальцев v2</title>
+<style>
+:root{color-scheme:dark;--bg:#091c2b;--panel:#112d3e;--line:#35586a;--mint:#83ddd0;--text:#ecf7f5;--muted:#afcbd0}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 15% 2%,#1e4150,var(--bg) 62%);color:var(--text);font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+main{max-width:950px;margin:auto;padding:18px 13px 42px}
+header{display:flex;align-items:center;justify-content:space-between;gap:14px}
+header strong{color:var(--mint);letter-spacing:.15em;font-size:10px}
+header a{border:1px solid var(--line);border-radius:23px;padding:8px 11px;text-decoration:none;color:#d6eeee;font-size:12px}
+h1{font-size:clamp(27px,5vw,37px);line-height:1.08;letter-spacing:-.042em;margin:23px 0 9px}
+.lead{font-size:13px;line-height:1.65;color:var(--muted);margin:0 0 13px}
+.notice{border:1px solid #745444;background:#413129;color:#f4e0cf;border-radius:12px;padding:12px 14px;font-size:12px;line-height:1.6;margin:12px 0}
+.viewer{border:1px solid var(--line);background:#102b3c;border-radius:19px;overflow:hidden}
+.viewport{height:min(61vh,565px);min-height:375px;position:relative;touch-action:none;background:radial-gradient(ellipse at center,#285061,#0b1d2c 73%)}
+canvas{display:block;width:100%;height:100%;touch-action:none}
+.chip{position:absolute;top:14px;left:12px;border:1px solid #48707d;border-radius:22px;background:#0b2a3cdc;padding:7px 11px;font-size:11px;color:#d2eeeb;pointer-events:none}
+.hint{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);background:#0c2839de;border-radius:22px;padding:6px 12px;font-size:10px;white-space:nowrap;color:#c7dcdf;pointer-events:none}
+.error{display:none;position:absolute;inset:0;padding:20px;align-items:center;justify-content:center;text-align:center;background:#172833f2;line-height:1.5}.error.show{display:flex}
+.controls{padding:15px;display:grid;gap:15px}
+.section-label{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--mint);font-weight:800;margin-bottom:9px}
+.buttons{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+button{border:1px solid #476979;background:#1b3b4d;color:#e6f2f2;border-radius:11px;min-height:45px;padding:7px 5px;font:inherit;font-size:12px;font-weight:650;cursor:pointer}
+button.active{background:var(--mint);border-color:var(--mint);color:#08232c}
+button:focus-visible,input:focus-visible{outline:2px solid var(--mint);outline-offset:3px}
+.toggles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.toggles button{min-height:43px;font-size:11px}
+.ranges{display:grid;gap:13px}
+.range{display:grid;grid-template-columns:minmax(0,1fr) 54px;gap:7px;font-size:13px;font-weight:600;align-items:center}
+.range small{font-size:10px;color:var(--muted);display:block;margin-top:3px;font-weight:400}
+.range output{text-align:right;color:#a6e4dd;font-size:13px;font-variant-numeric:tabular-nums}
+.range input{grid-column:1/-1;width:100%;accent-color:var(--mint);min-height:21px;margin:0}
+.readout{border:1px solid #2d5363;border-radius:12px;background:#0d2737;padding:12px}
+.readout-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.readout strong{display:block;font-size:24px;line-height:1.3;font-variant-numeric:tabular-nums}
+.readout span{font-size:11px;color:var(--muted)}
+.readout p{font-size:11px;color:var(--muted);line-height:1.55;margin:10px 0 0}
+.foot{font-size:11px;line-height:1.7;color:var(--muted);padding-top:15px}
+.foot a{color:var(--mint)}
+@media(min-width:750px){.viewport{height:600px}.controls{grid-template-columns:1fr 1fr;column-gap:25px}.controls .wide{grid-column:1/-1}.ranges{grid-template-columns:1fr 1fr;gap:18px}}
+</style></head><body><main>
+<header><strong>HOME WORKOUTS / ANATOMY FIRST</strong><a href="./full-hand-lab.html">← Прошлая версия</a></header>
+<h1>Кисть · проверка механики v2</h1>
+<p class="lead">Новая версия: у всех четырёх пальцев одинаковая схема MCP–PIP–DIP, а оси сгибания вычисляются по собственному направлению костей каждого пальца. Можно сравнить с прежней моделью.</p>
+<div class="notice"><strong>Экспериментальная кинематика.</strong> Это исследовательская 3D-модель без кожи и мышц: 19 костей кисти и 7 предварительно определённых костей запястья. Центры суставов и ладонная ось остаются приближёнными. Увидеть общий хват теперь проще, но он ещё не подтверждён как анатомически точный. Гороховидная кость отдельно в исходной сетке не выделена.</div>
+<div class="viewer">
+<div class="viewport" id="stage">
+<canvas id="canvas" aria-label="Настоящая 3D-модель костей большого пальца с управляемыми суставами"></canvas>
+<div class="chip" id="status">Загрузка МРТ-костей…</div>
+<div class="hint">Проведи — поворот · два пальца — масштаб</div>
+<div class="error" id="error" role="alert"></div>
+</div>
+<div class="controls">
+<section>
+<div class="section-label">Положение</div>
+<div class="buttons">
+<button data-pose="open">1 · Открытая</button>
+<button data-pose="oppose">2 · Кулак</button>
+<button data-pose="grasp">3 · Проба хвата</button>
+</div>
+</section>
+<section>
+<div class="section-label">Ракурс</div>
+<div class="buttons">
+<button data-view="palm">Ладонь</button>
+<button data-view="side">Профиль</button>
+<button data-view="diagonal">Под углом</button>
+</div>
+</section>
+<section class="wide">
+<div class="section-label">Отображение</div>
+<div class="toggles">
+<button id="handleToggle" aria-pressed="false">Показать рукоять</button>
+<button id="contextToggle" aria-pressed="true">Кости запястья</button>
+<button id="pivotToggle" aria-pressed="false">Центры суставов</button>
+</div>
+</section>
+<section class="wide">
+<div class="section-label">Пальцы · MCP / PIP / DIP</div>
+<div class="ranges">
+<label class="range"><span>Согнуть все четыре пальца <small>Одна шкала для всей кисти</small></span><output id="out-allCurl">0%</output>
+<input id="allCurl" type="range" min="0" max="100" value="0" step="1"></label>
+</div>
+<div class="ranges" style="margin-top:13px">
+<label class="range">Указательный <output id="out-indexCurl">0%</output>
+<input id="indexCurl" data-finger="index" type="range" min="0" max="100" value="0" step="1"></label>
+<label class="range">Средний <output id="out-middleCurl">0%</output>
+<input id="middleCurl" data-finger="middle" type="range" min="0" max="100" value="0" step="1"></label>
+<label class="range">Безымянный <output id="out-ringCurl">0%</output>
+<input id="ringCurl" data-finger="ring" type="range" min="0" max="100" value="0" step="1"></label>
+<label class="range">Мизинец <output id="out-littleCurl">0%</output>
+<input id="littleCurl" data-finger="little" type="range" min="0" max="100" value="0" step="1"></label>
+</div>
+<p class="lead" style="margin:8px 0 0">Фаланги сгибаются вместе, но каждый палец можно настроить отдельно. Положение суставов пока приближённое.</p>
+</section>
+<section class="wide">
+<div class="section-label">CMC · основание большого пальца</div>
+<div class="ranges">
+<label class="range">Отведение <output id="out-abduct">0°</output>
+<input data-angle="abduct" type="range" min="-25" max="35" value="0" step="1"></label>
+<label class="range">Сгибание поперёк ладони <output id="out-cmcFlex">0°</output>
+<input data-angle="cmcFlex" type="range" min="-15" max="55" value="0" step="1"></label>
+<label class="range">Осевое вращение <output id="out-cmcRotate">0°</output>
+<input data-angle="cmcRotate" type="range" min="-45" max="45" value="0" step="1"></label>
+</div>
+</section>
+<section class="wide">
+<div class="section-label">Фаланги</div>
+<div class="ranges">
+<label class="range">MCP · сгибание <output id="out-mcpFlex">0°</output>
+<input data-angle="mcpFlex" type="range" min="-15" max="65" value="0" step="1"></label>
+<label class="range">IP · сгибание <output id="out-ipFlex">0°</output>
+<input data-angle="ipFlex" type="range" min="-15" max="75" value="0" step="1"></label>
+</div>
+</section>
+<section class="wide">
+<div class="readout">
+<div class="readout-grid">
+<div><span>Большой ↔ указательный (костные концы)</span><strong id="betweenTips">—</strong></div>
+<div><span>От кости большого пальца до рукояти</span><strong id="distance">—</strong></div>
+</div>
+<p id="readoutText">Движение измеряется по реальным костным поверхностям. Число справа — расстояние до цилиндра от точки на дистальной фаланге, а не расстояние до кожи.</p>
+</div>
+</section>
+</div></div>
+<div class="foot">Источник костей: <a href="https://github.com/HegdeUSA/Hand_template">Hegdé et al., Hand Template</a> (МРТ-модель здоровой кисти). Суставные ориентиры определены по близости костных поверхностей, а не по клиническому измерению центров вращения. Исходная геометрия и её лицензия описаны в репозитории; прежняя модель тренировок сохранена. Режимы вдохновлены твоими референсами, но не являются результатом захвата движений. Гороховидная кость в исходной модели отдельно не выделена.</div>
+</main>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import {createFullMRIHandRigV2} from './full-mri-hand-rig-v2.js';
+const $=s=>document.querySelector(s);
+const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(37,1,.001,10);
+const renderer=new THREE.WebGLRenderer({canvas:$('#canvas'),antialias:true,alpha:true,preserveDrawingBuffer:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.75));renderer.setClearColor(0x0a2030,0);
+renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;
+scene.add(new THREE.HemisphereLight(0xfafbf6,0x41647a,2.3));
+const key=new THREE.DirectionalLight(0xffeddd,2.5);key.position.set(1,3,4);scene.add(key);
+const fill=new THREE.DirectionalLight(0x9cd8e9,1.3);fill.position.set(-3,-3,1);scene.add(fill);
+const orbit=new OrbitControls(camera,renderer.domElement);orbit.enableDamping=true;orbit.dampingFactor=.075;
+orbit.minDistance=.075;orbit.maxDistance=.65;
+let rig=null,ready=false,active='open',viewName='palm';
+const target=new THREE.Vector3(0,-.004,.024);
+function resize(){
+ const box=$('#stage');renderer.setSize(box.clientWidth,box.clientHeight,false);
+ camera.aspect=box.clientWidth/box.clientHeight;camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe($('#stage'));resize();
+function view(name='palm'){
+ if(!ready)return;
+ viewName=name;
+ const option={
+   palm:{v:[.03,.315,.08],up:[0,0,1]},
+   side:{v:[.29,.045,.10],up:[0,0,1]},
+   diagonal:{v:[.18,.255,.12],up:[0,0,1]}
+ }[name]||{v:[.035,.22,.055],up:[0,0,1]};
+ camera.up.set(...option.up);orbit.target.copy(target);
+ camera.position.copy(target).add(new THREE.Vector3(...option.v));
+ camera.lookAt(target);orbit.update();
+ for(const b of document.querySelectorAll('[data-view]'))b.classList.toggle('active',b.dataset.view===name);
+}
+function setAngles(value){
+ if(!rig)return;
+ rig.pose(value);
+ const m=rig.metrics();
+ for(const i of document.querySelectorAll('input[data-angle]')){
+   i.value=String(m.position[i.dataset.angle]);
+   $('#out-'+i.dataset.angle).textContent=i.value+'°';
+ }
+ $('#distance').textContent=m.insideReferenceShaft?'Пересечение':m.tipToShaftMm.toFixed(1)+' мм';
+ $('#betweenTips').textContent=Number(m.boneTipDistanceMm).toFixed(1)+' мм';
+ let total=0;
+ for(const name of ['index','middle','ring','little']){
+   const pct=Math.round(100*m.digitCurls[name]);total+=pct;
+   $('#'+name+'Curl').value=String(pct);
+   $('#out-'+name+'Curl').textContent=pct+'%';
+ }
+ $('#allCurl').value=String(Math.round(total/4));
+ $('#out-allCurl').textContent=Math.round(total/4)+'%';
+ $('#readoutText').textContent='Все пять пальцев показаны в исходных костных пропорциях. Числовой зазор между двумя костными концами не означает, что подушечки кожи соприкасаются или хват верен.';
+ for(const b of document.querySelectorAll('[data-pose]'))b.classList.toggle('active',b.dataset.pose===active);
+ $('#status').textContent=active==='open'?'Пять пальцев · раскрытая':active==='oppose'?'Пять пальцев · сгибание':active==='grasp'?'Пять пальцев · проба хвата':'Пять пальцев · настройка';
+ return m;
+}
+function selectPreset(name){
+ active=name;
+ rig.handle.visible=name==='grasp';
+ $('#handleToggle').textContent=rig.handle.visible?'Скрыть рукоять':'Показать рукоять';
+ $('#handleToggle').setAttribute('aria-pressed',String(rig.handle.visible));
+ rig.poseFull(name);
+ setAngles({});
+ // The open MRI hand is much taller than a curled one.
+ // Center the whole structure on preset changes, not during a user-controlled drag.
+ target.z=name==='open'?.028:.000;
+ view(viewName);
+}
+document.querySelectorAll('[data-pose]').forEach(b=>b.addEventListener('click',()=>selectPreset(b.dataset.pose)));
+document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>view(b.dataset.view)));
+$('#allCurl').addEventListener('input',()=>{
+ active='custom';rig.setAllCurl(Number($('#allCurl').value)/100);setAngles({});
+});
+for(const input of document.querySelectorAll('input[data-finger]'))input.addEventListener('input',()=>{
+ active='custom';rig.updateFinger(input.dataset.finger,Number(input.value)/100);setAngles({});
+});
+document.querySelectorAll('input[data-angle]').forEach(input=>input.addEventListener('input',()=>{
+ active='custom';setAngles({[input.dataset.angle]:Number(input.value)});
+}));
+$('#handleToggle').addEventListener('click',()=>{
+ if(!rig)return;
+ rig.handle.visible=!rig.handle.visible;
+ $('#handleToggle').setAttribute('aria-pressed',String(rig.handle.visible));
+ $('#handleToggle').textContent=rig.handle.visible?'Скрыть рукоять':'Показать рукоять';
+});
+$('#contextToggle').addEventListener('click',()=>{
+ if(!rig)return;
+ const visible=$('#contextToggle').getAttribute('aria-pressed')!=='true';
+ rig.showWrist(visible);$('#contextToggle').setAttribute('aria-pressed',String(visible));
+ $('#contextToggle').classList.toggle('active',visible);
+});
+$('#pivotToggle').addEventListener('click',()=>{
+ if(!rig)return;
+ const visible=$('#pivotToggle').getAttribute('aria-pressed')!=='true';
+ rig.showPivots(visible);$('#pivotToggle').setAttribute('aria-pressed',String(visible));
+ $('#pivotToggle').classList.toggle('active',visible);
+});
+async function init(){
+ const [gltf,landmarks,jointData]=await Promise.all([
+  new GLTFLoader().loadAsync('./assets/research-hand-segments.glb'),
+  fetch('./assets/thumb-landmarks.json').then(r=>{if(!r.ok)throw Error('Нет файла суставных ориентиров');return r.json()}),
+  fetch('./assets/joint-surface-candidates.json').then(r=>{if(!r.ok)throw Error('Нет ориентиров для остальных пальцев');return r.json()})
+ ]);
+ rig=createFullMRIHandRigV2(THREE,gltf,landmarks,jointData);
+ scene.add(rig.root);scene.updateMatrixWorld(true);
+ ready=true;
+ selectPreset('open');view('palm');
+ $('#contextToggle').classList.add('active');
+ window.__thumbQA={
+   ready:()=>ready,pose:selectPreset,setAngles,view,metrics:()=>rig.metrics(),setAllCurl:rig.setAllCurl,updateFinger:rig.updateFinger,getIndexSign:rig.getIndexSign,
+   toggleHandle:(b)=>{rig.handle.visible=b;return rig.handle.visible;},
+   bones:()=>({trapezium:rig.bone.trapezium.geometry.attributes.position.count,
+      metacarpal:rig.bone.mc1.geometry.attributes.position.count,
+      proximal:rig.bone.prox.geometry.attributes.position.count,
+      distal:rig.bone.distal.geometry.attributes.position.count}),
+   pivots:()=>({cmc:rig.cmc.toArray(),mcp:rig.mcp.toArray(),ip:rig.ip.toArray()}),
+   fingerBones:()=>Object.fromEntries(Object.entries(rig.fingers).map(([name,f])=>[name,Object.fromEntries(Object.entries(f.parts).map(([part,mesh])=>[part,mesh.geometry.attributes.position.count]))])),
+   fingerTipPositions:()=>rig.metrics().fingerTipPositions
+ };
+}
+(function render(){requestAnimationFrame(render);orbit.update();renderer.render(scene,camera)})();
+init().catch(e=>{console.error(e);$('#error').classList.add('show');$('#error').textContent='Ошибка модели: '+e.message;$('#status').textContent='Не удалось загрузить кости';});
+</script></body></html>
