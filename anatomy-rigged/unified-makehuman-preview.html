@@ -34,7 +34,10 @@ const orbit=new OrbitControls(camera,canvas);orbit.enableDamping=true;orbit.damp
 const params=new URLSearchParams(location.search);
 const axis=(params.get('axis')||'x').toLowerCase(),sign=params.get('sign')==='neg'?-1:1;
 const method=params.get('order')==='pre'?'premultiply':'multiply';
+const twistSign=(params.get('twist')==='negative'?-1:1);
 let model=null,skin=null,hand=null,bar=null,ready=false,rest={},jointMap={},poseVersion=0,forearm=null,restElbow=null,elbowDelta=null,stage=0;
+const thumbSetup={baseX:12,baseY:0,baseZ:0,middle:26,tip:18};
+const thumbDefault={...thumbSetup};
 const fingers=['index','middle','ring','pinky','thumb'];
 const baseFlex={index:[48,65,28],middle:[50,63,33],ring:[50,67,34],pinky:[46,59,30],thumb:[12,26,18]};
 const flex=Object.fromEntries(Object.entries(baseFlex).map(([k,v])=>[k,[...v]]));
@@ -59,27 +62,47 @@ function grip(){
  const ax=axis==='x'?new THREE.Vector3(1,0,0):axis==='y'?new THREE.Vector3(0,1,0):new THREE.Vector3(0,0,1);
  for(const digit of fingers)for(let j=1;j<=3;j++){
    const bone=jointMap[digit+'_0'+j+'_r'],q=rest[bone.name];if(!bone||!q)throw Error('Нет сустава '+digit+j);
-   const rot=new THREE.Quaternion().setFromAxisAngle(ax,THREE.MathUtils.degToRad(sign*flex[digit][j-1]));
-   bone.quaternion.copy(q)[method](rot);
+   let rot;
+   if(digit==='thumb'){
+     if(j===1)rot=new THREE.Quaternion().setFromEuler(new THREE.Euler(
+       THREE.MathUtils.degToRad(thumbSetup.baseX),
+       THREE.MathUtils.degToRad(thumbSetup.baseY),
+       THREE.MathUtils.degToRad(thumbSetup.baseZ),'XYZ'));
+     else rot=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0),
+       THREE.MathUtils.degToRad(j===2?thumbSetup.middle:thumbSetup.tip));
+   }else{
+     rot=new THREE.Quaternion().setFromAxisAngle(ax,THREE.MathUtils.degToRad(sign*flex[digit][j-1]));
+   }
+   bone.quaternion.copy(q).multiply(rot);
  }
  poseVersion++;scene.updateMatrixWorld(true);skin.skeleton.update();
 }
+
 function setStage(next){
  if(!ready)return;
  stage=Number(next);
  const t=[0,.5,1][stage]??0;
  const worldRot=new THREE.Quaternion().slerpQuaternions(new THREE.Quaternion(),elbowDelta,t);
- const parentQ=forearm.parent.getWorldQuaternion(new THREE.Quaternion());
- const localDelta=parentQ.clone().invert().multiply(worldRot).multiply(parentQ);
+ let parentQ=forearm.parent.getWorldQuaternion(new THREE.Quaternion());
+ let localDelta=parentQ.clone().invert().multiply(worldRot).multiply(parentQ);
  forearm.quaternion.copy(restElbow).premultiply(localDelta);
- // Experimental forearm-axis rotation keeps the dumbbell shaft approximately level.
- // Final anatomy review will determine whether the forearm should handle the twist.
- const wristRoll=THREE.MathUtils.degToRad(-35-8*t);
- hand.quaternion.copy(rest.hand_r).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),wristRoll));
+ // Rotate the FOREARM around its true elbow-to-wrist axis, never the wrist joint.
+ scene.updateMatrixWorld(true);
+ const elbow=forearm.getWorldPosition(new THREE.Vector3());
+ const wrist=hand.getWorldPosition(new THREE.Vector3());
+ const axisWorld=wrist.sub(elbow).normalize();
+ const twistWorld=new THREE.Quaternion().setFromAxisAngle(axisWorld,
+   THREE.MathUtils.degToRad(twistSign*25*t));
+ parentQ=forearm.parent.getWorldQuaternion(new THREE.Quaternion());
+ localDelta=parentQ.clone().invert().multiply(twistWorld).multiply(parentQ);
+ forearm.quaternion.premultiply(localDelta);
+ // Wrist remains in its rest anatomical frame; forearm twist carries the entire hand.
+ hand.quaternion.copy(rest.hand_r);
  scene.updateMatrixWorld(true);skin.skeleton.update();view('palm');contacts();
  for(const btn of document.querySelectorAll('[data-stage]'))btn.classList.toggle('active',Number(btn.dataset.stage)===stage);
- hud.textContent=['Старт · настоящий локоть','Середина · настоящий локоть','Пик · настоящий локоть'][stage];
+ hud.textContent=['Старт · локоть','Середина · локоть + супинация','Пик · локоть + супинация'][stage];
 }
+
 function makeDumbbell(){
  bar=new THREE.Group();bar.name='hand-anchored-dumbbell';
  bar.position.copy(handCenter);bar.quaternion.setFromUnitVectors(new THREE.Vector3(1,0,0),direction);
@@ -94,6 +117,12 @@ function makeDumbbell(){
    c.rotation.z=Math.PI/2;c.position.x=x*1.27;c.userData.isPlate=true;bar.add(c);
  }
  hand.add(bar);
+}
+function getThumbTip(){
+  scene.updateMatrixWorld(true);
+  const thumb=jointMap.thumb_03_r,world=thumb.localToWorld(new THREE.Vector3(0,.026,0));
+  const p=bar.worldToLocal(world);
+  return {shaftX:p.x,shaftRadial:Math.hypot(p.y,p.z),distance:Math.hypot(p.y,p.z)-.011,skinTipApproximation:true};
 }
 function contacts(){
  if(!ready)return null;
@@ -131,7 +160,14 @@ async function init(){
  elbowDelta=new THREE.Quaternion().setFromUnitVectors(startDir,targetDir);
  for(const digit of fingers)for(let j=1;j<=3;j++)if(!jointMap[digit+'_0'+j+'_r'])throw Error('Нет фаланги '+digit+j);
  makeDumbbell();grip();ready=true;setStage(0);
- window.__unifiedQA={ready:()=>ready,view,contacts,setStage,getPose:()=>({stage,elbow:forearm.getWorldPosition(new THREE.Vector3()).toArray(),wrist:hand.getWorldPosition(new THREE.Vector3()).toArray(),bar:bar.getWorldPosition(new THREE.Vector3()).toArray()}),configure(options={}){
+ window.__unifiedQA={ready:()=>ready,view,contacts,setStage,getPose:()=>({stage,
+ elbow:forearm.getWorldPosition(new THREE.Vector3()).toArray(),
+ wrist:hand.getWorldPosition(new THREE.Vector3()).toArray(),
+ bar:bar.getWorldPosition(new THREE.Vector3()).toArray(),
+ wristLocalRotation:hand.quaternion.toArray(),
+ shaftDirection:new THREE.Vector3(1,0,0).applyQuaternion(bar.getWorldQuaternion(new THREE.Quaternion())).toArray()
+ }),setThumb(settings){Object.assign(thumbSetup,settings);grip();return {contact:contacts().thumb,tip:getThumbTip()}},
+ getThumb:()=>({...thumbSetup}),getThumbTip:()=>getThumbTip(),configure(options){
   if(options.center){handCenter.fromArray(options.center);bar.position.copy(handCenter)}
   if(options.direction){direction.fromArray(options.direction).normalize();bar.quaternion.setFromUnitVectors(new THREE.Vector3(1,0,0),direction)}
   if(options.factor!==undefined)for(const [digit,angles]of Object.entries(baseFlex))flex[digit]=angles.map((a)=>a*options.factor);
