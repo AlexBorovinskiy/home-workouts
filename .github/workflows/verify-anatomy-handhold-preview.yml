@@ -1,0 +1,68 @@
+name: Browser QA for independent hand-grip pose
+on:
+  push:
+    paths:
+      - '.github/workflows/verify-anatomy-handhold-preview.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify-grip:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser adapter
+        run: npm install --prefix /tmp/anatomy-qa --no-fund --no-audit playwright-core@1.56.1
+      - name: Capture old and new grip on GitHub Pages
+        shell: bash
+        run: |
+          mkdir -p snapshots
+          node --input-type=module <<'NODE'
+          import { chromium } from '/tmp/anatomy-qa/node_modules/playwright-core/index.mjs';
+          import { writeFileSync } from 'node:fs';
+          import { createHash } from 'node:crypto';
+          const browser=await chromium.launch({channel:'chrome',headless:true,args:['--no-sandbox']});
+          const context=await browser.newContext({viewport:{width:430,height:932},deviceScaleFactor:1,isMobile:true,hasTouch:true,serviceWorkers:'block'});
+          const page=await context.newPage();
+          const errors=[];
+          page.on('pageerror',e=>errors.push(String(e)));
+          try{
+            await page.goto('https://alexborovinskiy.github.io/home-workouts/anatomy-rigged/lesson.html?v=23&qa=1',{waitUntil:'domcontentloaded',timeout:90000});
+            await page.waitForFunction(()=>{
+              const text=document.querySelector('#gripStatus')?.textContent||'';
+              return text.includes('Новый хват рассчитан')||text.includes('Не удалось загрузить альтернативный захват');
+            },null,{timeout:90000});
+            const status=await page.locator('#gripStatus').innerText();
+            const button=await page.locator('#compareGrip').innerText();
+            const visible=await page.locator('#compareGrip').isVisible();
+            await page.locator('canvas').scrollIntoViewIfNeeded();
+            await page.waitForTimeout(800);
+            await page.screenshot({path:'snapshots/whole-page.png',fullPage:true});
+            const newImage=await page.locator('canvas').screenshot({path:'snapshots/handhold-canvas.png'});
+            if(!visible||!status.includes('Новый хват рассчитан'))throw Error('Expected Handhold pose did not load: '+status);
+            await page.locator('#compareGrip').click();
+            await page.waitForTimeout(500);
+            const oldImage=await page.locator('canvas').screenshot({path:'snapshots/old-canvas.png'});
+            const sha=x=>createHash('sha256').update(x).digest('hex');
+            const changed=sha(newImage)!==sha(oldImage);
+            const result={status,button,visible,visualPixelsChanged:changed,newHash:sha(newImage),oldHash:sha(oldImage),errors};
+            writeFileSync('snapshots/result.json',JSON.stringify(result,null,2));
+            console.log(JSON.stringify(result,null,2));
+            if(!changed||errors.length)throw Error('Browser QA detected no visible pose difference or JS errors');
+          }catch(err){
+            await page.screenshot({path:'snapshots/failure.png',fullPage:true}).catch(()=>{});
+            writeFileSync('snapshots/error.txt',String(err)+'\n'+errors.join('\n'));
+            throw err;
+          }finally{await browser.close();}
+          NODE
+      - name: Upload screenshots for visual review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: home-workouts-grip-visual-check
+          path: snapshots/
+          retention-days: 14
