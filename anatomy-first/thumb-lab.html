@@ -135,9 +135,9 @@ function view(name='palm'){
  if(!ready)return;
  viewName=name;
  const option={
-   palm:{v:[.035,.22,.055],up:[0,0,1]},
-   side:{v:[.205,.045,.075],up:[0,0,1]},
-   diagonal:{v:[.135,.17,.09],up:[0,0,1]}
+   palm:{v:[.027,.175,.045],up:[0,0,1]},
+   side:{v:[.175,.04,.060],up:[0,0,1]},
+   diagonal:{v:[.112,.138,.075],up:[0,0,1]}
  }[name]||{v:[.035,.22,.055],up:[0,0,1]};
  camera.up.set(...option.up);orbit.target.copy(target);
  camera.position.copy(target).add(new THREE.Vector3(...option.v));
