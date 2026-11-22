@@ -125,7 +125,7 @@ const fill=new THREE.DirectionalLight(0x9cd8e9,1.3);fill.position.set(-3,-3,1);s
 const orbit=new OrbitControls(camera,renderer.domElement);orbit.enableDamping=true;orbit.dampingFactor=.075;
 orbit.minDistance=.075;orbit.maxDistance=.65;
 let rig=null,ready=false,active='neutral',viewName='palm';
-const target=new THREE.Vector3(.038,-.004,-.021);
+const target=new THREE.Vector3(.038,-.004,-.010);
 function resize(){
  const box=$('#stage');renderer.setSize(box.clientWidth,box.clientHeight,false);
  camera.aspect=box.clientWidth/box.clientHeight;camera.updateProjectionMatrix();
@@ -135,9 +135,9 @@ function view(name='palm'){
  if(!ready)return;
  viewName=name;
  const option={
-   palm:{v:[.027,.175,.045],up:[0,0,1]},
-   side:{v:[.175,.04,.060],up:[0,0,1]},
-   diagonal:{v:[.112,.138,.075],up:[0,0,1]}
+   palm:{v:[.027,.195,.05],up:[0,0,1]},
+   side:{v:[.185,.045,.063],up:[0,0,1]},
+   diagonal:{v:[.119,.151,.077],up:[0,0,1]}
  }[name]||{v:[.035,.22,.055],up:[0,0,1]};
  camera.up.set(...option.up);orbit.target.copy(target);
  camera.position.copy(target).add(new THREE.Vector3(...option.v));
@@ -151,7 +151,7 @@ function setAngles(value){
    i.value=String(m.position[i.dataset.angle]);
    $('#out-'+i.dataset.angle).textContent=i.value+'°';
  }
- $('#distance').textContent=m.tipToShaftMm.toFixed(1)+' мм';
+ $('#distance').textContent=m.insideReferenceShaft?'Пересечение':m.tipToShaftMm.toFixed(1)+' мм';
  $('#readoutText').textContent='CMC закреплён у предполагаемой кости-трапеции. MCP и IP следуют за пястной костью. Расстояние измеряется от костной точки, без мягких тканей.';
  for(const b of document.querySelectorAll('[data-pose]'))b.classList.toggle('active',b.dataset.pose===active);
  $('#status').textContent=active==='neutral'?'Нейтральная поза':active==='oppose'?'Оппозиция CMC':active==='grasp'?'Исследование обхвата':'Свободная настройка суставов';
