@@ -40,11 +40,14 @@ const scene=new THREE.Scene(),renderer=new THREE.WebGLRenderer({canvas:ui.canvas
 const camera=new THREE.PerspectiveCamera(33,1,.01,50);scene.add(new THREE.HemisphereLight(0xe2fbff,0x344656,1.7));const key=new THREE.DirectionalLight(0xffe5db,2.3);key.position.set(1.6,4,5);scene.add(key);const back=new THREE.DirectionalLight(0x87e9e3,1.0);back.position.set(-4,1,-2);scene.add(back);
 const floor=new THREE.Mesh(new THREE.CylinderGeometry(.77,.82,.03,64),new THREE.MeshStandardMaterial({color:0x16394a,roughness:1}));floor.position.y=-.035;scene.add(floor);const ring=new THREE.Mesh(new THREE.TorusGeometry(.81,.006,8,90),new THREE.MeshBasicMaterial({color:0x4b8791}));ring.rotation.x=Math.PI/2;ring.position.y=-.017;scene.add(ring);
 let model,rig={},rest={},skeletonHelper=null,muscleMesh=null,partIds=null,tendons=null,partGroups=[],colored=null,active='curl',progress=0,playing=false,speed=1,last=0,zoom=3.9,yaw=.10,pitch=.06,panX=0,panY=0,rigReady=false,frontSign=1;const restFoot={},restPelvis=new THREE.Vector3();let dumbbells=[],trainingEffortUniform=null,exerciseMask=null;const viewerGroup=new THREE.Group(),orientation=new THREE.Group();scene.add(viewerGroup);viewerGroup.add(orientation);
-const exercises={curl:{title:'Сгибание рук',desc:'Гантели рядом с бёдрами. Не раскачивай корпус: плечи почти неподвижны, локти сгибаются, запястья сохраняют прямую линию с предплечьями.',info:'Оранжевый цвет меняется по фазе подъёма и опускания. Это учебная иллюстрация, а не измерение электромиографии или силы мышцы.',groups:['arms_front','forearms'],phase:'Сгибание в локте'},squat:{title:'Приседание',desc:'Проверяем сгибание тазобедренных и коленных суставов. Стопы должны оставаться на уровне пола; движение пока не используется как образец техники.',info:'Подсветка: квадрицепсы, ягодичные и мышцы корпуса.',groups:['quads','glutes','abs'],phase:'Приседание'},pushup:{title:'Отжимание',desc:'Проверяем плечи, локти и кисти при положении корпуса почти горизонтально. Эта поза — тест геометрии рига, не эталон упражнения.',info:'Подсветка: грудь, задняя поверхность плеча, передние дельтовидные.',groups:['chest','arms_back','shoulders'],phase:'Отжимание'}};
+const exercises={curl:{title:'Сгибание рук',desc:'Гантели у бёдер. Поднимай их контролируемо примерно до нижней части груди, не забрасывая к плечам. Плечи почти неподвижны, локти рядом с корпусом, запястья прямые.',info:'Оранжевый цвет меняется по фазе подъёма и опускания. Это учебная иллюстрация, а не измерение электромиографии или силы мышцы.',groups:['arms_front','forearms'],phase:'Сгибание в локте'},squat:{title:'Приседание',desc:'Проверяем сгибание тазобедренных и коленных суставов. Стопы должны оставаться на уровне пола; движение пока не используется как образец техники.',info:'Подсветка: квадрицепсы, ягодичные и мышцы корпуса.',groups:['quads','glutes','abs'],phase:'Приседание'},pushup:{title:'Отжимание',desc:'Проверяем плечи, локти и кисти при положении корпуса почти горизонтально. Эта поза — тест геометрии рига, не эталон упражнения.',info:'Подсветка: грудь, задняя поверхность плеча, передние дельтовидные.',groups:['chest','arms_back','shoulders'],phase:'Отжимание'}};
 function setError(err){ui.status.textContent='Ошибка загрузки';ui.loading.style.display='none';ui.error.classList.add('visible');ui.errorText.textContent=err?.message||String(err)}
 function dimensions(){let w=ui.box.clientWidth,h=ui.box.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}window.addEventListener('resize',dimensions);dimensions();
 // Initialize motion axes before the asynchronous model loader can call setExercise/applyPose.
 const AXIS_X=new THREE.Vector3(1,0,0),AXIS_Y=new THREE.Vector3(0,1,0),AXIS_Z=new THREE.Vector3(0,0,1);
+// Test limits for the biceps curl: avoid lifting wrists above the intended top position.
+const CURL_MAX_FLEXION=1.60; // radians, ~92 degrees of forearm rotation from rest
+const CURL_MAX_SUPINATION=.48; // radians, gentle pronation-to-supination change
 
 function addDemoDumbbells(){
  const steel=new THREE.MeshStandardMaterial({color:0x9caebb,metalness:.75,roughness:.26});
@@ -145,12 +148,12 @@ function applyPose(){if(!rigReady)return;resetBones();const a=effort(progress);
    for(const side of ['L','R']){
     // Arm stays alongside torso; elbow flexion carries the dumbbell toward shoulder.
     rotateWorld('upperarm.'+side,AXIS_X,-.025*a);
-    rotateWorld('forearm.'+side,AXIS_X,-1.95*a);
+    rotateWorld('forearm.'+side,AXIS_X,-CURL_MAX_FLEXION*a);
     // Supination through the anatomical forearm-twist joint, without wrist flexion.
     const twist=rig['forearm_twist.'+side];
     if(twist){
       twist.quaternion.copy(rest['forearm_twist.'+side].quaternion);
-      twist.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(AXIS_Y,(side==='L'?1:-1)*.68*a));
+      twist.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(AXIS_Y,(side==='L'?1:-1)*CURL_MAX_SUPINATION*a));
     }
     // Tentative grip driven by hand/finger bones; still needs visual verification.
     if($('#grip').checked && $('#equipment').checked){
