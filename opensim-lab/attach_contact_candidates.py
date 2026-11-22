@@ -79,7 +79,7 @@ def main():
         if f.getName().startswith("candidate_contact_"):
             vals=f.getRecordValues(state)
             recorded.append({"name":f.getName(),"outputs":
-                             [round(float(vals[k]),4) for k in range(vals.size())]})
+                             [round(float(vals.get(k)),4) for k in range(vals.getSize())]})
 
     summary={
         "kind":"openSim-contact-scaffold-not-pushup",
