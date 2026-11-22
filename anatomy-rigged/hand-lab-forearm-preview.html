@@ -44,13 +44,13 @@ hr{border:0;border-top:1px solid #2c4b5a;margin:14px 0}
 <p class="note" id="report" role="status">После загрузки можно проверить каждый палец по поверхности кожи, а не по положению костей.</p>
 <div id="digitResults" aria-live="polite"></div>
 <details class="tuning" id="thumbTuning">
-<summary>Параметры большого пальца (для разработки)</summary>
+<summary>Положение большого пальца (эксперимент)</summary>
 <p class="metric">Большой палец настраивается отдельно: сгибание, противопоставление, отведение и два межфаланговых сустава. Изменения действуют только в текущем открытом стенде.</p>
-<label>Основание · сгибание <input type="range" data-thumb="baseX" min="-60" max="35" step="1" value="-22"><output data-value="baseX">−22°</output></label>
-<label>Основание · оппозиция <input type="range" data-thumb="baseY" min="-50" max="45" step="1" value="-12"><output data-value="baseY">−12°</output></label>
-<label>Основание · отведение <input type="range" data-thumb="baseZ" min="-55" max="45" step="1" value="-13"><output data-value="baseZ">−13°</output></label>
-<label>Средний сустав <input type="range" data-thumb="middle" min="-50" max="65" step="1" value="4"><output data-value="middle">4°</output></label>
-<label>Концевой сустав <input type="range" data-thumb="tip" min="-50" max="65" step="1" value="-5"><output data-value="tip">−5°</output></label>
+<label>Основание · сгибание <input type="range" data-thumb="baseX" min="-60" max="35" step="1" value="-13"><output data-value="baseX">-13°</output></label>
+<label>Основание · оппозиция <input type="range" data-thumb="baseY" min="-50" max="45" step="1" value="-50"><output data-value="baseY">-50°</output></label>
+<label>Основание · отведение <input type="range" data-thumb="baseZ" min="-55" max="45" step="1" value="7"><output data-value="baseZ">7°</output></label>
+<label>Средний сустав <input type="range" data-thumb="middle" min="-50" max="65" step="1" value="-20"><output data-value="middle">-20°</output></label>
+<label>Концевой сустав <input type="range" data-thumb="tip" min="-50" max="65" step="1" value="51"><output data-value="tip">51°</output></label>
 <button id="thumbReset" type="button">Вернуть исходные параметры</button>
 </details>
 <p class="metric">Стык сформирован процедурным продолжением по сечению кисти. До финального внедрения необходима сварка сетки, перенос весов и проверка деформации запястья в Blender.</p>
@@ -79,7 +79,7 @@ const shaftMat=new THREE.MeshStandardMaterial({color:0x364d5b,metalness:.56,roug
 const discMat=new THREE.MeshStandardMaterial({color:0x899dac,metalness:.72,roughness:.32});
 const handleCenter=new THREE.Vector3(0,.07657357,.03055974),handleQ=new THREE.Quaternion(0,0,.10713777,.99424418).normalize();
 const bends={index:[53,50,27],middle:[56,50,28],ring:[53,48,24],pinky:[15,35,20]};
-const defaultThumb={baseX:-22,baseY:-12,baseZ:-13,middle:4,tip:-5};
+const defaultThumb={baseX:-13,baseY:-50,baseZ:7,middle:-20,tip:51};
 const thumbSettings={...defaultThumb};
 const stages=[{name:'Старт',angle:0},{name:'Середина',angle:45},{name:'Пик',angle:90}];
 function resize(){const w=holder.clientWidth,h=holder.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}
