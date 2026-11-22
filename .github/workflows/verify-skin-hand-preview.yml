@@ -46,6 +46,15 @@ jobs:
            await page.evaluate(()=>window.__skinPreviewDebug?.setCamera({zoom:2.4,panY:-.18,yaw:.13,pitch:.08}));
            await page.waitForTimeout(850);
            const newShot=await page.locator('canvas').screenshot({path:'screenshots/skin-on.png'});
+           await page.locator('#timeline').evaluate(el=>{el.value='500';el.dispatchEvent(new Event('input',{bubbles:true}))});
+           await page.waitForTimeout(500);
+           await page.locator('canvas').screenshot({path:'screenshots/skin-at-curl-peak.png'});
+           await page.locator('[data-view="side"]').click();
+           await page.waitForTimeout(500);
+           await page.locator('canvas').screenshot({path:'screenshots/skin-at-curl-peak-side.png'});
+           await page.locator('[data-view="front"]').click();
+           await page.locator('#timeline').evaluate(el=>{el.value='0';el.dispatchEvent(new Event('input',{bubbles:true}))});
+           await page.waitForTimeout(400);
            const toggle=page.locator('#skinHandsToggle');
            if(await toggle.isVisible())await toggle.click();
            await page.waitForTimeout(500);
