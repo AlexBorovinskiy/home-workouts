@@ -72,6 +72,10 @@ function setStage(next){
  const parentQ=forearm.parent.getWorldQuaternion(new THREE.Quaternion());
  const localDelta=parentQ.clone().invert().multiply(worldRot).multiply(parentQ);
  forearm.quaternion.copy(restElbow).premultiply(localDelta);
+ // Experimental forearm-axis rotation keeps the dumbbell shaft approximately level.
+ // Final anatomy review will determine whether the forearm should handle the twist.
+ const wristRoll=THREE.MathUtils.degToRad(-35-8*t);
+ hand.quaternion.copy(rest.hand_r).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),wristRoll));
  scene.updateMatrixWorld(true);skin.skeleton.update();view('palm');contacts();
  for(const btn of document.querySelectorAll('[data-stage]'))btn.classList.toggle('active',Number(btn.dataset.stage)===stage);
  hud.textContent=['Старт · настоящий локоть','Середина · настоящий локоть','Пик · настоящий локоть'][stage];
