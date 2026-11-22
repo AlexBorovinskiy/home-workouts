@@ -33,7 +33,7 @@ jobs:
       - name: Build browser-ready neutral-labelled GLB if source is usable
         shell: bash
         run: |
-          python3 -m pip install --quiet trimesh==4.10.0 numpy==2.2.6
+          python3 -m pip install --quiet trimesh==4.10.0 numpy==2.2.6 scipy==1.15.3
           python3 - <<'PY'
           import pathlib,json,numpy as np,trimesh,hashlib
           folder=pathlib.Path('evidence');report=json.loads((folder/'components.json').read_text())
