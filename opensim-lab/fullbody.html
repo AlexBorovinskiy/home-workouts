@@ -30,8 +30,13 @@ h1{font-size:clamp(25px,4vw,35px);letter-spacing:-.045em;margin:29px 0 8px}.lead
 <div><span style="background:#aaa6ef"></span>Плечевой пояс и руки</div>
 <div><span style="background:#eccb91"></span>Ноги и стопы</div>
 </div></section>
+<section class="card side"><h2>Проверка контактов OpenSim</h2>
+<p>Программно присоединены четыре предварительные контактные сферы: две ладони и две передние части стоп. В исходной позе движок рассчитал пробные контактные силы.</p>
+<div id="contactState" class="status" style="font-size:12px;color:#cfebea">Читаю проверенные результаты контактов…</div>
+<p class="warning" style="color:#f1c796">Эти значения получены с условными радиусами и жёсткостью. Они не соответствуют силам во время отжиманий и не предназначены для оценки техники.</p>
+</section>
 <section class="card side"><h2>Готовность к отжиманиям</h2>
-<div class="warn">Пока это только проверенная сборка структуры. Анатомическое согласование исходных моделей не завершено, естественная поза планки не рассчитана, контактные силы и распределение давления не подтверждены. Использовать эту схему для оценки техники или риска травмы нельзя.</div>
+<div class="warn">Пока это только проверенная сборка структуры. Анатомическое согласование исходных моделей не завершено, естественная поза планки не рассчитана, контактные объекты добавлены, но физические параметры и распределение давления не откалиброваны. Использовать эту схему для оценки техники или риска травмы нельзя.</div>
 <p>На исходной позе руки заметно выше плоскости опоры стоп. Для отжимания понадобятся правильная позиция корпуса и контакт ладоней и стоп с полом. <strong>Нельзя просто повернуть фигуру на бок и назвать это отжиманием.</strong></p>
 <p class="note">Источники: <a href="https://zenodo.org/records/18259702">Framingham OpenSim 4.x</a> и <a href="https://github.com/opensim-org/opensim-models/tree/master/Models/Rajagopal">RajagopalLaiUhlrich2023</a>.</p></section>
 </aside></div></main>
@@ -47,10 +52,10 @@ scene.add(new THREE.HemisphereLight(0xd5f7f2,0x42616a,2));
 const light=new THREE.DirectionalLight(0xfff2dd,2.7);light.position.set(2,4,3);scene.add(light);
 const orbit=new OrbitControls(camera,canvas);orbit.enableDamping=true;orbit.minDistance=.5;orbit.maxDistance=9;
 const colors={spine:0x86dccb,pelvis:0xe3ac83,arms:0xaaa6ef,legs:0xecc58a,ground:0x73aba9};
-const layer={spine:new THREE.Group(),arms:new THREE.Group(),legs:new THREE.Group(),ground:new THREE.Group()};
+const layer={spine:new THREE.Group(),arms:new THREE.Group(),legs:new THREE.Group(),ground:new THREE.Group(),contacts:new THREE.Group()};
 Object.values(layer).forEach(g=>scene.add(g));
 const v=p=>new THREE.Vector3(...p);
-let points=null,candidate=null,source=null,groundY=-1;
+let points=null,candidate=null,source=null,contact=null,groundY=-1;
 function resize(){renderer.setSize(stage.clientWidth,stage.clientHeight,false);camera.aspect=stage.clientWidth/Math.max(1,stage.clientHeight);camera.updateProjectionMatrix();}
 new ResizeObserver(resize).observe(stage);resize();
 function sphere(group,p,color,r=.017){
@@ -91,11 +96,23 @@ function build(){
   for(const n of path.slice(1))if(points[n])sphere(layer.legs,points[n],colors.legs,n.includes('toes')?.024:.018);
   for(let i=1;i<path.length;i++)line(layer.legs,path[i-1],path[i],colors.legs);
  }
- groundY=Math.min(points['toes_r'][1],points['toes_l'][1])-.027;
+ groundY=contact.floorHeightM;
  const plane=new THREE.Mesh(new THREE.PlaneGeometry(4,3),
    new THREE.MeshBasicMaterial({color:0x477e85,transparent:true,opacity:.23,side:THREE.DoubleSide,depthWrite:false}));
  plane.rotation.x=-Math.PI/2;plane.position.y=groundY;layer.ground.add(plane);
  const floorLines=new THREE.GridHelper(2,.15,0x6c9a9c,0x244754);floorLines.position.y=groundY+.001;layer.ground.add(floorLines);
+ const fnames={right_palm:'Правая ладонь',left_palm:'Левая ладонь',right_forefoot:'Правая передняя часть стопы',left_forefoot:'Левая передняя часть стопы'};
+ const readings=contact.contacts.map(c=>{
+   const marker=new THREE.Mesh(new THREE.SphereGeometry(c.radiusM,18,14),
+     new THREE.MeshBasicMaterial({color:c.name.includes('palm')?0x9ddfd1:0xebc47c,
+      wireframe:true,transparent:true,opacity:.88}));
+   marker.position.copy(v(c.initialBodyOriginM));layer.contacts.add(marker);
+   const rec=contact.contactRecords.find(x=>x.name==='candidate_contact_'+c.name);
+   const fy=rec&&rec.outputs.length>1?rec.outputs[1]:null;
+   return '<div style="display:flex;justify-content:space-between;border-top:1px solid #37606a;padding:7px 0;gap:10px"><span>'+fnames[c.name]+'</span><strong>'+(fy===null?'—':fy.toFixed(2)+' Н по оси Y')+'</strong></div>';
+ });
+ $('#contactState').innerHTML='<strong>'+contact.contactForceCount+' контактные силы, '+contact.contactGeometryCount+
+  ' геометрий</strong><div style="margin-top:8px">'+readings.join('')+'</div>';
  for(const [id,n] of [['bodies','bodyCount'],['joints','jointCount'],['coords','coordinateCount'],['vertebrae','vertebrae']])$('#'+id).textContent=candidate[n];
  const gap=(points.hand_R[1]-groundY)*100;
  $('#audit').textContent='В исходном положении начало координат правой кисти находится на '+gap.toFixed(1)+' см выше условной плоскости стоп. Это не площадь контакта ладони и не положение её подушечек.';
@@ -119,9 +136,10 @@ for(const [id,key] of [['spineToggle','spine'],['armsToggle','arms'],['legsToggl
 function tick(){requestAnimationFrame(tick);orbit.update();renderer.render(scene,camera)}tick();
 Promise.all([
  fetch('./assets/fullbody-candidate-summary.json').then(r=>{if(!r.ok)throw Error('Нет проверки полной сборки');return r.json()}),
- fetch('./assets/native-spine-samples.json').then(r=>{if(!r.ok)throw Error('Нет расчёта позвоночника');return r.json()})
-]).then(([joint,spine])=>{
- if(joint.data.bodyCount!==80||spine.spineLevels.length!==17)throw Error('Некорректные данные или несовместимые версии');
- candidate=joint.data;source=spine;build();
+ fetch('./assets/native-spine-samples.json').then(r=>{if(!r.ok)throw Error('Нет расчёта позвоночника');return r.json()}),
+ fetch('./assets/contact-scaffold-summary.json').then(r=>{if(!r.ok)throw Error('Нет подтверждённого контактного теста');return r.json()})
+]).then(([joint,spine,contacts])=>{
+ if(joint.data.bodyCount!==80||spine.spineLevels.length!==17||contacts.contactForceCount!==4)throw Error('Некорректные данные или несовместимые версии');
+ candidate=joint.data;source=spine;contact=contacts;build();
 }).catch(e=>{$('#error').classList.add('show');$('#error').textContent='Ошибка загрузки: '+e.message});
 </script></body></html>
