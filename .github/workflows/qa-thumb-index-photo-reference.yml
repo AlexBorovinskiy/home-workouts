@@ -1,0 +1,70 @@
+name: Compare reference photographs against real MRI thumb and index
+on:
+  push:
+    paths:
+      - 'anatomy-first/thumb-lab-reference.html'
+      - 'anatomy-first/reference-grip-rig.js'
+      - '.github/workflows/qa-thumb-index-photo-reference.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --prefix /tmp/thumb-index-ref --no-audit --no-fund playwright-core@1.56.1
+      - name: Test independent CMC, MCP, IP and index flexion and photograph comparison
+        shell: bash
+        run: |
+          mkdir -p proof
+          python3 -m http.server 8765 --bind 127.0.0.1 > /tmp/http.log 2>&1 &
+          node --input-type=module <<'NODE'
+          import {chromium} from '/tmp/thumb-index-ref/node_modules/playwright-core/index.mjs';
+          import {writeFileSync} from 'node:fs';
+          const browser=await chromium.launch({channel:'chrome',headless:true,args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+          const page=await browser.newPage({viewport:{width:430,height:932},deviceScaleFactor:1,isMobile:true,hasTouch:true,serviceWorkers:'block'});
+          const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',e=>{if(e.type()==='error')errors.push(e.text())});
+          const d=(a,b)=>Math.hypot(...a.map((v,i)=>v-b[i]));
+          try{
+            await page.goto('http://127.0.0.1:8765/anatomy-first/thumb-lab-reference.html',{waitUntil:'domcontentloaded',timeout:55000});
+            await page.waitForFunction(()=>window.__thumbQA?.ready()||document.querySelector('#error')?.classList.contains('show'),null,{timeout:75000});
+            if(!await page.evaluate(()=>window.__thumbQA?.ready()))throw Error('Failed to load: '+await page.locator('#error').innerText());
+            const poses={};
+            for(const name of ['open','oppose','grasp']){
+              await page.locator('button[data-pose="'+name+'"]').click();
+              poses[name]=await page.evaluate(()=>window.__thumbQA.metrics());
+              for(const view of ['palm','side']){
+                await page.locator('button[data-view="'+view+'"]').click();
+                await page.waitForTimeout(200);
+                await page.locator('canvas').screenshot({path:'proof/'+name+'-'+view+'.png'});
+              }
+            }
+            const delta=Number(poses.open.boneTipDistanceMm)-Number(poses.oppose.boneTipDistanceMm);
+            if(poses.open.indexCurl!==0)throw Error('Opening pose not extended');
+            if(poses.oppose.indexCurl<65)throw Error('Photo2 pose did not curl index');
+            if(d(poses.open.pivotCMC,poses.oppose.pivotCMC)>.00001)throw Error('CMC origin drifted');
+            if(d(poses.open.distalBoneTip,poses.oppose.distalBoneTip)<.005)throw Error('Thumb did not rotate');
+            if(d(poses.open.indexTip,poses.oppose.indexTip)<.025)throw Error('Index did not curl');
+            if(delta<=5)throw Error('Index-thumb bone tips did not meaningfully approach: '+delta+' mm');
+            await page.locator('#indexCurl').fill('50');
+            const manual=await page.evaluate(()=>window.__thumbQA.metrics());
+            if(Math.abs(manual.indexCurl-50)>1)throw Error('Index slider did not update');
+            if(errors.length)throw Error('Browser JS errors: '+errors.join('; '));
+            writeFileSync('proof/report.json',JSON.stringify({poses,deltaMm:delta,
+              indexSign:await page.evaluate(()=>window.__thumbQA.getIndexSign()),manualIndexCurl:manual.indexCurl,errors},null,2));
+            console.log(JSON.stringify({deltaMm:delta,distances:Object.fromEntries(Object.entries(poses).map(([k,v])=>[k,v.boneTipDistanceMm])),indexCurl:Object.fromEntries(Object.entries(poses).map(([k,v])=>[k,v.indexCurl])),errors},null,2));
+            await page.screenshot({path:'proof/whole-mobile-ui.png',fullPage:true});
+          }catch(e){writeFileSync('proof/error.txt',String(e)+'\n'+errors.join('; '));await page.screenshot({path:'proof/failure.png',fullPage:true}).catch(()=>{});throw e}
+          finally{await browser.close()}
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: thumb-index-mri-photo-reference
+          path: proof/
+          retention-days: 5
