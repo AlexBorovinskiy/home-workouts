@@ -51,7 +51,51 @@ jobs:
               await page.locator('[data-view="palm"]').click();
             }
             writeFileSync('qa-shots/results.json',JSON.stringify(results,null,2));
-            console.log('POSE_METRICS '+JSON.stringify(results));
+            if(await page.evaluate(()=>Boolean(window.__thumbQA?.rigForTesting))){
+            const audit=await page.evaluate(()=>{
+              const rig=window.__thumbQA.rigForTesting(),p=rig.handle.position;
+              const sample=[],perBone={};const group=new Map();
+              for(const [name,f] of Object.entries(rig.fingers))for(const [part,mesh] of Object.entries(f.parts))group.set(name+'_'+part,mesh);
+              for(const [name,mesh] of Object.entries({thumb_mc:rig.bone.mc1,thumb_prox:rig.bone.prox,thumb_dist:rig.bone.distal}))group.set(name,mesh);
+              for(let i=0;i<rig.wrist.length;i++)group.set('wrist_'+i,rig.wrist[i]);
+              rig.root.updateMatrixWorld(true);
+              for(const [name,mesh] of group){
+                const attr=mesh.geometry.attributes.position,vec=mesh.position.clone(),samples=[];
+                const stride=Math.max(1,Math.ceil(attr.count/260));
+                for(let i=0;i<attr.count;i+=stride){
+                  vec.fromBufferAttribute(attr,i).applyMatrix4(mesh.matrixWorld);
+                  samples.push([vec.x,vec.y,vec.z]);
+                }
+                sample.push(...samples);
+                perBone[name]=samples;
+              }
+              const collision=(arr,y,z)=>{
+                let count=0,deepest=0;
+                for(const v of arr){
+                  if(Math.abs(v[0]-p.x)>.079)continue;
+                  const d=.011-Math.hypot(v[1]-y,v[2]-z);
+                  if(d>0){count++;deepest=Math.max(deepest,d);}
+                }
+                return {count,deepestMm:Number((deepest*1000).toFixed(1))};
+              };
+              const boneCounts=Object.fromEntries([...Object.entries(perBone)].map(([name,pts])=>[name,collision(pts,p.y,p.z)]));
+              const m=rig.metrics(),tips={...m.fingerTipPositions,thumb:m.thumbTip};
+              const candidates=[];
+              for(let y=-.075;y<=-.02;y+=.005){
+                for(let z=-.020;z<=.040;z+=.005){
+                  const c=collision(sample,y,z);
+                  const gaps=Object.fromEntries(Object.entries(tips).map(([n,t])=>[n,Number((1000*Math.hypot(t[1]-y,t[2]-z)-11).toFixed(1))]));
+                  const g=Object.values(gaps);
+                  const score=c.count*6+g.reduce((acc,x)=>acc+Math.abs(x-6),0)*2;
+                  candidates.push({y:Number((y*1000).toFixed(1)),z:Number((z*1000).toFixed(1)),score:Number(score.toFixed(1)),...c,gaps});
+                }
+              }
+              candidates.sort((a,b)=>a.score-b.score);
+              return {boneCounts,best:candidates.slice(0,8),current:collision(sample,p.y,p.z)};
+            });
+            console.log('GEOMETRY_AUDIT '+JSON.stringify(audit));
+          }
+          console.log('POSE_METRICS '+JSON.stringify(results));
             console.log('BROWSER_ERRORS '+JSON.stringify(errors));
             if(errors.length)throw new Error('Browser errors');
           }catch(e){
