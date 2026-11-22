@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="ru"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#091925">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#091925"><link rel="icon" href="data:,">
 <title>Лаборатория хвата — Home Workouts</title>
 <style>
 :root{color-scheme:dark;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;--bg:#081623;--panel:#102b3a;--edge:#315163;--ink:#ecf6f7;--accent:#86ded2;--muted:#b2c9d3}
@@ -65,7 +65,7 @@ const rest=new Map(),skinMat=new THREE.MeshStandardMaterial({color:0xdfaba1,roug
 const shaftMat=new THREE.MeshStandardMaterial({color:0x364d5b,metalness:.56,roughness:.38});
 const discMat=new THREE.MeshStandardMaterial({color:0x899dac,metalness:.72,roughness:.32});
 const handleCenter=new THREE.Vector3(0,.07657357,.03055974),handleQ=new THREE.Quaternion(0,0,.10713777,.99424418).normalize();
-const bends={index:[-64,-75,-31],middle:[-64,-73,-32],ring:[-64,-78,-34],pinky:[-58,-76,-33],thumb:[-22,-25,-18]};
+const bends={index:[53,50,27],middle:[56,50,28],ring:[53,48,24],pinky:[15,35,20],thumb:[-21.8,3.8,-4.5]};
 const stages=[{name:'Старт',angle:0},{name:'Середина',angle:45},{name:'Пик',angle:90}];
 function resize(){const w=holder.clientWidth,h=holder.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}
 new ResizeObserver(resize).observe(holder);resize();
@@ -74,7 +74,7 @@ function setView(view='front'){
  assembly.updateMatrixWorld(true);
  const center=assembly.localToWorld(new THREE.Vector3(0,.075,.025));
  const d=.43;
- const p={front:[0,.035,d],side:[d,.035,0],back:[0,.035,-d]}[view]||[0,.035,d];
+ const p={front:[0,.035,d],side:[d*.78,.045,d*.63],back:[0,.035,-d]}[view]||[0,.035,d];
  orbit.target.copy(center);camera.position.copy(center).add(new THREE.Vector3(...p));camera.lookAt(center);orbit.update();
 }
 function setStage(i){
@@ -96,7 +96,8 @@ function gripFingers(){
  for(const [digit,angles] of Object.entries(bends))for(let j=1;j<=3;j++){
   const joint=donor.getObjectByName(digit+'_0'+j+'_r');
   if(!joint||!rest.has(joint))throw Error('Нет сустава '+digit+'_'+j);
-  rot.setFromAxisAngle(axis,THREE.MathUtils.degToRad(angles[j-1]));
+  if(digit==='thumb'&&j===1)rot.setFromEuler(new THREE.Euler(THREE.MathUtils.degToRad(-21.8),THREE.MathUtils.degToRad(-11.6),THREE.MathUtils.degToRad(-13.4),'ZYX'));
+  else rot.setFromAxisAngle(axis,THREE.MathUtils.degToRad(angles[j-1]));
   joint.quaternion.copy(rest.get(joint)).premultiply(rot);
  }
  scene.updateMatrixWorld(true);mesh.skeleton.update();
@@ -114,7 +115,7 @@ async function init(){
  donor.matrixAutoUpdate=false;donor.matrix.copy(align);root.add(donor);
  for(const bone of mesh.skeleton.bones)rest.set(bone,bone.quaternion.clone());
  addDumbbell();gripFingers();ready=true;setStage(0);
- report.innerHTML='<strong>Модель загружена.</strong> Один исходный риг кисти, без отдельного пересчёта костей. Нажми «Проверить контакт» для диагностики поверхности.';
+ checkContact();
  window.__handLabQA={isReady:()=>ready,setView,setStage,check:checkContact};
 }
 function checkContact(){
