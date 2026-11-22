@@ -73,7 +73,7 @@ jobs:
     console.log('  CHOSEN STABLE GRIP:',JSON.stringify(chosen));
 """
           assert s.count(marker)==1,'Expected Handhold selection point changed'
-          p.write_text(s.replace(marker,marker+'\\n'+patch))
+          p.write_text(s.replace(marker,marker+'\n'+patch))
           PY
           node --check external-handhold/scripts/try-models.mjs
       - name: Test available Chrome for headless grip fitting
