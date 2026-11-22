@@ -93,7 +93,7 @@ export function createFullMRIHandRigV3(THREE,gltf,landmarks,jointData){
   let active='open';
   const presets={
     open:{thumb:'open',curls:{index:0,middle:0,ring:0,little:0},handle:true},
-    oppose:{thumb:'oppose',curls:{index:.57,middle:.57,ring:.56,little:.56},handle:true},
+    oppose:{thumb:'oppose',curls:{index:.48,middle:.48,ring:.46,little:.40},handle:true},
     grasp:{thumb:'grasp',curls:{index:1,middle:1,ring:1,little:1},handle:true}
   };
   const origShowPivots=rig.showPivots;
@@ -104,7 +104,9 @@ export function createFullMRIHandRigV3(THREE,gltf,landmarks,jointData){
     // to place its distal bone on the opposing side of the reference shaft.
     const thumbPose=p.thumb==='grasp'
       ? {abduct:6,cmcFlex:10,cmcRotate:10,mcpFlex:9,ipFlex:5}
-      : rig.PRESETS[p.thumb==='open'?'neutral':p.thumb];
+      : p.thumb==='oppose'
+        ? {abduct:3,cmcFlex:6,cmcRotate:5,mcpFlex:5,ipFlex:3}
+        : rig.PRESETS.neutral;
     rig.pose(thumbPose);
     for(const [finger,level] of Object.entries(p.curls))setFinger(finger,level);
     rig.handle.visible=p.handle;
