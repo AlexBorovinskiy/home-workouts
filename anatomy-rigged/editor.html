@@ -174,11 +174,13 @@ function setPoseValue(joint,xyz){pose[joint]=xyz;const other=mirrorOf(joint);if(
 function addGripPreset(poseTarget){
  // Reusable dumbbell finger-grip preset for both hands (still visually experimental).
  for(const side of ['L','R']){
-   for(const name of ['index','middle','ring','pinky']){
-     for(const [partIndex,angle] of [[1,-49],[2,-54],[3,-30]]){
-       const joint=name+'_0'+partIndex+'.'+side;
+   // Flex each digit individually to follow the dumbbell handle, rather than leaving fingers below it.
+   const digitFlex={index:[-85,-75,-20],middle:[-85,-95,-40],ring:[-80,-95,-35],pinky:[-95,-100,-40]};
+   for(const [name,angles] of Object.entries(digitFlex)){
+     angles.forEach((angle,i)=>{
+       const joint=name+'_0'+(i+1)+'.'+side;
        if(rig[joint])poseTarget[joint]=[angle,0,0];
-     }
+     });
    }
    // Thumb opposition: rotate across the palm, then fold the distal phalanx toward the handle.
    // Rig-space offsets were compared with the dumbbell axis; visual review is still required.
