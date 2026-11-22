@@ -1,0 +1,58 @@
+name: Verify published unified rig preview on GitHub Pages
+on:
+  push:
+    paths:
+      - '.github/workflows/qa-published-unified-rig.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  published:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --prefix /tmp/live-qa --no-fund --no-audit playwright-core@1.56.1
+      - name: Load production preview and test elbow movement
+        shell: bash
+        run: |
+          mkdir -p evidence
+          node --input-type=module <<'NODE'
+          import {chromium} from '/tmp/live-qa/node_modules/playwright-core/index.mjs';
+          import {writeFileSync} from 'node:fs';
+          const browser=await chromium.launch({channel:'chrome',headless:true,args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+          const context=await browser.newContext({viewport:{width:430,height:932},deviceScaleFactor:1,isMobile:true,hasTouch:true,serviceWorkers:'block'});
+          const page=await context.newPage(),errors=[];
+          page.on('pageerror',e=>errors.push(e.message));
+          page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+          try{
+            await page.goto('https://alexborovinskiy.github.io/home-workouts/anatomy-rigged/unified-rig-preview.html',{waitUntil:'domcontentloaded',timeout:65000});
+            await page.waitForFunction(()=>window.__unifiedQA?.ready()||document.querySelector('#error')?.classList.contains('on'),null,{timeout:80000});
+            if(!await page.evaluate(()=>window.__unifiedQA?.ready()))throw Error(await page.locator('#error').innerText());
+            const poses=[];
+            for(const n of [0,1,2]){
+              await page.evaluate(i=>window.__unifiedQA.setStage(i),n);
+              await page.waitForTimeout(200);
+              poses.push(await page.evaluate(()=>window.__unifiedQA.getPose()));
+              await page.locator('canvas').screenshot({path:'evidence/stage-'+n+'.png'});
+            }
+            const d=(a,b)=>Math.hypot(...a.map((v,i)=>v-b[i]));
+            if(d(poses[0].elbow,poses[2].elbow)>.001)throw Error('Elbow joint did not remain fixed');
+            if(poses[2].wrist[1]-poses[0].wrist[1]<.18)throw Error('Forearm did not curl');
+            if(Math.abs(d(poses[0].wrist,poses[0].bar)-d(poses[2].wrist,poses[2].bar))>.002)throw Error('Bar detached from wrist');
+            writeFileSync('evidence/report.json',JSON.stringify({source:page.url(),poses,errors},null,2));
+            if(errors.length)throw Error(errors.join('\n'));
+          }catch(e){
+            writeFileSync('evidence/error.txt',String(e)+'\n'+errors.join('\n'));
+            throw e;
+          }finally{await browser.close()}
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: published-unified-preview-evidence
+          path: evidence/
+          retention-days: 3
