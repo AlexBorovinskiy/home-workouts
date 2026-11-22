@@ -102,8 +102,8 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--mint);outline-o
 <div class="section-label">Техническая настройка положения рукояти</div>
 <div class="ranges">
 <label class="range">Поперечное смещение <output id="out-x">10 мм</output><input data-haxis="x" id="h-x" type="range" min="-25" max="25" value="10" step="1"></label>
-<label class="range">Глубина от ладони <output id="out-y">-22 мм</output><input data-haxis="y" id="h-y" type="range" min="-55" max="15" value="-22" step="1"></label>
-<label class="range">Вдоль пальцев <output id="out-z">28 мм</output><input data-haxis="z" id="h-z" type="range" min="-30" max="65" value="28" step="1"></label>
+<label class="range">Глубина от ладони <output id="out-y">-65 мм</output><input data-haxis="y" id="h-y" type="range" min="-90" max="15" value="-65" step="1"></label>
+<label class="range">Вдоль пальцев <output id="out-z">-20 мм</output><input data-haxis="z" id="h-z" type="range" min="-40" max="65" value="-20" step="1"></label>
 </div>
 <button id="fit-handle" style="width:100%;margin:13px 0 9px">Техническая проверка другого положения рукояти</button>
 <div class="audit" id="audit">Проверка появится после загрузки МРТ-костей.</div>
@@ -238,7 +238,7 @@ function fitHandle(){
  showHandle();auditHandle();
 }
 function prepareHandle(){
- rig.handle.position.set(.010,-.040,.005);
+ rig.handle.position.set(.010,-.065,-.020);
  for(const part of rig.handle.children){
   if(!part.isMesh)continue;
   const shaft=part.geometry?.parameters?.radiusTop===.011;
