@@ -180,8 +180,10 @@ function addGripPreset(poseTarget){
        if(rig[joint])poseTarget[joint]=[angle,0,0];
      }
    }
-   if(rig['thumb_01.'+side])poseTarget['thumb_01.'+side]=[0,0,side==='L'?14:-14];
-   if(rig['thumb_02.'+side])poseTarget['thumb_02.'+side]=[-36,0,0];
+   // Thumb opposition: rotate across the palm, then fold the distal phalanx toward the handle.
+   // Rig-space offsets were compared with the dumbbell axis; visual review is still required.
+   if(rig['thumb_01.'+side])poseTarget['thumb_01.'+side]=[-15,0,side==='L'?-70:70];
+   if(rig['thumb_02.'+side])poseTarget['thumb_02.'+side]=[42,0,0];
  }
 }
 function demo(){
