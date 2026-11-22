@@ -1,0 +1,61 @@
+name: Prepare open anatomical rig
+on:
+  push:
+    paths:
+      - '.github/workflows/import-heatsy.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download and verify CC BY-SA anatomy assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p anatomy-rigged/assets
+          src='https://raw.githubusercontent.com/heatsy-app/heatsy-body-model/6cf6a0ae7c63bcffca1137ddcec14a31b7254a6d'
+          curl --fail --location --retry 3 "$src/model/body_superficial.app5m.glb" -o anatomy-rigged/assets/body_superficial.glb
+          echo 'ce9859de013c2ee9713dbe3158275208b57be1b4ff31957eca87195b991c0ab1  anatomy-rigged/assets/body_superficial.glb' | sha256sum --check
+          for srcfile in data/muscles.json NOTICE.md LICENSE; do
+            curl --fail --location --retry 3 "$src/$srcfile" -o "anatomy-rigged/assets/$(basename "$srcfile")"
+          done
+      - name: Inspect skeleton metadata from verified glTF
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json,struct,pathlib
+          root=pathlib.Path('anatomy-rigged/assets')
+          raw=(root/'body_superficial.glb').read_bytes()
+          magic,ver,length=struct.unpack_from('<III',raw,0)
+          assert (magic,ver,length)==(0x46546c67,2,len(raw))
+          n,typ=struct.unpack_from('<I4s',raw,12)
+          assert typ==b'JSON'
+          gltf=json.loads(raw[20:20+n])
+          joints=gltf['skins'][0]['joints']
+          nodes=gltf['nodes']
+          parents={child:i for i,node in enumerate(nodes) for child in node.get('children',[])}
+          data={'generator':gltf.get('asset',{}).get('generator'),'extras':gltf.get('extras'),
+              'boneCount':len(joints), 'skinJointIndices':joints,
+              'nodes':[{'index':i,'name':nodes[i].get('name',''),'parent':parents.get(i),
+              'translation':nodes[i].get('translation'),
+              'rotation':nodes[i].get('rotation'),
+              'scale':nodes[i].get('scale')} for i in joints],
+              'meshNodes':[{'index':i,'name':n.get('name',''),'mesh':n.get('mesh'),'skin':n.get('skin')} for i,n in enumerate(nodes) if 'mesh' in n],
+              'skins':[{'name':s.get('name'),'joints':len(s.get('joints',[])),'skeleton':s.get('skeleton')} for s in gltf['skins']]}
+          (root/'rig-inspect.json').write_text(json.dumps(data,indent=2,ensure_ascii=False)+'\n')
+          print('Bones:',len(joints),'node names:',[nodes[i].get('name') for i in joints])
+          PY
+      - name: Commit verified open model and skeleton metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add anatomy-rigged/assets
+          if ! git diff --cached --quiet; then
+            git commit -m 'Import verified Heatsy open 56-bone anatomical model (CC BY-SA 4.0)'
+            git push
+          fi
