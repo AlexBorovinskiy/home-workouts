@@ -118,10 +118,10 @@ try{const [gltf,catalog]=await Promise.all([new Promise((resolve,reject)=>new GL
  muscleMesh.material.onBeforeCompile=shader=>{
    shader.uniforms.uTrainingEffort={value:.10};
    trainingEffortUniform=shader.uniforms.uTrainingEffort;
-   shader.vertexShader='attribute float aExerciseActivation;\\nvarying float vExerciseActivation;\\n'+shader.vertexShader;
-   shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\\n vExerciseActivation = aExerciseActivation;');
-   shader.fragmentShader='uniform float uTrainingEffort;\\nvarying float vExerciseActivation;\\n'+shader.fragmentShader;
-   shader.fragmentShader=shader.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>\\n diffuseColor.rgb = mix(diffuseColor.rgb, vec3(1.0, .30, .075), clamp(vExerciseActivation*uTrainingEffort*.85, 0.0, .85));');
+   shader.vertexShader='attribute float aExerciseActivation;\nvarying float vExerciseActivation;\n'+shader.vertexShader;
+   shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vExerciseActivation = aExerciseActivation;');
+   shader.fragmentShader='uniform float uTrainingEffort;\nvarying float vExerciseActivation;\n'+shader.fragmentShader;
+   shader.fragmentShader=shader.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>\n diffuseColor.rgb = mix(diffuseColor.rgb, vec3(1.0, .30, .075), clamp(vExerciseActivation*uTrainingEffort*.85, 0.0, .85));');
  };
  muscleMesh.material.customProgramCacheKey=()=> 'home-workouts-muscle-activation-v7';
 }
