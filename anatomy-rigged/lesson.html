@@ -27,12 +27,12 @@
 <div class="top"><div class="eyebrow">HOME WORKOUTS / 3D-ТЕХНИКА</div><a class="back" href="../">← Журнал</a></div>
 <h1>Сгибание рук с гантелями</h1>
 <p class="lead">Учебная анимация: вращай мужскую анатомическую модель, меняй скорость и останавливай движение в нужной точке. Настраивать суставы самостоятельно не требуется.</p>
-<div class="warning"><strong>Тест симметричного захвата.</strong> Положение пальцев и гантели правой руки зеркально перенесено с левой на симметричный скелет. Объёмные кисти CC0 сохраняются. Это опытный вариант: анатомическая точность ещё требует проверки.</div>
+<div class="warning"><strong>Тест обхвата рукоятки.</strong> Пальцы отдельно согнуты вокруг цилиндрической рукоятки с учётом длины фаланг, большой палец расположен напротив остальных. Обе кисти зеркальны, объёмная модель CC0 сохранена. Переключай три варианта кнопкой на модели. Результат экспериментальный, анатомическая точность ещё проверяется.</div>
 <div class="cols">
 <section class="panel">
  <div class="scene" id="touchScene">
   <canvas id="canvas" aria-label="Анатомическая 3D-модель для редактирования движений"></canvas>
-  <div class="status" id="status">Загрузка анатомии…</div><button id="skinHandsToggle" class="skin-toggle" style="display:none" type="button">Объёмные кисти · вкл.</button><button id="compareGrip" type="button" class="compare-grip" style="display:none">Хват · симметрия</button>
+  <div class="status" id="status">Загрузка анатомии…</div><button id="skinHandsToggle" class="skin-toggle" style="display:none" type="button">Объёмные кисти · вкл.</button><button id="compareGrip" type="button" class="compare-grip" style="display:none">Обхват · новый</button>
   <div class="views"><button data-view="front">Фас</button><button data-view="side">Профиль</button><button data-view="back">Спина</button><button id="resetCam" title="Вернуть всю фигуру в кадр" aria-label="Показать всю фигуру">⤢ Вся фигура</button></div>
   <div class="hint">Проведи: вращение · 2 пальца: масштаб / сдвиг</div>
   <div class="error" id="error"><div><strong>Не удалось загрузить модель</strong><p id="errorText"></p><button class="btn" onclick="location.reload()">Повторить</button></div></div>
@@ -315,31 +315,46 @@ async function loadModel(){
  const compare=document.getElementById('compareGrip'),status=document.getElementById('gripStatus');
  ui.status.textContent='Загрузка отдельно рассчитанных поз захвата…';
  try{
-   const gripResponse=await fetch('./assets/handhold-dumbbell-grips.json?v=26');
-   if(!gripResponse.ok)throw Error('Файл с позами кистей недоступен');
-   const data=await gripResponse.json();
-   if(data.format!=='home-workouts-handhold'||data.version!==1)throw Error('Неподдерживаемая версия поз');
-   for(const side of ['L','R']){
-     const hand=data.hands?.[side];
-     if(!hand?.stable||hand.handBone!=='hand.'+side||Object.keys(hand.bones||{}).length!==15)
-       throw Error('Для кисти '+side+' не подтверждён удерживающий захват');
-     if(!Object.entries(hand.bones).every(([name,q])=>rig[name]&&Array.isArray(q)&&q.length===4&&q.every(Number.isFinite)))
-       throw Error('Несовместимость скелета кисти '+side);
-     if(!hand.dumbbell?.position||!hand.dumbbell?.quaternion||!hand.dumbbell?.scale)
-       throw Error('Нет положения гантели для '+side);
+   const [wrapResponse,legacyResponse]=await Promise.all([
+     fetch('./assets/ergonomic-dumbbell-grip.json?v=1'),
+     fetch('./assets/handhold-dumbbell-grips.json?v=26')
+   ]);
+   if(!wrapResponse.ok||!legacyResponse.ok)throw Error('Файлы с позами кистей недоступны');
+   const [wrapGrip,legacyGrip]=await Promise.all([wrapResponse.json(),legacyResponse.json()]);
+   for(const data of [wrapGrip,legacyGrip]){
+     if(data.format!=='home-workouts-handhold'||data.version!==1)throw Error('Неподдерживаемая версия поз');
+     for(const side of ['L','R']){
+       const hand=data.hands?.[side];
+       if(!hand?.stable||hand.handBone!=='hand.'+side||Object.keys(hand.bones||{}).length!==15)
+         throw Error('Для кисти '+side+' не найден полный захват');
+       if(!Object.entries(hand.bones).every(([name,q])=>rig[name]&&Array.isArray(q)&&q.length===4&&q.every(Number.isFinite)))
+         throw Error('Несовместимость скелета кисти '+side);
+       if(!hand.dumbbell?.position||!hand.dumbbell?.quaternion||!hand.dumbbell?.scale)
+         throw Error('Нет положения гантели для '+side);
+     }
    }
-   handholdGrips=data;handholdEnabled=true;
-   setHandholdDumbbells(true);
+   const gripModes=[
+     {label:'Обхват · новый',data:wrapGrip,note:'Новый экспериментальный обхват: фаланги согнуты вокруг цилиндрической рукоятки, большой палец направлен навстречу остальным. Геометрические расстояния проверены; визуальная точность ещё не подтверждена.'},
+     {label:'Симметрия · прежний',data:legacyGrip,note:'Предыдущий зеркально-симметричный хват: сохранён для сравнения. На видео пальцы были недостаточно согнуты.'},
+     {label:'Исходный хват',data:null,note:'Исходные позы пальцев и гантелей до независимого подбора. Сравнение только для диагностики.'}
+   ];
+   let gripModeIndex=0;
+   const chooseGripMode=(index)=>{
+     gripModeIndex=index;
+     const mode=gripModes[index];
+     handholdGrips=mode.data;
+     handholdEnabled=!!handholdGrips;
+     setHandholdDumbbells(handholdEnabled);
+     if(loaded){pose=poseAt(playhead);applyAngles();drawAxes()}
+     compare.textContent=mode.label;
+     status.textContent=mode.note+' Нажми на кнопку захвата для сравнения вариантов.';
+   };
    compare.style.display='block';compare.disabled=false;
-   compare.textContent='Хват · симметрия';
    compare.onclick=()=>{
      playing=false;ui.play.textContent='▶ Воспроизвести';
-     handholdEnabled=!handholdEnabled;
-     setHandholdDumbbells(handholdEnabled);
-     pose=poseAt(playhead);applyAngles();drawAxes();
-     compare.textContent=handholdEnabled?'Хват · симметрия':'Старый хват';
+     chooseGripMode((gripModeIndex+1)%gripModes.length);
    };
-   status.textContent='Для ровного захвата правая кисть и гантель зеркально повторяют левую на симметричном скелете. Сравни с прежним хватом кнопкой на модели. Визуализация экспериментальная, не эталон техники.';
+   chooseGripMode(0);
  }catch(error){
    handholdEnabled=false;handholdGrips=null;setHandholdDumbbells(false);
    compare.style.display='none';status.textContent='Не удалось загрузить альтернативный захват: '+error.message+'. Используется прежняя модель.';
