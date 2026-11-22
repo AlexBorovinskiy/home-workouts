@@ -52,6 +52,30 @@ jobs:
           cd external-handhold
           git checkout --detach 270b74ee4d5c64f8e7d7ac19aea760115d3aba59
           npm ci --no-audit --no-fund
+      - name: Prefer stable grips with all five fingers and palm contact
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('external-handhold/scripts/try-models.mjs')
+          s=p.read_text()
+          marker="    console.log(`  GRIPS (${Date.now() - t0} ms):`, JSON.stringify(grips));"
+          patch="""    // Prefer a real holding grip with all fingers and palm engaged.
+    // Selection is part of this isolated integration test, not an upstream change.
+    const chosen = await page.evaluate(() => {
+      const hh = window.__handhold;
+      const options=hh.grasps.map((g,i)=>({i,holds:g.stable,all5:g.fingersTouching===5&&g.thumbTouching,palm:g.palmTouching,robustness:g.robustness,segments:g.segmentsTouching}));
+      options.sort((a,b)=>(Number(b.holds)-Number(a.holds))||(Number(b.all5)-Number(a.all5))||(Number(b.palm)-Number(a.palm))||(b.robustness-a.robustness)||(b.segments-a.segments));
+      const best=options[0];
+      if(best?.holds)hh.actions.selectGrasp(best.i);
+      return best;
+    });
+    console.log('  CHOSEN STABLE GRIP:',JSON.stringify(chosen));
+"""
+          assert s.count(marker)==1,'Expected Handhold selection point changed'
+          p.write_text(s.replace(marker,marker+'\\n'+patch))
+          PY
+          node --check external-handhold/scripts/try-models.mjs
       - name: Test available Chrome for headless grip fitting
         shell: bash
         run: |
