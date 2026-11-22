@@ -1,0 +1,53 @@
+name: Inspect research thoracolumbar OpenSim models
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/inspect-thoracolumbar-dataset.yml'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch public research archive, analyze .osim without publishing model files
+        shell: bash
+        run: |
+          mkdir -p qa-spine
+          curl -fL --max-time 150 --retry 2 \
+            'https://zenodo.org/records/18259702/files/FHS_dataset_4.x.zip?download=1' \
+            -o /tmp/opensim-fhs.zip
+          python3 - <<'PY'
+          import zipfile, xml.etree.ElementTree as ET, json, re, hashlib, os
+          p='/tmp/opensim-fhs.zip'
+          print('ARCHIVE_BYTES',os.path.getsize(p))
+          out={'provenance':'https://zenodo.org/records/18259702','archive_sha256':hashlib.sha256(open(p,'rb').read()).hexdigest(),'models':[]}
+          with zipfile.ZipFile(p) as z:
+            names=[n for n in z.namelist() if n.lower().endswith('.osim')]
+            print('OSIM_FILES',len(names),'SAMPLE_NAMES',json.dumps(names[:12]))
+            for name in names[:8]:
+              root=ET.fromstring(z.read(name))
+              model=root.find('Model')
+              if model is None:continue
+              bodies=model.findall('./BodySet/objects/Body')
+              joints=[j for j in model.findall('./JointSet/objects/*') if j.tag.endswith('Joint')]
+              muscles=[m for m in model.findall('./ForceSet/objects/*') if m.tag.endswith('Muscle')]
+              coords=sum(len(j.findall('.//Coordinate')) for j in joints)
+              labels=[]
+              for b in bodies:
+                bn=b.attrib.get('name','')
+                found=re.search(r'(?<![a-zA-Z0-9])(T(?:1[0-2]|[1-9])|L[1-5])(?![a-zA-Z0-9])',bn,re.I)
+                if found:labels.append(found.group(1).upper())
+              out['models'].append({'filename':name,'model_name':model.get('name'), 'bodies':len(bodies),
+               'joints':len(joints),'muscles':len(muscles),'coordinates':coords,'levels':sorted(set(labels))})
+          with open('qa-spine/research-inventory.json','w') as f:json.dump(out,f,ensure_ascii=False,indent=2)
+          print('RESEARCH_SPINE_INVENTORY',json.dumps(out,ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: thoracolumbar-research-inventory
+          path: qa-spine/
+          retention-days: 5
