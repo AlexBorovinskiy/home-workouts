@@ -1,0 +1,6 @@
+Source: Innerscene 3D parts library / human-base-rigged.glb
+Original model: MakeHuman/MPFB CC0
+Model license: CC0 (public domain dedication)
+Source URL: https://www.innerscene.com/tools/library/3d-parts/human-base-mesh-with-editable-53-bone-rig-8e7c8ab1
+SHA256: f3cd655e44af0a79786b1b4349c4acf1ae342fe6bd0d5fc714e68470dea1b429
+Experimental asset. Not accepted for anatomical training until 3D grip QA.
