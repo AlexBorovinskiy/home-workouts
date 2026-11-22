@@ -3,6 +3,7 @@ on:
   push:
     paths:
       - 'opensim-lab/build_fullbody_candidate.py'
+      - 'opensim-lab/attach_contact_candidates.py'
       - '.github/workflows/qa-fullbody-opensim.yml'
   workflow_dispatch:
 permissions:
@@ -36,6 +37,12 @@ jobs:
         run: |
           mkdir -p qa-fullbody
           python opensim-lab/build_fullbody_candidate.py             --fhs /tmp/fhs.osim             --donor /tmp/legs.osim             --model /tmp/fullbody-candidate.osim             --report qa-fullbody/fullbody-inventory.json
+      - name: Attach experimental palm and forefoot contact force components
+        run: |
+          python opensim-lab/attach_contact_candidates.py \
+            --source /tmp/fullbody-candidate.osim \
+            --output /tmp/fullbody-contact-candidate.osim \
+            --report qa-fullbody/contact-inventory.json
       - name: Check scientific gates
         run: |
           python - <<'PY'
@@ -48,6 +55,15 @@ jobs:
           assert j['jointAlignmentValidated'] is False
           assert j['massDistributionVerified'] is False
           assert j['hasMeasuredPushup'] is False
+          c=json.loads(Path('qa-fullbody/contact-inventory.json').read_text())
+          assert c['contactForceCount']==4 and c['contactGeometryCount']>=5
+          assert c['loadAssessmentValidated'] is False
+          assert c['plankPoseSolved'] is False
+          print('CONTACT_SCAFFOLD_GATE_SUCCESS',json.dumps({
+             'geometry':c['contactGeometryCount'],
+             'forces':c['contactForceCount'],
+             'contactNames':[x['name'] for x in c['contacts']],
+             'floorHeightM':c['floorHeightM']}))
           print('COMPOSITE_GATE_SUCCESS',json.dumps({
             key:j[key] for key in ['bodyCount','jointCount','coordinateCount','legSegments','vertebrae','hasFeet','hasHands']}))
           PY
