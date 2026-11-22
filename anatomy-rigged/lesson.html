@@ -284,7 +284,7 @@ async function loadModel(){
  orientation.scale.setScalar(1.76/size.y);
  skel=new THREE.SkeletonHelper(model);scene.add(skel);skel.visible=false;skel.material.color.setHex(0x8de5d6);skel.material.depthTest=false;skel.renderOrder=9;
  populateJoints();addDumbbells();loaded=true;
- const response=await fetch('./exercises/dumbbell-curl.json?v=18');
+ const response=await fetch('./exercises/dumbbell-curl.json?v=19');
  if(!response.ok)throw Error('Не удалось загрузить сценарий упражнения');
  restoreDocument(await response.json(),false);
  ui.saveState.textContent='Открыта готовая анимация упражнения.';
