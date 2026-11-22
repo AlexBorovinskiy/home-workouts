@@ -16,7 +16,7 @@
 .lesson ul{padding-left:19px}.lesson li{margin:6px 0}
 .lesson .muscle{display:flex;align-items:center;gap:9px;font-size:12px;margin:8px 0}
 .lesson .spot{width:9px;height:9px;border-radius:50%;display:inline-block;flex:none}
-.lesson .cue{border:1px solid #48716b;background:#1b3c46;padding:12px;border-radius:12px;color:#e4fcf6;line-height:1.5;font-size:13px;margin:11px 0}
+.live-cue{border:1px solid #48716b;background:#1b3c46;padding:10px 12px;border-radius:11px;color:#e4fcf6;line-height:1.5;font-size:12px;margin-top:10px;min-height:55px}
 .lesson .source-links a{display:block;margin:10px 0;font-size:12px;overflow-wrap:anywhere}
 .lesson .disclaimer{font-size:11px;color:#a3b7c1;background:#172b38;border-radius:10px;padding:10px}
 @media(max-width:850px){.lesson{padding:14px}}
@@ -26,7 +26,7 @@
 <div class="top"><div class="eyebrow">HOME WORKOUTS / 3D-ТЕХНИКА</div><a class="back" href="../">← Журнал</a></div>
 <h1>Сгибание рук с гантелями</h1>
 <p class="lead">Учебная анимация: вращай мужскую анатомическую модель, меняй скорость и останавливай движение в нужной точке. Настраивать суставы самостоятельно не требуется.</p>
-<div class="warning"><strong>Анимация на проверке.</strong> Текстовые рекомендации сверены с ACE и NASM. Визуальная точность движения, положение кистей и захват гантелей ещё нуждаются в проверке — это не профессионально сертифицированная биомеханическая модель.</div>
+<div class="warning"><strong>Учебная 3D-анимация на проверке.</strong> Техника описана по ACE и NASM, но сама модель пока не прошла независимую биомеханическую оценку.</div>
 <div class="cols">
 <section class="panel">
  <div class="scene" id="touchScene">
@@ -40,7 +40,7 @@
   <div class="row"><strong id="currentPhase" style="font-size:13px">Исходная поза</strong><span id="timeLabel" class="note">00:00 / 00:06</span></div>
   <input id="timeline" type="range" min="0" max="1000" value="0" aria-label="Просмотр движения">
   <div class="buttons"><button class="btn main" id="play">▶ Воспроизвести</button><button class="btn" id="restart">↺ Сначала</button><select id="lessonSpeed" aria-label="Скорость" style="width:auto"><option value="1" selected>1×</option><option value="0.75">0,75×</option><option value="0.5">0,5×</option><option value="0.25">0,25×</option></select><button class="btn" id="restorePose">Начало</button></div>
-  <p class="note">Вращай фигуру пальцем, двумя пальцами меняй масштаб и положение. Кнопка ⤢ возвращает всю фигуру в кадр.</p>
+  <div class="live-cue" id="lessonCue" role="status" aria-live="off">Старт: стой устойчиво, локти возле корпуса, запястья прямые.</div>
  </div>
 </section>
 <section class="panel right">
@@ -94,7 +94,7 @@
 <aside class="panel lesson">
   <div class="tag">Пошаговая техника</div>
   <h2>Что делать в каждом положении</h2>
-  <div class="cue" id="lessonCue">Старт: корпус устойчив, гантели по бокам. Плечи расслаблены.</div>
+  <p class="note">Подсказки к текущей фазе появляются прямо под анимацией. Ниже — полное описание техники.</p>
   <h3>1 · Исходная позиция</h3><p>Стой устойчиво, колени слегка расслаблены. Плечи опущены, локти близко к туловищу, запястья не согнуты.</p>
   <h3>2 · Подъём</h3><p>Поднимай гантели, сгибая локти. Постепенно поворачивай ладони вверх. Не раскачивай корпус и не поднимай плечи к ушам.</p>
   <h3>3 · Верхняя точка</h3><p>Заверши движение в комфортной амплитуде, пока плечи остаются стабильными. Гантели не должны обязательно касаться плеч.</p>
@@ -103,7 +103,7 @@
   <h2>Какие мышцы работают</h2>
   <div class="muscle"><i class="spot" style="background:#f07855"></i><span>Основные — бицепсы плеча, помогают сгибать локоть и поворачивать предплечье</span></div>
   <div class="muscle"><i class="spot" style="background:#edbb68"></i><span>Вспомогательные — плечевая, плечелучевая и мышцы предплечья</span></div>
-  <div class="muscle"><i class="spot" style="background:#67d0c9"></i><span>Стабилизаторы — мышцы корпуса, обеспечивают устойчивость</span></div>
+  <div class="muscle"><i class="spot" style="background:#638f8f"></i><span>Стабилизаторы — мышцы корпуса; показаны приглушённо, поскольку их активность здесь не измеряется</span></div>
   <div class="divider"></div>
   <h2>Избегай этих ошибок</h2>
   <ul><li>Раскачивание корпуса и прогиб спины для подъёма веса</li><li>Рывки и падение гантелей на опускании</li><li>Заломы кистей и слишком сильный захват</li><li>Сильное выведение локтей вперёд ради большей высоты</li></ul>
@@ -243,7 +243,7 @@ function recolor(){
    let r=.49,g=.24,b=.29;
    if(active){r=1;g=.34;b=.14}
    else if(assists){r=.94;g=.68;b=.27}
-   else if(stabilizes){r=.27;g=.81;b=.79}
+   else if(stabilizes){r=.34;g=.47;b=.47} // subdued: stabilization is not measured activation
    if(!id){r=.65;g=.63;b=.59}
    const n=i*3;vertexColors[n]=r;vertexColors[n+1]=g;vertexColors[n+2]=b;
  }
@@ -288,7 +288,7 @@ async function loadModel(){
  if(!response.ok)throw Error('Не удалось загрузить сценарий упражнения');
  restoreDocument(await response.json(),false);
  ui.saveState.textContent='Открыта готовая анимация упражнения.';
- ui.status.textContent='✓ Редактор готов · '+Object.keys(rig).length+' костей';
+ ui.status.textContent='✓ Учебная 3D-модель · '+Object.keys(rig).length+' костей';
 }
 const clamp=(x,a,b)=>Math.min(b,Math.max(a,x));
 function validateDocument(data){
