@@ -90,8 +90,8 @@ export function createMRIThumbRig(THREE, gltf, landmarks) {
   }
   const PRESETS={
     neutral:{abduct:0,cmcFlex:0,cmcRotate:0,mcpFlex:0,ipFlex:0},
-    oppose:{abduct:12,cmcFlex:25,cmcRotate:18,mcpFlex:10,ipFlex:6},
-    grasp:{abduct:15,cmcFlex:34,cmcRotate:25,mcpFlex:25,ipFlex:18}
+    oppose:{abduct:4,cmcFlex:14,cmcRotate:8,mcpFlex:4,ipFlex:4},
+    grasp:{abduct:8,cmcFlex:20,cmcRotate:10,mcpFlex:4,ipFlex:8}
   };
   const ranges={abduct:[-25,35],cmcFlex:[-15,55],cmcRotate:[-45,45],
     mcpFlex:[-15,65],ipFlex:[-15,75]};
