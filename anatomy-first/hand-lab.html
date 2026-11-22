@@ -88,7 +88,7 @@ try{
   rig=createAnatomicalRig(THREE);scene.add(rig.root);
   if(rig.bones.length!==30)throw Error('Expected 30 anatomical bone proxies');
   document.getElementById('boneCount').textContent=String(rig.bones.length);
-  window.__anatomyQA={ready:()=>true,setPose:(x)=>setPose(x.opposition,x.grip),getMetrics:()=>rig.getMetrics(),getCMC:()=>rig.controllers.thumb_cmc_abduction_r.getWorldPosition(new THREE.Vector3()).toArray(),view:cameraView};
+  window.__anatomyQA={ready:()=>true,setPose:(x)=>setPose(x.opposition,x.grip),getMetrics:()=>rig.getMetrics(),getCMC:()=>rig.controllers.thumb_cmc_abduction_r.getWorldPosition(new THREE.Vector3()).toArray(),getIndexTip:()=>rig.joints.index.dip.localToWorld(new THREE.Vector3(0,.019,0)).toArray(),view:cameraView};
   rig.root.updateMatrixWorld(true);
 }catch(e){
   console.error(e);document.getElementById('error').classList.add('on');
