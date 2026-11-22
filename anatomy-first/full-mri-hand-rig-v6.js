@@ -151,8 +151,8 @@ export function createFullMRIHandRigV6(THREE,gltf,landmarks,jointData){
   }
   function fitThumb(){
     const keys=['abduct','cmcFlex','cmcRotate','mcpFlex','ipFlex'];
-    const bounds=[[-25,35],[-15,55],[-45,45],[-15,65],[-15,75]];
-    const goal=new THREE.Vector3(.024,-.028,-.003);
+    const bounds=[[-25,35],[-15,55],[-45,45],[-15,45],[-15,45]];
+    const goal=new THREE.Vector3(.020,-.033,.023);
     const seeds=[
       [8,20,10,8,8],[18,35,22,30,25],[20,45,-20,35,25],
       [-15,35,25,35,25],[15,50,35,45,40],[0,40,-35,60,55],
@@ -169,7 +169,7 @@ export function createFullMRIHandRigV6(THREE,gltf,landmarks,jointData){
         meshClearancePenalty([rig.bone.mc1,rig.bone.prox,rig.bone.distal]);
     }
     for(const seed of seeds){
-      let a=seed.slice(),v=measure(a);
+      let a=seed.map((val,i)=>clamp(val,...bounds[i])),v=measure(a);
       for(const step of [22,11,5,2,1]){
         let keep=true,n=0;
         while(keep&&n++<7){
@@ -201,7 +201,7 @@ export function createFullMRIHandRigV6(THREE,gltf,landmarks,jointData){
   let active='open';
   const presets={
     open:{fraction:0,handle:true},
-    oppose:{fraction:.53,handle:true},
+    oppose:{fraction:.33,handle:true},
     grasp:{fraction:1,handle:true}
   };
   const origShowPivots=rig.showPivots;
