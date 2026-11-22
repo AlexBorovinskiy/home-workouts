@@ -1,0 +1,103 @@
+name: Optimize thumb opposition on unified-body rig
+on:
+  push:
+    paths:
+      - '.github/workflows/qa-thumb-opposition-unified.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  oppose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --prefix /tmp/thumb-unified --no-audit --no-fund playwright-core@1.56.1
+      - name: Search finger surface and tip proximity under anatomical angle constraints
+        shell: bash
+        run: |
+          mkdir -p results
+          python3 -m http.server 8765 --bind 127.0.0.1 >/tmp/preview-http.log 2>&1 &
+          node --input-type=module <<'NODE'
+          import {chromium} from '/tmp/thumb-unified/node_modules/playwright-core/index.mjs';
+          import {writeFileSync} from 'node:fs';
+          const browser=await chromium.launch({channel:'chrome',headless:true,args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+          const context=await browser.newContext({viewport:{width:430,height:932},deviceScaleFactor:1,isMobile:true,hasTouch:true,serviceWorkers:'block'});
+          const page=await context.newPage();const errs=[];
+          page.on('pageerror',e=>errs.push(e.message));
+          try{
+            await page.goto('http://127.0.0.1:8765/anatomy-rigged/unified-makehuman-preview.html?axis=x&sign=pos&order=post',{waitUntil:'domcontentloaded',timeout:60000});
+            await page.waitForFunction(()=>window.__unifiedQA?.ready()||document.querySelector('#error')?.classList.contains('on'),null,{timeout:85000});
+            if(!await page.evaluate(()=>window.__unifiedQA?.ready()))throw Error('Model failed: '+await page.locator('#error').innerText());
+            const data=await page.evaluate(()=>{
+              const qa=window.__unifiedQA;
+              const names=['baseX','baseY','baseZ','middle','tip'];
+              const ranges=[[-65,55],[-80,80],[-70,70],[-48,78],[-35,78]];
+              let seed=781249;
+              const rng=()=>{seed=seed*16807%2147483647;return seed/2147483647};
+              const randParams=()=>Object.fromEntries(names.map((k,i)=>[k,Math.round(ranges[i][0]+rng()*(ranges[i][1]-ranges[i][0]))]));
+              const angles=[
+                {baseX:12,baseY:0,baseZ:0,middle:26,tip:18},
+                {baseX:-30,baseY:-35,baseZ:20,middle:20,tip:35},
+                {baseX:25,baseY:40,baseZ:-35,middle:12,tip:31},
+                {baseX:-15,baseY:40,baseZ:35,middle:35,tip:15},
+                {baseX:50,baseY:-40,baseZ:5,middle:45,tip:30}
+              ];
+              for(let i=0;i<480;i++)angles.push(randParams());
+              const out=[];
+              function measure(param){
+                const v=qa.setThumb(param),c=v.contact,t=v.tip;
+                const validAxial=Math.max(0,Math.abs(t.shaftX)-.062);
+                const radialGap=Math.abs(t.distance-.003);
+                const posePenalty=Math.abs(param.baseX)*.07+Math.abs(param.baseY)*.05+
+                  Math.abs(param.baseZ)*.05+Math.abs(param.middle)*.025+Math.abs(param.tip)*.025;
+                const score=Math.min(c.near,110)*3-c.inside*22-
+                  radialGap*2900-validAxial*4400-posePenalty-(c.near<6?55:0);
+                return {angles:param,near:c.near,inside:c.inside,tip:t,score};
+              }
+              for(const param of angles)out.push(measure(param));
+              out.sort((a,b)=>b.score-a.score);
+              // Refine only the most promising non-penetrating poses.
+              const seeds=out.filter(x=>x.inside<4).slice(0,8);
+              for(const seedPose of seeds){
+                for(let i=0;i<28;i++){
+                  const mutation={...seedPose.angles};
+                  for(let j=0;j<names.length;j++){
+                    const [lo,hi]=ranges[j],k=names[j];
+                    mutation[k]=Math.min(hi,Math.max(lo,mutation[k]+Math.round((rng()-.5)*36)));
+                  }
+                  out.push(measure(mutation));
+                }
+              }
+              out.sort((a,b)=>b.score-a.score);
+              const distinct=[];
+              for(const a of out){
+                if(distinct.some(b=>names.reduce((s,k)=>s+Math.abs(b.angles[k]-a.angles[k]),0)<18))continue;
+                distinct.push(a);
+                if(distinct.length===12)break;
+              }
+              return {total:out.length,top:distinct,base:out.find(x=>names.every(k=>x.angles[k]==={baseX:12,baseY:0,baseZ:0,middle:26,tip:18}[k]))};
+            });
+            writeFileSync('results/thumb-fit-results.json',JSON.stringify(data,null,2));
+            console.log(JSON.stringify({total:data.total,top:data.top},null,2));
+            for(let i=0;i<Math.min(8,data.top.length);i++){
+              await page.evaluate(angles=>window.__unifiedQA.setThumb(angles),data.top[i].angles);
+              for(const view of ['thumb','palm']){
+                await page.evaluate(v=>window.__unifiedQA.view(v),view);
+                await page.waitForTimeout(140);
+                await page.locator('canvas').screenshot({path:'results/pose-'+i+'-'+view+'.png'});
+              }
+            }
+            if(errs.length)throw Error('Runtime JS errors '+errs.join('; '));
+          }catch(e){writeFileSync('results/error.txt',String(e)+'\n'+errs.join('\n'));throw e;}
+          finally{await browser.close();}
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: unified-thumb-opposition-candidates
+          path: results/
+          retention-days: 3
