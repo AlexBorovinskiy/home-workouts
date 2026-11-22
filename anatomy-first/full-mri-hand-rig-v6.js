@@ -110,7 +110,7 @@ export function createFullMRIHandRigV6(THREE,gltf,landmarks,jointData){
         v.fromBufferAttribute(a,i).applyMatrix4(mesh.matrixWorld);
         if(Math.abs(v.x-h.x)>.079)continue;
         const radial=Math.hypot(v.y-h.y,v.z-h.z);
-        const deficiency=Math.max(0,(.014-rad)*1000);
+        const deficiency=Math.max(0,(.014-radial)*1000);
         penalty+=deficiency*deficiency*.13;
       }
     }
