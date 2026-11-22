@@ -1,0 +1,58 @@
+name: QA OpenSim research importer
+on:
+  push:
+    paths:
+      - 'opensim-lab/**'
+      - '.github/workflows/qa-opensim-lab.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: npm install --prefix /tmp/osim-qa --no-audit --no-fund playwright-core@1.56.1
+      - name: Download official OpenSim test model
+        run: |
+          curl -fL --retry 3 -o /tmp/official.osim \
+            https://raw.githubusercontent.com/opensim-org/opensim-models/master/Models/Rajagopal/RajagopalLaiUhlrich2023.osim
+          test -s /tmp/official.osim
+      - name: Read real research model in mobile Chrome
+        shell: bash
+        run: |
+          mkdir -p opensim-qa
+          python3 -m http.server 8787 --bind 127.0.0.1 >/tmp/opensim-test-server.log 2>&1 &
+          node --input-type=module <<'NODE'
+          import {chromium} from '/tmp/osim-qa/node_modules/playwright-core/index.mjs';
+          import {writeFileSync} from 'node:fs';
+          const browser=await chromium.launch({channel:'chrome',headless:true,args:['--no-sandbox','--use-angle=swiftshader']});
+          const page=await browser.newPage({viewport:{width:430,height:932},isMobile:true,hasTouch:true});
+          const errors=[];
+          page.on('pageerror',e=>errors.push(e.message));
+          try {
+            await page.goto('http://127.0.0.1:8787/opensim-lab/',{waitUntil:'domcontentloaded'});
+            await page.locator('#file').setInputFiles('/tmp/official.osim');
+            await page.waitForFunction(()=>Boolean(window.__osimQA?.get()),null,{timeout:30000});
+            const report=await page.evaluate(()=>window.__osimQA.get());
+            if(report.bodies<10||report.joints<10||report.coordinates<10)throw Error('Unexpected OpenSim model hierarchy: '+JSON.stringify(report));
+            if(errors.length)throw Error('Browser errors: '+errors.join(','));
+            console.log('OPENSIM_QA_RESULT '+JSON.stringify({
+              bodies:report.bodies,joints:report.joints,coordinates:report.coordinates,
+              muscles:report.muscles,vertebrae:report.present,source:report.label,errors
+            }));
+            writeFileSync('opensim-qa/report.json',JSON.stringify(report,null,2));
+            await page.screenshot({path:'opensim-qa/mobile.png',fullPage:true});
+          } finally {await browser.close()}
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: opensim-lab-report
+          path: opensim-qa/
+          retention-days: 5
