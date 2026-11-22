@@ -58,22 +58,13 @@ jobs:
             if(!wrist||wrist.vertices<35)throw Error('Forearm must sample real wrist vertices');
             const digits=['index','middle','ring','pinky','thumb'];
             if(!contact.digits||digits.some(d=>!contact.digits[d]||contact.digits[d].samples<=0))throw Error('No separate digit diagnostics');
+            if(contact.digits.thumb.near<150||contact.digits.thumb.penetration>0)throw Error('Thumb did not contact handle cleanly');
             if(await page.locator('#digitResults tbody tr').count()!==5)throw Error('Expected five diagnostic table rows');
             await page.locator('#thumbTuning summary').click();
             await page.locator('[data-view="thumb"]').click();
             const candidates=[
-              ['base',[-22,-12,-13,4,-5]],
-              ['opposed',[-35,-15,-40,20,20]],
-              ['folded',[-15,20,-35,45,25]],
-              ['under',[-10,-35,10,40,15]],
-              ['sweep',[15,-40,-20,50,30]],
-              ['pinch',[-45,0,-35,35,-15]],
-              ['close',[-30,-30,-20,30,10]],
-              ['fit',[-45,7,23,27,41]],
-              ['fitsoft',[-40,4,18,22,33]],
-              ['overA',[-17,-45,11,-24,48]],
-              ['overB',[-10,-50,-3,-27,50]],
-              ['overC',[-13,-50,7,-20,51]]
+              ['previous',[-22,-12,-13,4,-5]],
+              ['opposed',[-13,-50,7,-20,51]]
             ];
             const thumbStudies=[];
             for(const [name,vals] of candidates){
@@ -97,7 +88,7 @@ jobs:
             if(changed!=='-35°')throw Error('Thumb control was not applied: '+changed);
             await page.locator('#thumbReset').click();
             const reset=await page.locator('[data-value="baseX"]').innerText();
-            if(reset!=='-22°')throw Error('Thumb reset did not restore default: '+reset);
+            if(reset!=='-13°')throw Error('Thumb reset did not restore default: '+reset);
             await page.screenshot({path:'screenshots/mobile-page.png',fullPage:true});
             const report={contact,wrist,hud:await page.locator('#hud').innerText(),thumbChange:changed,thumbReset:reset,errors};
             writeFileSync('screenshots/qa-report.json',JSON.stringify(report,null,2));
