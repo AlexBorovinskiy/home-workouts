@@ -1,0 +1,23 @@
+name: Export original rig assets for reproducible grip QA
+on:
+  push:
+    paths:
+      - '.github/workflows/export-rig-assets-for-qa.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Export exact rigged source geometry
+        uses: actions/upload-artifact@v4
+        with:
+          name: home-workouts-rig-source-for-qa
+          path: |
+            anatomy-rigged/assets/body_superficial.glb
+            anatomy-rigged/assets/skin-hand-right.cc0.glb
+            anatomy-rigged/assets/rig-inspect.json
+            anatomy-rigged/assets/ergonomic-dumbbell-grip.json
+          retention-days: 1
