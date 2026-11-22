@@ -1,0 +1,79 @@
+name: Independent finger contact fit (experiment only)
+on:
+  push:
+    paths:
+      - '.github/workflows/experiment-independent-finger-fit.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  optimize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --prefix /tmp/fingers --no-fund --no-audit playwright-core@1.56.1
+      - name: Optimize individual flexion with collision penalty
+        shell: bash
+        run: |
+          mkdir -p results
+          python3 -m http.server 8765 --bind 127.0.0.1 >/tmp/server.log 2>&1 &
+          node --input-type=module <<'NODE'
+          import {chromium} from '/tmp/fingers/node_modules/playwright-core/index.mjs';
+          import {writeFileSync} from 'node:fs';
+          const browser=await chromium.launch({channel:'chrome',headless:true,args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+          const context=await browser.newContext({viewport:{width:430,height:932},deviceScaleFactor:1,isMobile:true,hasTouch:true,serviceWorkers:'block'});
+          const page=await context.newPage(),errors=[];
+          page.on('pageerror',e=>errors.push(e.message));
+          try{
+           await page.goto('http://127.0.0.1:8765/anatomy-rigged/hand-lab-axis-debug.html?axis=z&sign=negative&order=post',{waitUntil:'domcontentloaded'});
+           await page.waitForFunction(()=>window.__handLabQA?.isReady(),null,{timeout:80000});
+           const results=await page.evaluate(()=>{
+             const fingers=['index','middle','ring','pinky'],factors=[.35,.4,.45,.5,.55,.6,.65,.7,.75,.8,.85];
+             const answers=[];
+             for(const y of [.08,.085,.09]){
+              for(const z of [.028,.031,.034,.037]){
+               const choices={};
+               for(const digit of fingers){
+                let best=null;
+                for(const factor of factors){
+                 const q=window.__configureGrip({factor:.55,factors:{[digit]:factor},y,z}).digits[digit];
+                 const score=Math.min(q.near,240)-q.penetration*12-(q.near<5?80:0);
+                 if(!best||score>best.score)best={factor,near:q.near,penetration:q.penetration,score};
+                }
+                choices[digit]=best;
+               }
+               const bestFactors=Object.fromEntries(Object.entries(choices).map(([n,k])=>[n,k.factor]));
+               const metric=window.__configureGrip({factors:bestFactors,factor:.55,y,z});
+               const fingerInfo=Object.fromEntries(fingers.map(n=>[n,{near:metric.digits[n].near,pen:metric.digits[n].penetration}]));
+               const near=fingers.map(n=>fingerInfo[n].near),pen=fingers.reduce((s,n)=>s+fingerInfo[n].pen,0);
+               const score=near.reduce((s,n)=>s+Math.min(n,230),0)-pen*12-near.filter(n=>n<5).length*80;
+               answers.push({y,z,factors:bestFactors,digits:fingerInfo,score,pen});
+              }
+             }
+             return answers.sort((a,b)=>b.score-a.score);
+           });
+           writeFileSync('results/optimized.json',JSON.stringify(results,null,2));
+           console.log(JSON.stringify(results,null,2));
+           for(let i=0;i<Math.min(5,results.length);i++){
+            const v=results[i];
+            await page.evaluate(p=>window.__configureGrip(p),v);
+            for(const view of ['front','thumb']){
+             await page.evaluate(view=>window.__handLabQA.setView(view),view);
+             await page.waitForTimeout(160);
+             await page.locator('canvas').screenshot({path:'results/opt-'+i+'-'+view+'.png'});
+            }
+           }
+           if(errors.length)throw Error(errors.join(';'));
+          }catch(e){writeFileSync('results/error.txt',String(e)+'\n'+errors.join(';'));throw e}
+          finally{await browser.close()}
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: independent-finger-fit
+          path: results/
+          retention-days: 2
