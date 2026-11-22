@@ -1,0 +1,40 @@
+name: Install verified unified CC0 rig (experiment branch only)
+on:
+  push:
+    paths:
+      - '.github/workflows/install-unified-makehuman.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Download and verify exact source bytes
+        shell: bash
+        run: |
+          mkdir -p anatomy-rigged/assets
+          curl --fail --location --retry 3 --max-time 100 \
+            'https://www.innerscene.com/api/library/human-base-mesh-with-editable-53-bone-rig-8e7c8ab1/download' \
+            -o anatomy-rigged/assets/unified-makehuman-cc0.glb
+          echo "f3cd655e44af0a79786b1b4349c4acf1ae342fe6bd0d5fc714e68470dea1b429  anatomy-rigged/assets/unified-makehuman-cc0.glb" | sha256sum -c -
+          printf '%s\n' 'Source: Innerscene 3D parts library / human-base-rigged.glb' \
+            'Original model: MakeHuman/MPFB CC0' \
+            'Model license: CC0 (public domain dedication)' \
+            'Source URL: https://www.innerscene.com/tools/library/3d-parts/human-base-mesh-with-editable-53-bone-rig-8e7c8ab1' \
+            'SHA256: f3cd655e44af0a79786b1b4349c4acf1ae342fe6bd0d5fc714e68470dea1b429' \
+            'Experimental asset. Not accepted for anatomical training until 3D grip QA.' \
+            > anatomy-rigged/assets/UNIFIED-MAKEHUMAN-CC0.txt
+      - name: Commit to experimental branch only
+        shell: bash
+        run: |
+          test "$GITHUB_REF_NAME" = "experiment/unified-makehuman-rig"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add anatomy-rigged/assets/unified-makehuman-cc0.glb anatomy-rigged/assets/UNIFIED-MAKEHUMAN-CC0.txt
+          git commit -m "Vendor licensed 53-bone skinned MakeHuman model for unified rig experiment"
+          git push origin HEAD:experiment/unified-makehuman-rig
