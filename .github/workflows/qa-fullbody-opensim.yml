@@ -1,0 +1,59 @@
+name: Validate full-body OpenSim topology candidate
+on:
+  push:
+    paths:
+      - 'opensim-lab/build_fullbody_candidate.py'
+      - '.github/workflows/qa-fullbody-opensim.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install native OpenSim
+        run: python -m pip install 'opensim==4.6'
+      - name: Download original scientific inputs
+        shell: bash
+        run: |
+          curl -fL --retry 2 --max-time 160 'https://zenodo.org/records/18259702/files/FHS_dataset_4.x.zip?download=1' -o /tmp/fhs.zip
+          curl -fL --retry 2 --max-time 90 'https://raw.githubusercontent.com/opensim-org/opensim-models/master/Models/Rajagopal/RajagopalLaiUhlrich2023.osim' -o /tmp/legs.osim
+          python - <<'PY'
+          import zipfile
+          from pathlib import Path
+          with zipfile.ZipFile('/tmp/fhs.zip') as z:
+            chosen=sorted(n for n in z.namelist() if '/Male/' in n and n.endswith('.osim'))[0]
+            Path('/tmp/fhs.osim').write_bytes(z.read(chosen))
+            print('SOURCE_FHS_FILE',chosen)
+          PY
+      - name: Construct and initialize candidate
+        shell: bash
+        run: |
+          mkdir -p qa-fullbody
+          python opensim-lab/build_fullbody_candidate.py             --fhs /tmp/fhs.osim             --donor /tmp/legs.osim             --model /tmp/fullbody-candidate.osim             --report qa-fullbody/fullbody-inventory.json
+      - name: Check scientific gates
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          j=json.loads(Path('qa-fullbody/fullbody-inventory.json').read_text())
+          assert j['status']=='opensim-assembly-only'
+          assert j['hasHands'] and j['hasFeet']
+          assert j['vertebrae']==17 and j['legSegments']==12
+          assert j['jointAlignmentValidated'] is False
+          assert j['massDistributionVerified'] is False
+          assert j['hasMeasuredPushup'] is False
+          print('COMPOSITE_GATE_SUCCESS',json.dumps({
+            key:j[key] for key in ['bodyCount','jointCount','coordinateCount','legSegments','vertebrae','hasFeet','hasHands']}))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: research-fullbody-inventory-only
+          path: qa-fullbody/
+          retention-days: 7
