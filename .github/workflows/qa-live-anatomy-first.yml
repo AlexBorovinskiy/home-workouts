@@ -1,0 +1,59 @@
+name: Check published anatomy-first interactive skeleton
+on:
+  push:
+    paths:
+      - '.github/workflows/qa-live-anatomy-first.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --prefix /tmp/live-anatomy --no-audit --no-fund playwright-core@1.56.1
+      - name: Load deployed GitHub Pages app on mobile Chrome
+        shell: bash
+        run: |
+          mkdir -p evidence
+          node --input-type=module <<'NODE'
+          import {chromium} from '/tmp/live-anatomy/node_modules/playwright-core/index.mjs';
+          import {writeFileSync} from 'node:fs';
+          const browser=await chromium.launch({channel:'chrome',headless:true,args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+          const page=await browser.newPage({viewport:{width:430,height:932},deviceScaleFactor:1,isMobile:true,hasTouch:true,serviceWorkers:'block'});
+          const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+          try{
+            const url='https://alexborovinskiy.github.io/home-workouts/anatomy-first/hand-lab.html';
+            const response=await page.goto(url,{waitUntil:'domcontentloaded',timeout:65000});
+            if(response.status()!==200)throw Error('HTTP '+response.status());
+            await page.waitForFunction(()=>window.__anatomyQA?.ready()||document.querySelector('#error')?.classList.contains('on'),null,{timeout:60000});
+            if(!await page.evaluate(()=>window.__anatomyQA?.ready()))throw Error('Model failed: '+await page.locator('#error').innerText());
+            const count=await page.locator('#boneCount').innerText();
+            if(count!=='30')throw Error('Wrong bone count: '+count);
+            await page.locator('[data-preset="open"]').click();
+            const open=await page.evaluate(()=>window.__anatomyQA.getMetrics());
+            await page.locator('[data-preset="grip"]').click();
+            const grip=await page.evaluate(()=>window.__anatomyQA.getMetrics());
+            const diff=Math.hypot(...open.thumbPad.map((v,i)=>v-grip.thumbPad[i]));
+            if(diff<.02)throw Error('Thumb CMC motion not visible: '+diff);
+            await page.locator('[data-view="palm"]').click();
+            await page.waitForTimeout(300);
+            await page.locator('canvas').screenshot({path:'evidence/hand-palm.png'});
+            await page.locator('[data-view="side"]').click();
+            await page.waitForTimeout(250);
+            await page.locator('canvas').screenshot({path:'evidence/hand-side.png'});
+            writeFileSync('evidence/results.json',JSON.stringify({url,status:response.status(),count,open,grip,oppositionDisplacement:diff,errors},null,2));
+            if(errors.length)throw Error('Browser errors: '+errors.join('|'));
+          }catch(e){writeFileSync('evidence/error.txt',String(e)+'\n'+errors.join('\n'));throw e}
+          finally{await browser.close()}
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: published-anatomy-first-qa
+          path: evidence/
+          retention-days: 4
