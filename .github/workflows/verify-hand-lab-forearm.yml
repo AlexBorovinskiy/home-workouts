@@ -2,8 +2,9 @@ name: QA forearm and thumb preview (isolated)
 on:
   push:
     paths:
-      - '.github/workflows/verify-hand-lab.yml'
-      - 'anatomy-rigged/hand-lab-forearm-preview.html'\n      - 'anatomy-rigged/forearm-extension.js'
+      - '.github/workflows/verify-hand-lab-forearm.yml'
+      - 'anatomy-rigged/hand-lab-forearm-preview.html'
+      - 'anatomy-rigged/forearm-extension.js'
   workflow_dispatch:
 permissions:
   contents: read
