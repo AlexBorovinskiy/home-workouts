@@ -1,0 +1,130 @@
+{
+  "source": "OpenSim 4.6 native reaction from provisional contact scaffold, FHS+Rajagopal candidate",
+  "dataset": "https://zenodo.org/records/18259702",
+  "warning": "Uncalibrated sphere-floor contact values in the model's neutral pose; not an exercise or injury-risk estimate.",
+  "kind": "openSim-contact-scaffold-not-pushup",
+  "engine": "version 4.6-2026-06-22-85aaf64, build date 18:15:35 Jun 22 2026",
+  "hasFootBodies": true,
+  "hasPalmBodies": true,
+  "floorHeightM": -0.888953,
+  "contactGeometryCount": 5,
+  "contactForceCount": 4,
+  "contacts": [
+    {
+      "name": "right_palm",
+      "body": "hand_R",
+      "radiusM": 0.027,
+      "initialBodyOriginM": [
+        0.003846,
+        0.026925,
+        0.171303
+      ]
+    },
+    {
+      "name": "left_palm",
+      "body": "hand_L",
+      "radiusM": 0.027,
+      "initialBodyOriginM": [
+        0.003846,
+        0.026926,
+        -0.171307
+      ]
+    },
+    {
+      "name": "right_forefoot",
+      "body": "toes_r",
+      "radiusM": 0.027,
+      "initialBodyOriginM": [
+        0.134754,
+        -0.861953,
+        0.085997
+      ]
+    },
+    {
+      "name": "left_forefoot",
+      "body": "toes_l",
+      "radiusM": 0.027,
+      "initialBodyOriginM": [
+        0.134754,
+        -0.861953,
+        -0.085997
+      ]
+    }
+  ],
+  "contactRecords": [
+    {
+      "name": "candidate_contact_right_palm",
+      "outputs": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "candidate_contact_left_palm",
+      "outputs": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "candidate_contact_right_forefoot",
+      "outputs": [
+        0,
+        6.8872,
+        0,
+        0,
+        0,
+        0,
+        0,
+        -6.8872,
+        0,
+        0.5923,
+        0,
+        -0.9281
+      ]
+    },
+    {
+      "name": "candidate_contact_left_forefoot",
+      "outputs": [
+        0,
+        6.8872,
+        0,
+        0,
+        0,
+        0,
+        0,
+        -6.8872,
+        0,
+        -0.5923,
+        0,
+        -0.9281
+      ]
+    }
+  ],
+  "groundForcesNotCalibrated": true,
+  "handAndToeContactPointsVerified": false,
+  "plankPoseSolved": false,
+  "movementMeasured": false,
+  "loadAssessmentValidated": false,
+  "purpose": "Validate four OpenSim-compliant sphere/half-space force connections, not estimate physiologic load"
+}
