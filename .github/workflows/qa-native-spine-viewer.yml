@@ -1,0 +1,67 @@
+name: QA native OpenSim spine viewer
+on:
+  push:
+    paths:
+      - 'opensim-lab/native-motion.html'
+      - 'opensim-lab/assets/native-spine-samples.json'
+      - '.github/workflows/qa-native-spine-viewer.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install mobile browser driver
+        run: npm install --prefix /tmp/spine-viewer --no-fund --no-audit playwright-core@1.56.1
+      - name: Check scientific 3D viewer on a mobile viewport
+        shell: bash
+        run: |
+          mkdir -p spine-viewer-qa
+          python3 -m http.server 8763 --bind 127.0.0.1 >/tmp/spine-viewer-http.log 2>&1 &
+          node --input-type=module <<'NODE'
+          import {chromium} from '/tmp/spine-viewer/node_modules/playwright-core/index.mjs';
+          import {writeFileSync} from 'node:fs';
+          const browser=await chromium.launch({channel:'chrome',headless:true,args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+          const page=await browser.newPage({viewport:{width:430,height:932},deviceScaleFactor:1,isMobile:true,hasTouch:true});
+          const errors=[];
+          page.on('pageerror',e=>errors.push(e.message));
+          page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+          try{
+            await page.goto('http://127.0.0.1:8763/opensim-lab/native-motion.html',{waitUntil:'domcontentloaded'});
+            await page.waitForFunction(()=>window.__spineQA?.ready()||document.querySelector('#error')?.classList.contains('show'),null,{timeout:90000});
+            if(!await page.evaluate(()=>Boolean(window.__spineQA?.ready())))throw Error('Data or 3D module failed to load: '+await page.locator('#error').innerText());
+            const report=await page.evaluate(()=>{
+              const model=window.__spineQA.model();
+              return {frames:model.frames.length,vertebrae:model.spineLevels.length,
+               contact:model.contactAudit,source:model.provenance.originalDataset,
+               native:model.method,version:model.opensimVersion};
+            });
+            if(report.vertebrae!==17||report.frames!==5||report.contact.hasFeet||errors.length)throw Error('Invalid native data: '+JSON.stringify({report,errors}));
+            await page.locator('#stage canvas').screenshot({path:'spine-viewer-qa/neutral.png'});
+            await page.locator('[data-mode="flexion_diagnostic"]').click();
+            await page.waitForTimeout(400);
+            const state=await page.locator('#audit').innerText();
+            await page.locator('#stage canvas').screenshot({path:'spine-viewer-qa/flexion.png'});
+            await page.locator('[data-view="side"]').click();
+            await page.waitForTimeout(350);
+            await page.locator('#stage canvas').screenshot({path:'spine-viewer-qa/profile.png'});
+            console.log('NATIVE_VIEWER_REPORT '+JSON.stringify({report,caption:state,errors}));
+            console.log('NATIVE_VIEWER_IMAGE '+(await page.locator('#stage canvas').screenshot({type:'jpeg',quality:50})).toString('base64'));
+            writeFileSync('spine-viewer-qa/report.json',JSON.stringify({report,state,errors},null,2));
+          }catch(e){
+            await page.screenshot({path:'spine-viewer-qa/failure.png',fullPage:true}).catch(()=>{});
+            throw e;
+          }finally{await browser.close();}
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-spine-mobile-qa
+          path: spine-viewer-qa/
+          retention-days: 7
