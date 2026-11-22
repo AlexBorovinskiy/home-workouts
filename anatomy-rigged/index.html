@@ -18,8 +18,8 @@
 <div class="cols"><div class="panel">
 <div class="canvas" id="dragZone"><canvas id="scene" aria-label="Интерактивная трёхмерная анатомическая мужская фигура"></canvas>
 <div class="status" id="status">Загрузка 3D-модели…</div>
-<div class="toolbar" id="viewButtons"><button class="active" data-view="front">Фас</button><button data-view="side">Профиль</button><button data-view="back">Спина</button></div>
-<div class="hint">↔ Вращай · Двумя пальцами: масштаб и сдвиг</div><div class="error" id="error"><div><strong>Не удалось загрузить анатомическую модель.</strong><p id="errorText">При первом открытии нужен интернет. Проверь подключение и перезагрузи страницу.</p><button onclick="location.reload()" style="padding:10px;border-radius:9px">Повторить</button></div></div><div class="loading" id="loading"><i id="loadFill"></i></div></div>
+<div class="toolbar" id="viewButtons"><button class="active" data-view="front">Фас</button><button data-view="side">Профиль</button><button data-view="back">Спина</button><button id="resetCamera" title="Вернуть всю фигуру в кадр" aria-label="Сбросить приближение">⤢</button></div>
+<div class="hint">↔ Вращай · Двумя пальцами: масштаб и сдвиг · ⤢ Сброс</div><div class="error" id="error"><div><strong>Не удалось загрузить анатомическую модель.</strong><p id="errorText">При первом открытии нужен интернет. Проверь подключение и перезагрузи страницу.</p><button onclick="location.reload()" style="padding:10px;border-radius:9px">Повторить</button></div></div><div class="loading" id="loading"><i id="loadFill"></i></div></div>
 <div class="controls"><div class="phase"><strong id="phase">Исходное положение</strong><span class="time" id="time">00:00 / 00:20</span></div><input class="track" id="scrub" aria-label="Положение в упражнении" type="range" min="0" max="1000" value="0">
 <div class="actions"><button class="primary" id="play">▶ Запустить</button><button id="restart">↺ Сначала</button><button id="hold">Стоп-кадр</button><select id="speed" aria-label="Скорость"><option value="0.25">0,25×</option><option value="0.5">0,5×</option><option value="0.75">0,75×</option><option value="1" selected>1×</option></select></div></div></div>
 <div class="panel section"><div class="kicker">Проверка скелетной анимации</div><h2 id="exTitle">Сгибание рук</h2><p id="exDesc">Сгибание в локте: предплечья следуют за локтевыми суставами, кисти — за предплечьями. Проверь, не отделяются ли мышцы рук.</p>
@@ -59,7 +59,7 @@ function addDemoDumbbells(){
    const group=new THREE.Group();group.name='training-dumbbell-'+side;
    // Parent to the hand bone: the equipment follows the wrist and forearm bones.
    // Offsets are a first-pass grip approximation to verify in the viewer.
-   group.position.set(0,.085,.006);
+   group.position.set(0,.063,.006);
    const handle=new THREE.Mesh(barGeometry,grip);handle.rotation.z=Math.PI/2;
    group.add(handle);
    for(const x of [-.070,.070]){
@@ -158,13 +158,13 @@ function applyPose(){if(!rigReady)return;resetBones();const a=effort(progress);
     // Tentative grip driven by hand/finger bones; still needs visual verification.
     if($('#grip').checked && $('#equipment').checked){
       for(const name of ['index','middle','ring','pinky']){
-        for(const [segment,angle] of [[1,-.72],[2,-.78],[3,-.42]]){
+        for(const [segment,angle] of [[1,-.86],[2,-.94],[3,-.53]]){
           const joint=name+'_0'+segment+'.'+side;
           if(rig[joint])rotateWorld(joint,AXIS_X,angle);
         }
       }
-      if(rig['thumb_01.'+side])rotateWorld('thumb_01.'+side,AXIS_Z,(side==='L'?.42:-.42));
-      if(rig['thumb_02.'+side])rotateWorld('thumb_02.'+side,AXIS_X,-.48);
+      if(rig['thumb_01.'+side])rotateWorld('thumb_01.'+side,AXIS_Z,(side==='L'?.24:-.24));
+      if(rig['thumb_02.'+side])rotateWorld('thumb_02.'+side,AXIS_X,-.63);
     }
    }
  }
@@ -206,6 +206,7 @@ function tick(ts){if(playing&&last)progress=(progress+(ts-last)*speed/9000)%1;la
  }
  const target=new THREE.Vector3(panX,(active==='pushup'?.65:.88)+panY,0);camera.position.set(target.x+zoom*Math.sin(yaw)*Math.cos(pitch),target.y+zoom*Math.sin(pitch),target.z+zoom*Math.cos(yaw)*Math.cos(pitch));camera.lookAt(target);renderer.render(scene,camera);requestAnimationFrame(tick)}requestAnimationFrame(tick);
 $('#play').onclick=()=>{playing=!playing;ui.play.textContent=playing?'Ⅱ Пауза':'▶ Запустить'};$('#restart').onclick=()=>{progress=0;playing=false;ui.play.textContent='▶ Запустить';applyPose()};$('#hold').onclick=()=>{progress=.51;playing=false;ui.play.textContent='▶ Запустить';applyPose()};ui.scrub.addEventListener('input',()=>{progress=+ui.scrub.value/1000;playing=false;ui.play.textContent='▶ Запустить';applyPose()});ui.speed.onchange=()=>speed=+ui.speed.value;
+$('#resetCamera').onclick=()=>{zoom=3.9;panX=0;panY=0;pitch=.06};
 document.querySelectorAll('[data-ex]').forEach(b=>b.onclick=()=>setExercise(b.dataset.ex));document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>setView(b.dataset.view));$('#highlight').onchange=updateColors;$('#skeleton').onchange=e=>{if(skeletonHelper)skeletonHelper.visible=e.target.checked};$('#equipment').onchange=()=>{equipmentRefresh();applyPose()};$('#grip').onchange=applyPose;
 const pointers=new Map();let previous=null,pinch=null,pinchCenter=null;
 ui.box.addEventListener('pointerdown',e=>{
