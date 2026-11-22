@@ -21,7 +21,7 @@ button{font:inherit;font-size:12px;font-weight:650;color:#eaf7f4;min-height:43px
 button.active{background:var(--accent);border-color:var(--accent);color:#082a33}button:focus-visible{outline:2px solid #ffe1a7;outline-offset:2px}
 hr{border:0;border-top:1px solid #2c4b5a;margin:14px 0}
 .actions{display:flex;gap:8px;margin-top:9px}.actions button{flex:1}
-.note{padding:11px 12px;background:#0d2332;border:1px solid #2d5162;border-radius:11px;color:#cadfe5;line-height:1.6;font-size:12px;margin:13px 0 0}
+.diagnostics{border-collapse:collapse;width:100%;font-size:12px;margin-top:10px}.diagnostics th,.diagnostics td{padding:8px 7px;border-bottom:1px solid #2c4b5a;text-align:left}.diagnostics th{color:#a2d4d1;font-weight:650}.diagnostics td:last-child{text-align:right}.diagnostics .warn{color:#ffcb9f}.diagnostics .ok{color:#91e4ce}.metric{font-size:11px;line-height:1.6;color:#b2c9d3}.tuning{margin-top:12px;padding:10px 12px;border-radius:11px;border:1px solid #315163;background:#0b2231}.tuning summary{cursor:pointer;font-size:12px;color:#b6e9df;font-weight:700}.tuning label{display:grid;grid-template-columns:minmax(0,1fr) 100px 38px;align-items:center;gap:8px;font-size:12px;margin:10px 0}.tuning input{accent-color:#86ded2;width:100%}.tuning output{text-align:right;font-variant-numeric:tabular-nums;color:#bddbdc}.note{padding:11px 12px;background:#0d2332;border:1px solid #2d5162;border-radius:11px;color:#cadfe5;line-height:1.6;font-size:12px;margin:13px 0 0}
 .footer{font-size:11px;line-height:1.6;color:#a7bdc7;margin-top:15px}
 .error{display:none;position:absolute;inset:0;background:#081b29ec;align-items:center;justify-content:center;text-align:center;padding:25px;font-size:13px;line-height:1.6}.error.on{display:flex}
 @media(max-width:480px){.viewer{height:min(61vh,500px)}.controls{padding:12px}.views{grid-template-columns:repeat(2,minmax(0,1fr))}.hint{font-size:9px}}
@@ -41,7 +41,19 @@ hr{border:0;border-top:1px solid #2c4b5a;margin:14px 0}
 <hr><div class="label">Ракурс</div>
 <div class="views"><button data-view="front">Ладонь</button><button data-view="side">Профиль</button><button data-view="back">С тыла</button><button id="reset">По центру</button></div>
 <div class="actions"><button id="check">Проверить контакт</button><button id="capture">Сохранить кадр</button></div>
-<p class="note" id="report" role="status">После загрузки можно проверить расстояние между поверхностью кожи и рукояткой. Это геометрический тест, а не медицинская экспертиза.</p>
+<p class="note" id="report" role="status">После загрузки можно проверить каждый палец по поверхности кожи, а не по положению костей.</p>
+<div id="digitResults" aria-live="polite"></div>
+<details class="tuning" id="thumbTuning">
+<summary>Параметры большого пальца (для разработки)</summary>
+<p class="metric">Большой палец настраивается отдельно: сгибание, противопоставление, отведение и два межфаланговых сустава. Изменения действуют только в текущем открытом стенде.</p>
+<label>Основание · сгибание <input type="range" data-thumb="baseX" min="-60" max="35" step="1" value="-22"><output data-value="baseX">−22°</output></label>
+<label>Основание · оппозиция <input type="range" data-thumb="baseY" min="-50" max="45" step="1" value="-12"><output data-value="baseY">−12°</output></label>
+<label>Основание · отведение <input type="range" data-thumb="baseZ" min="-55" max="45" step="1" value="-13"><output data-value="baseZ">−13°</output></label>
+<label>Средний сустав <input type="range" data-thumb="middle" min="-50" max="65" step="1" value="4"><output data-value="middle">4°</output></label>
+<label>Концевой сустав <input type="range" data-thumb="tip" min="-50" max="65" step="1" value="-5"><output data-value="tip">−5°</output></label>
+<button id="thumbReset" type="button">Вернуть исходные параметры</button>
+</details>
+<p class="metric">Стык кисти и предплечья пока не моделировался. Это отдельный критерий, не скрытый декоративной манжетой.</p>
 </div></section>
 <p class="footer">Основа кисти: Innerscene / MakeHuman (CC0). В стенде используется собственный скелет кисти, без переноса поворотов между разными ригами. Исходники: <a href="https://github.com/AlexBorovinskiy/home-workouts">home-workouts</a>.</p>
 </main>
@@ -65,7 +77,9 @@ const rest=new Map(),skinMat=new THREE.MeshStandardMaterial({color:0xdfaba1,roug
 const shaftMat=new THREE.MeshStandardMaterial({color:0x364d5b,metalness:.56,roughness:.38});
 const discMat=new THREE.MeshStandardMaterial({color:0x899dac,metalness:.72,roughness:.32});
 const handleCenter=new THREE.Vector3(0,.07657357,.03055974),handleQ=new THREE.Quaternion(0,0,.10713777,.99424418).normalize();
-const bends={index:[53,50,27],middle:[56,50,28],ring:[53,48,24],pinky:[15,35,20],thumb:[-21.8,3.8,-4.5]};
+const bends={index:[53,50,27],middle:[56,50,28],ring:[53,48,24],pinky:[15,35,20]};
+const defaultThumb={baseX:-22,baseY:-12,baseZ:-13,middle:4,tip:-5};
+const thumbSettings={...defaultThumb};
 const stages=[{name:'Старт',angle:0},{name:'Середина',angle:45},{name:'Пик',angle:90}];
 function resize(){const w=holder.clientWidth,h=holder.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}
 new ResizeObserver(resize).observe(holder);resize();
@@ -93,10 +107,11 @@ function addDumbbell(){
 }
 function gripFingers(){
  const rot=new THREE.Quaternion(),axis=new THREE.Vector3(1,0,0);
- for(const [digit,angles] of Object.entries(bends))for(let j=1;j<=3;j++){
+ const thumbAngles=[thumbSettings.baseX,thumbSettings.middle,thumbSettings.tip];
+ for(const [digit,angles] of [...Object.entries(bends),['thumb',thumbAngles]])for(let j=1;j<=3;j++){
   const joint=donor.getObjectByName(digit+'_0'+j+'_r');
   if(!joint||!rest.has(joint))throw Error('Нет сустава '+digit+'_'+j);
-  if(digit==='thumb'&&j===1)rot.setFromEuler(new THREE.Euler(THREE.MathUtils.degToRad(-21.8),THREE.MathUtils.degToRad(-11.6),THREE.MathUtils.degToRad(-13.4),'ZYX'));
+  if(digit==='thumb'&&j===1)rot.setFromEuler(new THREE.Euler(THREE.MathUtils.degToRad(thumbSettings.baseX),THREE.MathUtils.degToRad(thumbSettings.baseY),THREE.MathUtils.degToRad(thumbSettings.baseZ),'ZYX'));
   else rot.setFromAxisAngle(axis,THREE.MathUtils.degToRad(angles[j-1]));
   joint.quaternion.copy(rest.get(joint)).premultiply(rot);
  }
@@ -121,24 +136,64 @@ async function init(){
 function checkContact(){
  if(!ready)return null;
  scene.updateMatrixWorld(true);mesh.skeleton.update();
- const attr=mesh.geometry.getAttribute('position'),inv=bar.matrixWorld.clone().invert(),v=new THREE.Vector3();
+ const pos=mesh.geometry.getAttribute('position');
+ const weights=mesh.geometry.getAttribute('skinWeight'),indices=mesh.geometry.getAttribute('skinIndex');
+ const boneGroups=mesh.skeleton.bones.map(b=>{
+   const m=/^(index|middle|ring|pinky|thumb)_/.exec(b.name);
+   return m?m[1]:b.name==='hand_r'?'palm':null;
+ });
+ const groups=['index','middle','ring','pinky','thumb'];
+ const names={index:'Указательный',middle:'Средний',ring:'Безымянный',pinky:'Мизинец',thumb:'Большой'};
+ const results=Object.fromEntries(groups.map(k=>[k,{samples:0,near:0,penetration:0,deep:0,minGap:Infinity}]));
+ const inv=bar.matrixWorld.clone().invert(),v=new THREE.Vector3();
  let samples=0,near=0,penetration=0,min=Infinity;
- const step=Math.max(1,Math.ceil(attr.count/7000));
- for(let i=0;i<attr.count;i+=step){
-  v.fromBufferAttribute(attr,i);mesh.applyBoneTransform(i,v);mesh.localToWorld(v);v.applyMatrix4(inv);
-  if(Math.abs(v.x)>.063)continue;
-  samples++;const radial=Math.hypot(v.y,v.z);min=Math.min(min,radial);
-  if(Math.abs(radial-.01)<.003)near++;
-  if(radial<.008)penetration++;
+ const step=Math.max(1,Math.ceil(pos.count/12000));
+ for(let i=0;i<pos.count;i+=step){
+   const parts={index:0,middle:0,ring:0,pinky:0,thumb:0};
+   for(let j=0;j<4;j++){
+     const weight=weights.getComponent(i,j),key=boneGroups[indices.getComponent(i,j)];
+     if(key&&key!=='palm')parts[key]+=weight;
+   }
+   const best=groups.reduce((a,b)=>parts[a]>=parts[b]?a:b);
+   if(parts[best]<.55)continue; // Exclude palm and ambiguous transitions from finger-specific metrics
+   v.fromBufferAttribute(pos,i);mesh.applyBoneTransform(i,v);mesh.localToWorld(v);v.applyMatrix4(inv);
+   if(Math.abs(v.x)>.063)continue; // exclude inner plates and shaft ends
+   const radial=Math.hypot(v.y,v.z),distance=radial-.010,group=results[best];
+   samples++;group.samples++;
+   if(Math.abs(distance)<=.003){near++;group.near++;}
+   if(distance<-.002){penetration++;group.penetration++;}
+   if(distance<-.004)group.deep++;
+   if(distance>0)group.minGap=Math.min(group.minGap,distance);
+   min=Math.min(min,radial);
  }
- report.innerHTML='<strong>Контакт с рукояткой:</strong> близко к поверхности (±3 мм) — '+near+' вершин; глубоко внутри цилиндра (&lt;8 мм) — '+penetration+'; проверено — '+samples+'. Это проверка геометрии, не подтверждение правильной техники.';
- return {samples,near,penetration,minimumDistance:min};
+ const rows=groups.map(key=>{
+   const r=results[key];
+   const status=r.samples===0?'Не измерен':r.deep?'Глубокое пересечение':r.penetration?'Пересечение':r.near<3?'Нет подтверждённого контакта':'Поверхность рядом';
+   const cls=r.deep||r.penetration||r.near<3?'warn':'ok';
+   return '<tr><td>'+names[key]+'</td><td>'+r.near+' / '+r.samples+'</td><td>'+r.penetration+'</td><td class="'+cls+'">'+status+'</td></tr>';
+ });
+ document.getElementById('digitResults').innerHTML='<table class="diagnostics"><thead><tr><th>Палец</th><th>Рядом / выборка</th><th>Внутри</th><th>Оценка</th></tr></thead><tbody>'+rows.join('')+'</tbody></table>';
+ report.textContent='Контакт по 5 пальцам: рядом с цилиндром (±3 мм) — '+near+' вершин, пересечение глубже 2 мм — '+penetration+', образцов — '+samples+'. Классификация по весам привязки, не доказательство правильного хвата.';
+ return {samples,near,penetration,minimumDistance:min,digits:results,groups:boneGroups};
 }
 function showError(e){console.error(e);$('#error').classList.add('on');$('#error').textContent='Ошибка: '+(e?.message||String(e));hud.textContent='Ошибка загрузки'}
 for(const b of document.querySelectorAll('[data-pose]'))b.addEventListener('click',()=>setStage(Number(b.dataset.pose)));
 for(const b of document.querySelectorAll('[data-view]'))b.addEventListener('click',()=>setView(b.dataset.view));
 $('#reset').addEventListener('click',()=>setView('front'));
 $('#check').addEventListener('click',checkContact);
+function applyThumbInputs(){
+ for(const input of document.querySelectorAll('[data-thumb]')){
+   const k=input.dataset.thumb;thumbSettings[k]=Number(input.value);
+   const output=document.querySelector('[data-value="'+k+'"]');
+   output.textContent=thumbSettings[k]+'°';
+ }
+ if(ready){gripFingers();checkContact()}
+}
+for(const input of document.querySelectorAll('[data-thumb]'))input.addEventListener('change',applyThumbInputs);
+$('#thumbReset').addEventListener('click',()=>{
+ for(const [k,v] of Object.entries(defaultThumb))document.querySelector('[data-thumb="'+k+'"]').value=v;
+ applyThumbInputs();
+});
 $('#capture').addEventListener('click',()=>{renderer.render(scene,camera);const a=document.createElement('a');a.download='hand-lab-'+stage+'.png';a.href=canvas.toDataURL('image/png');a.click()});
 (function loop(){requestAnimationFrame(loop);orbit.update();renderer.render(scene,camera)})();
 init().catch(showError);
