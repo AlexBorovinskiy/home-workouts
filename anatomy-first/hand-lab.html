@@ -88,7 +88,7 @@ try{
   rig=createAnatomicalRig(THREE);scene.add(rig.root);
   if(rig.bones.length!==30)throw Error('Expected 30 anatomical bone proxies');
   document.getElementById('boneCount').textContent=String(rig.bones.length);
-  window.__anatomyQA={ready:()=>true,setPose:(x)=>setPose(x.opposition,x.grip),getMetrics:()=>rig.getMetrics(),getCMC:()=>rig.controllers.thumb_cmc_abduction_r.getWorldPosition(new THREE.Vector3()).toArray(),getIndexTip:()=>rig.joints.index.dip.localToWorld(new THREE.Vector3(0,.019,0)).toArray(),view:cameraView};
+  window.__anatomyQA={ready:()=>true,setPose:(x)=>setPose(x.opposition*100,x.grip*100),getMetrics:()=>rig.getMetrics(),getCMC:()=>rig.controllers.thumb_cmc_abduction_r.getWorldPosition(new THREE.Vector3()).toArray(),getIndexTip:()=>rig.joints.index.dip.localToWorld(new THREE.Vector3(0,.019,0)).toArray(),view:cameraView};
   rig.root.updateMatrixWorld(true);
 }catch(e){
   console.error(e);document.getElementById('error').classList.add('on');
@@ -97,7 +97,7 @@ try{
 function resize(){const w=box.clientWidth,h=box.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}
 new ResizeObserver(resize).observe(box);resize();
 function cameraView(name='palm'){
-  const opts={palm:{pos:[.14,.13,-.36],target:[0,.040,-.008]},side:{pos:[-.30,.12,-.14],target:[0,.050,-.005]},arm:{pos:[.16,-.09,-.85],target:[0,-.16,0]}};
+  const opts={palm:{pos:[.12,.13,-.47],target:[0,.055,-.008]},side:{pos:[-.24,.15,-.37],target:[0,.055,-.005]},arm:{pos:[.16,-.09,-.85],target:[0,-.16,0]}};
   const v=opts[name]||opts.palm;orbit.target.fromArray(v.target);camera.position.fromArray(v.pos);camera.lookAt(orbit.target);orbit.update();
 }
 function setPose(opposition,grip) {
