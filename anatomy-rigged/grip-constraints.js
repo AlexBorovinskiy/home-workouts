@@ -2,7 +2,7 @@
 // Fits the skinned rig's finger-bone endpoints around actual cylinder geometry.
 // No hand/finger poses are assumed anatomically certified. Fallback is the source pose.
 const DIGITS=['index','middle','ring','pinky'];
-const BOUNDS_FINGER=[[-120,-35],[-125,-20],[-100,5]];
+const BOUNDS_FINGER=[[-120,-35],[-125,-20],[-100,5],[-35,35]];
 const BOUNDS_THUMB=[[-50,35],[-90,-30],[0,90],[-45,70]];
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const clone=(obj)=>JSON.parse(JSON.stringify(obj));
@@ -23,7 +23,9 @@ export async function fitDumbbellGrip({THREE,rig,dumbbells,initialPose,applyPose
   }
   function scoreDigit(side,name,vals,center,base){
     const sample={...base};
-    for(let i=0;i<vals.length;i++)sample[name+'_0'+(i+1)+'.'+side]=[vals[i],0,0];
+    sample[name+'_01.'+side]=[vals[0],0,vals[3]]; // MCP abduction/adduction, not just flexion
+    sample[name+'_02.'+side]=[vals[1],0,0];
+    sample[name+'_03.'+side]=[vals[2],0,0];
     applyPose(sample);
     const hand=rig['hand.'+side],points=[];
     for(let i=1;i<=3;i++){
@@ -35,8 +37,12 @@ export async function fitDumbbellGrip({THREE,rig,dumbbells,initialPose,applyPose
     points.push(tip);
     const radial=p=>Math.hypot(p.y-center.y,p.z-center.z);
     const gap=Math.abs(radial(tip)-.012);
-    // Finger follows an arc in front of the handle and finishes on the lower edge.
+    // The resting digit roots are spaced ~2 cm apart across the handle.
+    // Prevent the finger tips from fanning several centimetres away from their own roots.
+    const goalX=points[0].x+(side==='L'?-0.004:0.004);
+    const lateral=Math.abs(tip.x-goalX);
     let cost=330*Math.pow(tip.y-(center.y-.010),2)+210*Math.pow(tip.z-(center.z+.006),2);
+    cost+=1100*Math.pow(tip.x-goalX,2)+280*Math.pow(points[2].x-goalX,2);
     cost+=600*Math.pow(radial(tip)-.012,2);
     // Avoid finger phalanges passing inside the 10 mm-radius handle.
     for(let i=0;i<3;i++){
@@ -49,8 +55,8 @@ export async function fitDumbbellGrip({THREE,rig,dumbbells,initialPose,applyPose
     // The middle phalanges should wrap over the outside, not hang below the bar.
     cost+=65*Math.pow(Math.max(0,center.z+.013-points[1].z),2);
     // Suppress over-extension / unnatural joint extremes.
-    cost+=.00016*vals.reduce((sum,v,i)=>sum+Math.pow((v-[-85,-90,-40][i])/35,2),0);
-    return {cost,gap,radius:radial(tip),tip:[tip.x,tip.y,tip.z]};
+    cost+=.00008*vals.reduce((sum,v,i)=>sum+Math.pow((v-[-85,-90,-40,0][i])/35,2),0);
+    return {cost,gap,lateral,radius:radial(tip),tip:[tip.x,tip.y,tip.z]};
   }
   function scoreThumb(side,vals,center,base){
     const sample={...base};
@@ -103,10 +109,15 @@ export async function fitDumbbellGrip({THREE,rig,dumbbells,initialPose,applyPose
       for(const finger of DIGITS){
         const base={...oldPose,...patch};
         const initial=[1,2,3].map(i=>base[finger+'_0'+i+'.'+side]?.[0]??[-85,-90,-40][i-1]);
+        initial.push(base[finger+'_01.'+side]?.[2]??0);
         const solved=optimize(initial,BOUNDS_FINGER,vals=>scoreDigit(side,finger,vals,center,base));
-        const valid=Number.isFinite(solved.score.cost)&&solved.score.gap<.016;
-        measurements.push({joint:finger+'.'+side,gap:round(solved.score.gap*1000),valid});
-        if(valid)solved.angles.forEach((deg,i)=>{patch[finger+'_0'+(i+1)+'.'+side]=[deg,0,0]});
+        const valid=Number.isFinite(solved.score.cost)&&solved.score.gap<.016&&solved.score.lateral<.018;
+        measurements.push({joint:finger+'.'+side,gap:round(solved.score.gap*1000),lateral:round(solved.score.lateral*1000),valid});
+        if(valid){
+          patch[finger+'_01.'+side]=[solved.angles[0],0,solved.angles[3]];
+          patch[finger+'_02.'+side]=[solved.angles[1],0,0];
+          patch[finger+'_03.'+side]=[solved.angles[2],0,0];
+        }
         if(onProgress)onProgress(finger+'.'+side);
       }
       const base={...oldPose,...patch},initial=[
