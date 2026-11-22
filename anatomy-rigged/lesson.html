@@ -325,10 +325,10 @@ async function loadModel(){
      if(!hand.dumbbell?.position||!hand.dumbbell?.quaternion||!hand.dumbbell?.scale)
        throw Error('Нет положения гантели для '+side);
    }
-   handholdGrips=data;handholdEnabled=true;
-   setHandholdDumbbells(true);
+   handholdGrips=data;handholdEnabled=false;
+   setHandholdDumbbells(false);
    compare.style.display='block';compare.disabled=false;
-   compare.textContent='Новый хват · Handhold';
+   compare.textContent='Старый хват · проверить новый';
    compare.onclick=()=>{
      playing=false;ui.play.textContent='▶ Воспроизвести';
      handholdEnabled=!handholdEnabled;
