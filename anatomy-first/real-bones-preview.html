@@ -37,7 +37,7 @@ footer{font-size:11px;line-height:1.65;color:var(--muted);padding:18px 1px}foote
 <div class="stage" id="stage"><canvas id="scene"></canvas><div class="status" id="status">Загрузка настоящей 3D-геометрии…</div><div class="tip">Палец — вращение · два — масштаб</div><div class="error" id="error" role="alert"></div></div>
 <div class="controls">
 <div><div class="heading">Положение камеры</div><div class="buttons" style="margin-top:8px">
-<button data-view="front">Спереди</button><button data-view="side">Сбоку</button><button data-view="top">Сверху</button>
+<button data-view="front">Кисть целиком</button><button data-view="side">Сбоку</button><button data-view="top">Вдоль кисти</button>
 </div></div>
 <div><div class="heading">Геометрия</div><div class="buttons" style="margin-top:8px">
 <button id="explode">Раздвинуть</button><button id="reset">Собрать</button><button id="resetCamera">Вся кисть</button>
@@ -69,8 +69,15 @@ function resize(){const w=$('#stage').clientWidth,h=$('#stage').clientHeight;ren
 new ResizeObserver(resize).observe($('#stage'));resize();
 function view(which='front'){
  if(!ready)return;
- const offset={front:[0,.2,1],side:[1,.1,0],top:[0,1,.1]}[which]||[0,.2,1];
- const v=new THREE.Vector3(...offset).normalize().multiplyScalar(maxSize*2.3);
+ // MRI STL is flat along Y: anatomical long axis is Z, not Three.js Y.
+ const poses={
+   front:{position:[0,1,.09],up:[0,0,1]},
+   side:{position:[1,.12,0],up:[0,0,1]},
+   top:{position:[0,.15,1],up:[0,1,0]}
+ };
+ const p=poses[which]||poses.front;
+ const v=new THREE.Vector3(...p.position).normalize().multiplyScalar(maxSize*1.65);
+ camera.up.set(...p.up);
  camera.position.copy(center).add(v);control.target.copy(center);camera.lookAt(center);control.update();
 }
 function explode(flag){
