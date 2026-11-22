@@ -36,7 +36,7 @@ jobs:
           const poses=['open','oppose','grasp'];
           const results={};
           try{
-            await page.goto('http://127.0.0.1:8781/anatomy-first/full-hand-lab-v4.html',{waitUntil:'domcontentloaded',timeout:90000});
+            await page.goto('http://127.0.0.1:8781/anatomy-first/grip-reference.html',{waitUntil:'domcontentloaded',timeout:90000});
             await page.waitForFunction(()=>window.__thumbQA?.ready()||document.querySelector('#error')?.classList.contains('show'),null,{timeout:90000});
             if(!await page.evaluate(()=>window.__thumbQA?.ready()))throw new Error('Model did not initialize');
             for(const pose of poses){
