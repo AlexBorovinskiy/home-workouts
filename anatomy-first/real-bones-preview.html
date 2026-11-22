@@ -88,6 +88,10 @@ function explode(flag){
    if(dir.lengthSq()<1e-9)dir.set(.5,.5,.5);
    dir.normalize();m.position.copy(original).addScaledVector(dir,flag?maxSize*.20:0);
  });
+ const offset=camera.position.clone().sub(control.target);
+ offset.setLength(maxSize*(flag?2.65:1.65));
+ camera.position.copy(control.target).add(offset);
+ camera.lookAt(control.target);control.update();
  $('#explode').classList.toggle('active',flag);
  $('#reset').classList.toggle('active',!flag);
 }
