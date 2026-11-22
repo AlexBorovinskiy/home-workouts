@@ -14,7 +14,9 @@ import opensim as osim
 
 LEVELS = ([f"lumbar{i}" for i in range(5, 0, -1)] +
           [f"thoracic{i}" for i in range(12, 0, -1)])
-SUPPORT = ["sacrum", "sternum", "clavicle_R", "scapula_R",
+# The original FHS model combines the head and all cervical structures in ONE rigid body.
+# Include its real OpenSim frame origin; this is not individual cervical vertebra geometry.
+SUPPORT = ["sacrum", "head_neck", "sternum", "clavicle_R", "scapula_R",
            "humerus_R", "ulna_R", "radius_R", "hand_R",
            "clavicle_L", "scapula_L", "humerus_L",
            "ulna_L", "radius_L", "hand_L"]
@@ -121,6 +123,8 @@ def run(path):
             "hasPalmPressureModelVerified": False
         },
         "spineLevels": LEVELS,
+        "neckHeadResolution": "combined head_neck body; no separate C1-C7",
+        "handResolution": "one rigid body per hand; no articulated finger segments",
         "frames": frames
     }
     return result
