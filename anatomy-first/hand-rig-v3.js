@@ -201,14 +201,17 @@ export function createAnatomicalRig(THREE) {
     const disc=new THREE.Mesh(new THREE.CylinderGeometry(.035,.035,.018,28),plateMat);
     disc.rotation.z=Math.PI/2;disc.position.x=x;bar.add(disc);
   }
+  const calibration={cmcAbduction:-34,cmcFlexion:-29,cmcAxial:-40,thumbMcpFlex:-26,thumbIpFlex:-24};
+  let currentPose={opposition:0,grip:0};
   function pose({opposition=0,grip=0}={}) {
     const o=clamp(opposition,0,1),g=clamp(grip,0,1);
+    currentPose={opposition:o,grip:g};
     // Calibration proxies: each axis is explicitly named and bounded.
-    abduction.rotation.y=rad(-34*o);       // palmar abduction
-    cmcFlex.rotation.z=rad(-29*o);          // sweep toward the other digits
-    cmcAxial.quaternion.setFromAxisAngle(thumbMetaEnd.clone().normalize(),rad(-40*o));
-    thumbMcp.rotation.x=rad(-26*o-11*g);
-    thumbIp.rotation.x=rad(-24*o-12*g);
+    abduction.rotation.y=rad(calibration.cmcAbduction*o);       // palmar abduction
+    cmcFlex.rotation.z=rad(calibration.cmcFlexion*o);          // sweep toward the other digits
+    cmcAxial.quaternion.setFromAxisAngle(thumbMetaEnd.clone().normalize(),rad(calibration.cmcAxial*o));
+    thumbMcp.rotation.x=rad(calibration.thumbMcpFlex*o-11*g);
+    thumbIp.rotation.x=rad(calibration.thumbIpFlex*o-12*g);
     for(const entry of Object.values(joints)){
       entry.knuckle.rotation.x=rad(-entry.angles[0]*g);
       entry.pip.rotation.x=rad(-entry.angles[1]*g);
@@ -221,7 +224,9 @@ export function createAnatomicalRig(THREE) {
     root.updateMatrixWorld(true);
     const thumbPad=pad.getWorldPosition(new THREE.Vector3());
     const c=bar.getWorldPosition(new THREE.Vector3());
-    const target=V(clamp(thumbPad.x,c.x-.096,c.x+.096),c.y,c.z);
+    const target=V(clamp(thumbPad.x,c.x-.075,c.x+.075),c.y,c.z);
+    const indexTip=joints.index.dip.localToWorld(V(0,.019,0));
+    const distIndex=thumbPad.distanceTo(indexTip);
     const radial=thumbPad.clone().sub(target).length();
     const padNormal=V(0,0,-1).transformDirection(pad.matrixWorld).normalize();
     const towards=target.clone().sub(thumbPad).normalize();
@@ -231,6 +236,7 @@ export function createAnatomicalRig(THREE) {
       thumbPad:[thumbPad.x,thumbPad.y,thumbPad.z],
       thumbTipToHandleMeters:radial-.011,
       thumbPadFacingDot:padNormal.dot(towards),
+      thumbToIndexTipMeters:distIndex,
       cmcOrigin:[cmc.x,cmc.y,cmc.z],
       gripIsAnatomicallyValidated:false
     };
@@ -250,5 +256,7 @@ export function createAnatomicalRig(THREE) {
       morphology:'stylized individual carpal contours, not CT validated'};
   }
   return {root,bones,controllers,joints,bar,pad,pose,getMetrics,getCarpalMetrics,
+    setThumbCalibration:(next)=>{for(const [k,v] of Object.entries(next))if(k in calibration&&Number.isFinite(v))calibration[k]=v;return pose(currentPose)},
+    getThumbCalibration:()=>({...calibration}),
     carpalByName,THREE,version:'0.3-carpal-morphology'};
 }
