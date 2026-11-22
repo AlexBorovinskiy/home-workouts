@@ -153,6 +153,11 @@ async function init(){
  const node=donor.getObjectByName('thumb_03_r'),p=new THREE.Vector3(0,.028,0);
  node.localToWorld(p);bar.worldToLocal(p);
  return {x:p.x,y:p.y,z:p.z,radial:Math.hypot(p.y,p.z)};
+},setThumb:(settings)=>{
+  Object.assign(thumbSettings,settings);
+  gripFingers();
+  const metric=checkContact();
+  return {thumb:metric.digits.thumb,tip:window.__handLabQA.getThumbTip()};
 }};
 }
 function checkContact(){
