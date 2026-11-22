@@ -48,7 +48,17 @@ try{const [gltf,catalog]=await Promise.all([new Promise((resolve,reject)=>new GL
  model.traverse(o=>{if(o.isBone){rig[o.name]=o;rest[o.name]={position:o.position.clone(),quaternion:o.quaternion.clone(),scale:o.scale.clone()}} if(o.isSkinnedMesh){muscleMesh=o;}});
  if(!muscleMesh)throw Error('В файле отсутствует SkinnedMesh');const required=['pelvis','spine_01','upperarm.L','upperarm.R','forearm.L','forearm.R','hand.L','hand.R','thigh.L','thigh.R','shin.L','shin.R','foot.L','foot.R'];const missing=required.filter(n=>!rig[n]);if(missing.length)throw Error('В модели нет суставов: '+missing.join(', '));
  // The imported model has actual bone weights: we never shear vertex positions in shaders.
- const geo=muscleMesh.geometry;partIds=geo.attributes._PART_ID||geo.attributes._part_id||geo.attributes.part_id; tendons=geo.attributes._TENDON||geo.attributes._tendon;
+ // The asset stores signed SHORT vertex positions in 0.1 mm, whereas the joint coordinates are metres.
+// Convert to float metres without damaging the shape by integer truncation.
+const geo=muscleMesh.geometry;
+const qpos=geo.getAttribute('position');
+const modelUnit=gltf.parser.json.extras?.app_model?.position_unit_m||0.0001;
+if(qpos && (Math.abs(qpos.getY(Math.floor(qpos.count/2)))>100 || (geo.computeBoundingBox(), Math.abs(geo.boundingBox.max.y)>100))){
+ const meters=new Float32Array(qpos.count*3);
+ for(let i=0;i<qpos.count;i++){meters[i*3]=qpos.getX(i)*modelUnit;meters[i*3+1]=qpos.getY(i)*modelUnit;meters[i*3+2]=qpos.getZ(i)*modelUnit;}
+ geo.setAttribute('position',new THREE.BufferAttribute(meters,3));geo.computeBoundingBox();geo.computeBoundingSphere();
+}
+partIds=geo.attributes._PART_ID||geo.attributes._part_id||geo.attributes.part_id; tendons=geo.attributes._TENDON||geo.attributes._tendon;
  partGroups=importedCatalog.parts.map(p=>importedCatalog.muscles.find(m=>m.id===p.muscle)?.group||'other');
  if(partIds){colored=new Float32Array(geo.attributes.position.count*3);geo.setAttribute('color',new THREE.BufferAttribute(colored,3));muscleMesh.material=muscleMesh.material.clone();muscleMesh.material.vertexColors=true;muscleMesh.material.color.setRGB(1,1,1);muscleMesh.material.roughness=.84;muscleMesh.material.metalness=0;muscleMesh.material.side=THREE.DoubleSide;}
  // Normalize the visual scene dimensions without changing bone-local bind matrices.
