@@ -493,7 +493,43 @@ function placeSupport(){
   contacts[id]=lowest;
  }
  // 7mm is an explicit working allowance for skin/pads, not measurement.
- const floorY=Math.min(...Object.values(contacts).map(x=>x.y))-.007;
+ const floorY=Math.min(...Object.entries(contacts)
+  .filter(([id])=>id!=="RA6D1").map(([,p])=>p.y))-.007;
+ // One reusable first-ray floor constraint. Reorient the real thumb bones
+ // about the atlas trapezium region to bring the thumb pulp toward the
+ // palm-support plane. This does not modify OpenSim grip corrections.
+ const cmc=vecCenter(rig.get("RA3T").mesh);
+ const thumbTip=vecCenter(rig.get("RA6D1").mesh);
+ const thumbGoal=new THREE.Vector3(thumbTip.x,floorY+.011,thumbTip.z);
+ const fromThumb=thumbTip.clone().sub(cmc);
+ const toThumb=thumbGoal.clone().sub(cmc);
+ let thumbFloorAngle=0;
+ if(fromThumb.length()>.018&&toThumb.length()>.018){
+  const qWorld=new THREE.Quaternion().setFromUnitVectors(
+   fromThumb.normalize(),toThumb.normalize());
+  const requested=2*Math.acos(THREE.MathUtils.clamp(Math.abs(qWorld.w),0,1));
+  const cap=THREE.MathUtils.degToRad(48);
+  thumbFloorAngle=THREE.MathUtils.radToDeg(Math.min(requested,cap));
+  const q=new THREE.Quaternion().slerpQuaternions(new THREE.Quaternion(),
+   qWorld,Math.min(1,cap/Math.max(requested,.000001)));
+  const T=M4().makeTranslation(cmc.x,cmc.y,cmc.z)
+   .multiply(M4().makeRotationFromQuaternion(q))
+   .multiply(M4().makeTranslation(-cmc.x,-cmc.y,-cmc.z));
+  for(const id of ["RA4M1","RA5P1","RA6D1"]){
+   const obj=rig.get(id).mesh;
+   obj.matrix.premultiply(T);obj.matrixWorldNeedsUpdate=true;
+  }
+  scene.updateMatrixWorld(true);
+  // Re-evaluate distal thumb surface after the constrained opposition.
+  const obj=rig.get("RA6D1").mesh,attr=obj.geometry.getAttribute("position");
+  const stride=Math.max(1,Math.floor(attr.count/160));
+  let low={x:0,y:Infinity,z:0};
+  for(let k=0;k<attr.count;k+=stride){
+   point.fromBufferAttribute(attr,k).applyMatrix4(obj.matrixWorld);
+   if(point.y<low.y)low={x:point.x,y:point.y,z:point.z};
+  }
+  contacts.RA6D1=low;
+ }
  const groups={palm:["RA4M2","RA4M3","RA4M4","RA4M5"],
   index:["RA7D2"],middle:["RA7D3"],ring:["RA7D4"],
   little:["RA7D5"],thumb:["RA6D1"]};
@@ -513,6 +549,7 @@ function placeSupport(){
  supportSurface.group.visible=true;
  supportMetrics={task:handTask,extensionDeg:wristExtensionDeg,
   palmNormal:[0,1,0],floorY,gapsMm:gaps,
+  thumbFloorCorrectionDeg:thumbFloorAngle,
   nearbyZones:near,contactReady:supportPass,minimumBoneGapMm:7,
   method:"sampled-bone-surfaces with nominal 7 mm skin allowance"};
  const names={palm:"Ладонь",index:"Указ.",middle:"Средн.",ring:"Безым.",
@@ -521,7 +558,8 @@ function placeSupport(){
   (handTask==="pushup"?"Отжимания":"Боковая планка на прямой руке")+
   " · запястье "+wristExtensionDeg+"°. Расстояния костей до пола: "+
   Object.entries(gaps).map(([k,v])=>names[k]+" "+v.toFixed(0)+" мм").join(" · ")+
-  ". Вблизи плоскости "+near.length+"/6 зон. "+
+  ". Первый пястный луч: "+thumbFloorAngle.toFixed(0)+"° (условная коррекция). "+
+  "Вблизи плоскости "+near.length+"/6 зон. "+
   (supportPass?"Пробная плоскостная посадка достигнута. ":
    "ОПОРА НЕ СОГЛАСОВАНА: некоторые пальцы далеко от пола. ")+
   "Контакт кожи и распределение нагрузки пока не проверены.";
