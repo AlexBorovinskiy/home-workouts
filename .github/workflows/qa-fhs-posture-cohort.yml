@@ -1,0 +1,58 @@
+name: Audit source FHS peer spinal curvature before posture correction
+on:
+  push:
+    paths:
+      - 'opensim-lab/audit_fhs_posture_peers.py'
+      - '.github/workflows/qa-fhs-posture-cohort.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  compare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install OpenSim 4.6 scientific Python runtime
+        run: python -m pip install 'opensim==4.6' 'numpy>=1.26,<3'
+      - name: Download unmodified source FHS dataset
+        run: |
+          curl -fL --retry 3 --max-time 180 \
+            'https://zenodo.org/records/18259702/files/FHS_dataset_4.x.zip?download=1' -o /tmp/fhs-2026.zip
+      - name: Compare all 25 male 40-49 FHS source sagittal spine frames in OpenSim
+        run: |
+          python opensim-lab/audit_fhs_posture_peers.py \
+            --zip /tmp/fhs-2026.zip \
+            --output opensim-lab/assets/fhs-posture-peer-comparison.json
+      - name: Verify findings not misrepresented as clinical normality
+        run: |
+          python - <<'PY'
+          import json
+          x=json.load(open('opensim-lab/assets/fhs-posture-peer-comparison.json'))
+          assert x['schema']=='fhs-age-4049-male-source-sagittal-cohort-v1'
+          assert x['subjectModelsAnalyzed']>=15
+          assert x['clinicalNormalitySupported'] is False
+          assert x['modelReplacementRecommendedAutomatically'] is False
+          for k,v in x['sourceSpinalFrameDistributions'].items():
+            assert v['min']<=v['median']<=v['max']
+            print('FHS_CURVATURE_RELATIVE_PERCENTILE',k,v['currentPercentileRank'],v['currentValue'],v['median'])
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: source-specific-FHS-25-model-spine-curvature-comparison
+          path: opensim-lab/assets/fhs-posture-peer-comparison.json
+          retention-days: 30
+      - name: Commit source-only aggregate audit
+        if: success() && github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add opensim-lab/assets/fhs-posture-peer-comparison.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Store source FHS peer sagittal anatomy study, without remodeling bones [skip ci]"
+            git push origin HEAD:main
+          fi
