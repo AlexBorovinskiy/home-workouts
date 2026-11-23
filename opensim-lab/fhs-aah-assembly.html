@@ -288,9 +288,10 @@ async function startNeck(){
  if(!loadedFhs||neckLoadStarted)return;
  neckLoadStarted=true;
  try{
-  const [masi,reg]=await Promise.all([
+  const [masi,reg,masiUpper]=await Promise.all([
     getJSON("./assets/masi-neck-native.json"),
-    getJSON("./assets/c7-t1-registration.json")
+    getJSON("./assets/c7-t1-registration.json"),
+    getJSON("./assets/masi-upper-addendum.json")
   ]);
   if(masi.numberNeckVertebrae!==7||
      reg.schema!=="c7-t1-masi-fhs-registration-candidate-v1"||
@@ -322,9 +323,9 @@ async function startNeck(){
   const aligned=anchor.clone().applyMatrix4(neckRoot.matrix);
   neckJointResidualMm=aligned.distanceTo(V(reg.fhsAnchorM))*1000;
   if(neckJointResidualMm>.0001)throw Error("Не совпали суставные точки C7–T1");
-  const ids=[...Array.from({length:7},(_,i)=>"cerv"+(i+1)),"skull","torso"];
+  const ids=[...Array.from({length:7},(_,i)=>"cerv"+(i+1)),"skull","jaw","torso"];
   const downloaded=await Promise.all(ids.map(async id=>{
-    const frame=masi.bodyFrames[id];
+    const frame=masi.bodyFrames[id]||masiUpper.bodyFrames[id];
     if(!frame)throw Error("Отсутствует шейный сегмент MASI "+id);
     const res=await fetch(sourceMASI+encodeURIComponent(frame.file));
     if(!res.ok)throw Error("Не удалось получить "+frame.file+" из научной модели (HTTP "+res.status+")");
@@ -341,7 +342,7 @@ async function startNeck(){
     const {geo,edges}=parseVtp(source,frame.file);
     if(edges)throw Error("Шейная кость неожиданно состоит из линий: "+frame.file);
     const bone=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({
-      color:id==="skull"?0xe0ded6:id==="torso"?0xc6d0c9:0xeac08a,roughness:.62,side:THREE.DoubleSide
+      color:id==="skull"||id==="jaw"?0xe0ded6:id==="torso"?0xc6d0c9:0xeac08a,roughness:.62,side:THREE.DoubleSide
     }));
     bone.position.copy(V(frame.position));
     bone.quaternion.setFromRotationMatrix(rows(frame.rotation));
@@ -351,7 +352,7 @@ async function startNeck(){
     else{neckScaffold.add(bone);neckBones.set(id,bone)}
   }
   neckReady=true;
-  $("#neckStatus").textContent="MASI C1–C7 и череп восстановлены из реальных OpenSim-поз. Масштаб отображения 88,875% от исходной MASI; соединение C7–T1 только диагностическое. Можно сравнить с исходной FHS.";
+  $("#neckStatus").textContent="MASI C1–C7, череп и нижняя челюсть восстановлены из реальных OpenSim-поз. Масштаб отображения 88,875% от исходной MASI; соединение C7–T1 только диагностическое. Можно сравнить с исходной FHS.";
   $("#ribsStatus").textContent="Загружена оригинальная объёмная сетка ribcage.vtp из MASI, как на предыдущей странице. Она включает грудную клетку одной поверхностью; её положение относительно FHS позвоночника требует проверки.";
   updateVisibility();fit();
   status("Собрана верхняя часть FHS, 24 видимых ребра, MASI C1–C7 и две подвижные кисти AAH.");
