@@ -1,0 +1,60 @@
+name: Vendor pinned CC-BY-SA anatomy atlas for reliable mobile loading
+on:
+  push:
+    paths:
+      - '.github/workflows/vendor-ecorche-atlas.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  vendor:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - name: Copy exact upstream GLB pinned to audited commit
+        run: |
+          set -euo pipefail
+          mkdir -p opensim-lab/assets
+          curl -fL --retry 5 --retry-delay 2 --max-time 150 \
+            'https://raw.githubusercontent.com/Charleeh/ecorche/320805e06aee51e2e6f6b22533eb2a59d43f2d4d/model/ecorche.meshopt.glb' \
+            -o opensim-lab/assets/ecorche-source-320805.meshopt.glb
+          python3 - <<'PY'
+          import struct
+          name='opensim-lab/assets/ecorche-source-320805.meshopt.glb'
+          data=open(name,'rb').read()
+          assert data[:4]==b'glTF' and struct.unpack('<I',data[4:8])[0]==2
+          assert struct.unpack('<I',data[8:12])[0]==len(data)
+          assert len(data)==6004016,(len(data),6004016)
+          print('ECORCHE_PINNED_ATLAS_GLTF_BINARY_OK',len(data))
+          PY
+      - name: Record original CC BY-SA license and attribution
+        run: |
+          curl -fL --retry 4 --max-time 90 \
+            'https://raw.githubusercontent.com/Charleeh/ecorche/320805e06aee51e2e6f6b22533eb2a59d43f2d4d/LICENSES/CC-BY-SA-4.0.txt' \
+            -o opensim-lab/assets/ECORCHE-CC-BY-SA-4.0.txt
+          cat > opensim-lab/assets/ECORCHE-SOURCE-NOTICE.md <<'NOTICE'
+          # Écorché anatomical geometry in Home Workouts research laboratory
+
+          Model: ecorche-source-320805.meshopt.glb
+          Original repository: https://github.com/Charleeh/ecorche
+          Pinned original commit: 320805e06aee51e2e6f6b22533eb2a59d43f2d4d
+          Original file: model/ecorche.meshopt.glb, 6,004,016 bytes
+          Original GLB SHA-1 Git blob ID: 72b73aaac9951876e889736128800dbf7674758a
+          Geometry attribution: Écorché, incorporating BodyParts3D (DBCLS) and Z-Anatomy (Gauthier Kervyn).
+          License on the model: Creative Commons Attribution-ShareAlike 4.0 (CC BY-SA 4.0).
+          License copy: ECORCHE-CC-BY-SA-4.0.txt
+          No changes to the imported original GLB. This project applies separate real-time transformations of individual original mesh objects in the Three.js viewer.
+          Retargeting and viewer code are separate from author geometry; retained attribution and licensing remain required if redistributed.
+          NOTICE
+      - name: Commit source file and attribution
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add opensim-lab/assets/ecorche-source-320805.meshopt.glb \
+             opensim-lab/assets/ECORCHE-CC-BY-SA-4.0.txt \
+             opensim-lab/assets/ECORCHE-SOURCE-NOTICE.md
+          if ! git diff --cached --quiet; then
+            git commit -m 'Vendor audited pinned Écorché anatomy GLB and required CC BY-SA attribution [skip ci]'
+            git push origin HEAD:main
+          fi
