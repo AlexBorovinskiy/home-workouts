@@ -46,7 +46,10 @@ jobs:
               leftTarget:q.fhsHandOrigin('left'),rightTarget:q.fhsHandOrigin('right'),
               rightTip:q.bodyPosition('right','RA7D2'),
               leftTip:q.bodyPosition('left','LA7D2'),
-              mode:q.mode(),pose:q.pose(),bend:q.bend()};
+              mode:q.mode(),pose:q.pose(),bend:q.bend(),neck:q.neckBones(),
+              neckSource:q.neckSource(),neckVisible:q.isNeckVisible(),
+              jointResidualMm:q.neckJointResidualMm(),ribProxies:q.ribProxyCount(),
+              ribSegments:q.ribSegmentCount(),centers:q.neckCenters()};
           });
           const d=(a,b)=>Math.sqrt(a.reduce((s,v,i)=>s+(v-b[i])**2,0))*1000;
           try{
@@ -58,11 +61,26 @@ jobs:
             if(!(await page.evaluate(()=>window.__assemblyQA?.ready())))
               throw Error('Assembly loading failed: '+await page.locator('#status').innerText());
             const open=await read();
-            if(open.fhs!==118||open.aah!==54||open.left!==27||open.right!==27)
-              throw Error('Incomplete FHS/AAH anatomy '+JSON.stringify(open));
+            if(open.fhs!==118||open.aah!==54||open.left!==27||open.right!==27||
+              open.neck.length!==8||open.ribProxies!==24||open.ribSegments<24||
+              open.neckSource!=='masi'||!open.neckVisible||open.jointResidualMm>.0001)
+              throw Error('Incomplete FHS/AAH/MASI anatomy '+JSON.stringify(open));
+            const yc=open.centers.map(c=>c[1]);
+            if((Math.max(...yc)-Math.min(...yc))<.075)
+              throw Error('Neck vertebrae still stacked in one place '+JSON.stringify(yc));
+            await page.locator('[data-neck="fhs"]').click();
+            const fhsNeck=await read();
+            if(fhsNeck.neckVisible||fhsNeck.neckSource!=='fhs')throw Error('Cannot compare original FHS neck');
+            await page.locator('[data-neck="masi"]').click();
+            if(!(await read()).neckVisible)throw Error('Cannot restore separated MASI C1-C7');
             if(d(open.rightAnchor,open.rightTarget)>.002||d(open.leftAnchor,open.leftTarget)>.002)
               throw Error('FHS/AAH wrist anchors do not align '+JSON.stringify(open));
             await page.locator('#canvas').screenshot({path:'qa-assembly/upper-body-hands-open.png'});
+            await page.locator('[data-view="back"]').click();
+            await page.locator('#canvas').screenshot({path:'qa-assembly/neck-and-ribcage-back.png'});
+            await page.locator('#ribs').uncheck();
+            await page.locator('#ribs').check();
+            await page.locator('[data-view="front"]').click();
             await page.locator('[data-pose="curl"]').click();
             const curled=await read();
             const rightShift=d(open.rightTip,curled.rightTip),leftShift=d(open.leftTip,curled.leftTip);
@@ -83,7 +101,9 @@ jobs:
             writeFileSync('qa-assembly/report.json',JSON.stringify({
               open,curled,rightShift,leftShift,allAnchorsMatch:true,errors},null,2));
             console.log('FHS_AAH_ASSEMBLY_MOBILE_QA_SUCCESS',JSON.stringify({
-              fhs:open.fhs,aah:open.aah,rawWristAnchorMismatchMm:Math.max(
+              fhs:open.fhs,aah:open.aah,neckBones:open.neck.length,
+              ribProxies:open.ribProxies,ribSegments:open.ribSegments,
+              rawWristAnchorMismatchMm:Math.max(
               d(open.rightAnchor,open.rightTarget),d(open.leftAnchor,open.leftTarget)),
               rightIndexMovementMm:rightShift,leftIndexMovementMm:leftShift}));
           }catch(e){
