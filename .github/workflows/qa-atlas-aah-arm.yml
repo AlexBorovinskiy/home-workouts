@@ -115,7 +115,7 @@ jobs:
             await page.locator('#reset').click();
             const back=await read();
             if(back.elbow!==0||back.finger!==0||d(straight.wrist,back.wrist)>.0005||
-              d(released.index,back.index)>.0005)
+              d(straight.index,back.index)>.0005)
               throw Error('Right arm does not return to atlas neutral pose '+JSON.stringify(back));
             if(errors.length)throw Error('Uncaught browser exceptions '+JSON.stringify(errors));
             writeFileSync('qa-atlas-arm/report.json',JSON.stringify({
