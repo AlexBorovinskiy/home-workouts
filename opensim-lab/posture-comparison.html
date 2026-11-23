@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="ru"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b2d3d"><link rel="icon" href="data:,">
+<title>Сравнение позвоночника FHS №110 и №989 · OpenSim</title>
+<style>
+:root{color-scheme:dark;--mint:#9fe4d4;--muted:#accacc;--line:#456f7d}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(145deg,#194852,#092739 65%,#091e2e);color:#eff8f5;font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+main{max-width:1100px;margin:auto;padding:17px 12px 52px}
+header{display:flex;align-items:center;justify-content:space-between;color:var(--mint);font-size:11px;font-weight:800;letter-spacing:.09em;gap:10px}
+header a{padding:8px 10px;border:1px solid var(--line);border-radius:10px;color:#eff8f5;text-decoration:none;letter-spacing:0;font-size:12px}
+h1{font-size:clamp(24px,4.8vw,35px);line-height:1.2;letter-spacing:-.035em;margin:20px 0 10px}
+p{font-size:13px;color:var(--muted);line-height:1.75}
+.layout{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(280px,.8fr);gap:12px}
+.card{background:#163c4c;border:1px solid var(--line);border-radius:15px;margin-bottom:12px;overflow:hidden}
+.stage{height:min(70vh,700px);min-height:460px;touch-action:none;position:relative;background:radial-gradient(ellipse at center,#315963 0%,#0e2e3e 75%)}
+canvas{width:100%;height:100%;display:block;touch-action:none}
+.status{position:absolute;left:10px;top:9px;background:#0a2d3eeb;border:1px solid #668992;border-radius:9px;padding:8px 10px;font-size:11px;color:#dcf1ed;max-width:88%}
+.legend{display:flex;justify-content:space-between;gap:10px;margin:0;padding:11px 14px;border-top:1px solid var(--line);font-size:12px}
+.legend span{display:flex;align-items:center;gap:8px}.dot{width:11px;height:11px;display:inline-block;border-radius:50%}.orange{background:#eab77a}.green{background:#9ce3d3}
+.panel{padding:15px}h2{margin:0 0 9px;font-size:16px}h3{margin:13px 0 7px;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.07em}
+.actions{display:flex;gap:7px;flex-wrap:wrap}
+button,.action{background:#275567;border:1px solid #5c8794;color:#e8f6ef;font:inherit;font-weight:650;padding:10px;border-radius:10px;cursor:pointer;min-height:42px}
+button.selected{background:var(--mint);color:#113541;border-color:var(--mint)}
+button:disabled{opacity:.5}
+input[type=file]{display:none}
+.check{display:flex;align-items:center;gap:8px;font-size:12px;min-height:33px}input[type=checkbox]{width:17px;height:17px;accent-color:var(--mint)}
+.box{background:#0b2f40;border:1px solid #4a7581;border-radius:11px;padding:11px;font-size:12px;line-height:1.7;color:#dcece8}
+.warn{background:#453c30;border:1px solid #82684d;border-radius:11px;padding:12px;color:#f2e2c3;font-size:12px;line-height:1.7}
+table{border-collapse:collapse;width:100%;font-size:12px}th,td{padding:8px 4px;border-bottom:1px solid #446773;text-align:left}th{color:#d1e6e2;font-weight:650}td:not(:first-child),th:not(:first-child){text-align:right}
+small{font-size:11px;color:var(--muted)}a{color:var(--mint)}
+@media(max-width:760px){.layout{grid-template-columns:1fr}.stage{height:60vh;min-height:430px}}
+</style></head><body>
+<main>
+<header><span>HOME WORKOUTS · RESEARCH / OPENSIM</span><a href="./fhs-aah-assembly.html">К полному скелету</a></header>
+<h1>Почему модель кажется сутулой?</h1>
+<p>Сравнение двух <b>настоящих индивидуальных моделей позвоночника FHS</b>, рассчитанных в OpenSim 4.6. Слева — используемая в приложении модель №110, справа — №989, более близкая к медианным сагиттальным показателям среди 25 моделей соответствующей группы. Это <b>не эталон здоровой осанки</b>.</p>
+<div class="layout">
+<div>
+<section class="card">
+<div class="stage" id="stage">
+<canvas id="scene" aria-label="Сопоставление исходных костей поясничного и грудного отделов FHS моделей 110 и 989"></canvas>
+<div class="status" id="loading">Загрузка исходных костей FHS…</div>
+</div>
+<div class="legend"><span><i class="dot orange"></i>№110 · текущая</span><span><i class="dot green"></i>№989 · сравнение</span></div>
+</section>
+<section class="card panel">
+<h2>Что означает это сравнение</h2>
+<div class="warn">Показываем без изменения геометрии исходных моделей только T1–T12, L1–L5, крестец и таз. Обе модели поставлены в одинаковое начало координат таза для сравнения; их костные размеры и изгибы оставлены как у авторов. Шея, грудная клетка MASI, руки AAH и ноги Rajagopal здесь умышленно не смешиваются с альтернативой. Медиана когорты не равна здоровой или анатомически правильной осанке. Никаких поправок в основной скелет не внесено.</div>
+<p>Источники: <a href="https://zenodo.org/records/18259702" target="_blank" rel="noopener">оригинальный FHS Dataset 4.x</a>, <a href="https://github.com/AlexBorovinskiy/home-workouts/blob/main/opensim-lab/assets/fhs-posture-peer-comparison.json" target="_blank" rel="noopener">полный аудит 25 исходных моделей</a>.</p>
+</section>
+</div>
+<aside>
+<section class="card panel">
+<h2>Управление сравнением</h2>
+<div id="statusText" class="box">Для исходных сеток требуется официальный архив FHS. Попробую восстановить его из памяти браузера.</div>
+<div class="actions" style="margin-top:10px"><button id="pick">Выбрать FHS ZIP</button><button id="download" onclick="window.open('https://zenodo.org/records/18259702','_blank')">Архив на Zenodo</button></div>
+<input id="file" type="file" accept=".zip,application/zip">
+<h3>Расположение</h3>
+<div class="actions">
+<button data-layout="side" class="selected">Рядом</button>
+<button data-layout="overlay">Наложить кости</button>
+</div>
+<h3>Ракурс</h3>
+<div class="actions">
+<button data-view="profile" class="selected">Сбоку</button>
+<button data-view="front">Спереди</button>
+<button id="fit">Уместить</button>
+</div>
+<h3>Геометрия</h3>
+<label class="check"><input type="checkbox" id="showPelvis" checked> Таз и крестец</label>
+<label class="check"><input type="checkbox" id="showVertebrae" checked> Все грудные и поясничные позвонки</label>
+<h3>Исходные измерения</h3>
+<table><thead><tr><th>Параметр</th><th>№110</th><th>№989</th></tr></thead><tbody id="metrics"><tr><td colspan="3">Загрузка сравнения…</td></tr></tbody></table>
+<p>Угол по линии T1–T12 — диагностический наклон линии между рамками позвонков, а не медицинский угол кифоза по Коббу.</p>
+<small id="count">Ожидаются 20 костных поверхностей на модель.</small>
+</section>
+</aside></div></main>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from "three";
+import {OrbitControls} from "three/addons/controls/OrbitControls.js";
+const $=s=>document.querySelector(s);
+const canvas=$("#scene"),stage=$("#stage");
+const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(36,1,.001,12);
+const renderer=new THREE.WebGLRenderer({canvas,alpha:true,antialias:true,preserveDrawingBuffer:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.4));renderer.outputColorSpace=THREE.SRGBColorSpace;
+renderer.setClearColor(0x102e3e,0);
+scene.add(new THREE.HemisphereLight(0xe8fbf3,0x3f667a,2.1));
+const key=new THREE.DirectionalLight(0xffefdd,2.1);key.position.set(2,3,3);scene.add(key);
+const orbit=new OrbitControls(camera,canvas);orbit.enableDamping=true;orbit.minDistance=.2;orbit.maxDistance=5;
+const V=a=>new THREE.Vector3(...a),basis=cols=>new THREE.Matrix4().makeBasis(...cols.map(V));
+const models={};
+for(const id of ["110","989"]){
+ const group=new THREE.Group();scene.add(group);
+ models[id]={group,parts:[],data:null};
+}
+let loaded=false,layout="side",view="profile",sourceMetrics=null;
+const names=["pelvis","sacrum",...Array.from({length:12},(_,i)=>"thoracic"+(i+1)),...Array.from({length:5},(_,i)=>"lumbar"+(i+1))];
+function parseVtp(text,name){
+ const xml=new DOMParser().parseFromString(text,"application/xml");
+ if(xml.querySelector("parsererror"))throw Error("Ошибка XML "+name);
+ const piece=xml.querySelector("VTKFile > PolyData > Piece");
+ if(!piece)throw Error("Нет PolyData "+name);
+ const get=a=>{const s=(a?.textContent||"").trim();return s?s.split(/\s+/).map(Number):[]};
+ const points=piece.querySelector("Points > DataArray");
+ if(!points||points.getAttribute("format")!=="ascii")throw Error("Неверный формат "+name);
+ const verts=get(points);
+ if(!verts.length||verts.length%3||!verts.every(Number.isFinite))throw Error("Неверные вершины "+name);
+ const arrays=[...piece.querySelectorAll("Polys > DataArray")];
+ if(arrays.length<2)throw Error("Нет костных полигонов "+name);
+ const con=get(arrays.find(x=>x.getAttribute("Name")==="connectivity")||arrays[0]);
+ const offs=get(arrays.find(x=>x.getAttribute("Name")==="offsets")||arrays[1]);
+ let start=0;const tris=[];
+ for(const end of offs){
+  if(!Number.isInteger(end)||end<start+3||end>con.length)throw Error("Некорректный полигон "+name);
+  for(let i=start+1;i<end-1;i++)tris.push(con[start],con[i],con[i+1]);
+  start=end;
+ }
+ if(!tris.length||tris.some(i=>!Number.isInteger(i)||i<0||i>=verts.length/3))throw Error("Некорректные индексы "+name);
+ const g=new THREE.BufferGeometry();
+ g.setAttribute("position",new THREE.Float32BufferAttribute(verts,3));g.setIndex(tris);g.computeVertexNormals();
+ return g;
+}
+function layoutModels(){
+ if(!loaded)return;
+ for(const id of ["110","989"]){
+  const model=models[id];
+  model.group.position.x=layout==="side"?(id==="110"?-.31:.31):0;
+  for(const mesh of model.parts){
+   mesh.material.transparent=layout==="overlay";
+   mesh.material.opacity=layout==="overlay"?.57:1;
+   mesh.material.depthWrite=layout!=="overlay";
+  }
+ }
+ document.querySelectorAll("[data-layout]").forEach(b=>b.classList.toggle("selected",b.dataset.layout===layout));
+ fit();
+}
+function updateVisibility(){
+ for(const id of ["110","989"]){
+  for(const mesh of models[id].parts){
+   mesh.visible=mesh.userData.body==="pelvis"||mesh.userData.body==="sacrum"?$("#showPelvis").checked:$("#showVertebrae").checked;
+  }
+ }
+}
+function fit(){
+ if(!loaded)return;
+ const box=new THREE.Box3();
+ for(const id of ["110","989"])for(const mesh of models[id].parts)if(mesh.visible)box.expandByObject(mesh);
+ if(box.isEmpty())return;
+ const center=box.getCenter(new THREE.Vector3()),size=box.getSize(new THREE.Vector3());
+ const tan=Math.tan(THREE.MathUtils.degToRad(camera.fov*.5));
+ const d=1.5*Math.max(size.y/(2*tan),size.x/(2*tan*Math.max(.38,camera.aspect)),size.z/(2*tan*Math.max(.38,camera.aspect)),.18);
+ const dir=view==="profile"?new THREE.Vector3(.04,.13,1):new THREE.Vector3(1,.12,.08);
+ orbit.target.copy(center);camera.position.copy(center).add(dir.normalize().multiplyScalar(d));
+ camera.lookAt(center);orbit.update();
+ document.querySelectorAll("[data-view]").forEach(b=>b.classList.toggle("selected",b.dataset.view===view));
+}
+async function getJSON(path){
+ const r=await fetch(path);if(!r.ok)throw Error("Не удалось получить "+path);
+ return r.json();
+}
+async function loadFromZIP(bytes){
+ $("#statusText").textContent="Читаю исходные геометрические поверхности...";
+ const zip=await JSZip.loadAsync(bytes);
+ const ids=["110","989"];
+ const namesSource=new Set();
+ for(const name of names){
+  for(const id of ids){
+   const model=models[id].data;
+   for(const x of model.anatomyMeshes[name]||[])namesSource.add(x.file);
+  }
+ }
+ const base="FHS_dataset_4.x - Copia/Geometry/";
+ const cache=new Map();
+ let done=0;
+ for(const file of namesSource){
+  const source=zip.file(base+file);
+  if(!source)throw Error("В архиве не найдена кость "+file);
+  const txt=await source.async("string");
+  cache.set(file,txt);done++;
+  if(done%5===0){$("#statusText").textContent="Загружаю исходные поверхности: "+done+"/"+namesSource.size;await new Promise(r=>setTimeout(r,0));}
+ }
+ for(const id of ids){
+  const model=models[id],data=model.data;
+  for(const x of model.parts){model.group.remove(x);x.material.dispose();x.geometry.dispose()}
+  model.parts.length=0;
+  const pf=data.bodyFrames.pelvis,qP=new THREE.Quaternion().setFromRotationMatrix(basis(pf.basisColumns));
+  model.group.quaternion.copy(qP).invert();
+  for(const name of names){
+   const frame=data.bodyFrames[name];
+   if(!frame)throw Error("В модели "+id+" нет "+name);
+   for(const meshData of data.anatomyMeshes[name]||[]){
+    const g=parseVtp(cache.get(meshData.file),meshData.file);
+    const mesh=new THREE.Mesh(g,new THREE.MeshStandardMaterial({
+      color:id==="110"?0xeab77a:0x9ce3d3,roughness:.63,metalness:.02,side:THREE.DoubleSide
+    }));
+    mesh.userData.body=name;
+    mesh.position.copy(V(frame.origin)).sub(V(pf.origin));
+    mesh.quaternion.setFromRotationMatrix(basis(frame.basisColumns));
+    mesh.scale.set(...meshData.scaleFactors);
+    model.group.add(mesh);model.parts.push(mesh);
+   }
+  }
+ }
+ loaded=true;
+ $("#loading").textContent="Оригинальные FHS · 110 и 989 · по 20 костных сеток";
+ $("#statusText").textContent="Обе исходные модели загружены из FHS ZIP. Геометрия и позы позвонков авторские, начало координат совмещено по тазу.";
+ $("#count").textContent="Исходные костные поверхности: №110 — "+models["110"].parts.length+", №989 — "+models["989"].parts.length+".";
+ if(models["110"].parts.length!==20||models["989"].parts.length!==20)throw Error("Неверное количество геометрии позвоночника");
+ layoutModels();updateVisibility();
+}
+async function cacheRead(){
+ if(!("indexedDB" in window))return null;
+ return new Promise(resolve=>{
+  const req=indexedDB.open("home-workouts-fhs-data",1);
+  req.onerror=()=>resolve(null);
+  req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains("archive"))req.result.createObjectStore("archive")};
+  req.onsuccess=()=>{
+   const db=req.result,tx=db.transaction("archive","readonly"),item=tx.objectStore("archive").get("fhs-2026-scientific-zip");
+   item.onsuccess=()=>{db.close();resolve(item.result||null)};
+   item.onerror=()=>{db.close();resolve(null)};
+  };
+ });
+}
+async function handleBuffer(buf){
+ try{await loadFromZIP(buf)}
+ catch(e){console.error(e);$("#statusText").textContent="Ошибка архива: "+e.message}
+}
+$("#pick").onclick=()=>$("#file").click();
+$("#file").onchange=async()=>{const f=$("#file").files?.[0];if(f)await handleBuffer(await f.arrayBuffer())};
+document.querySelectorAll("[data-layout]").forEach(b=>b.onclick=()=>{layout=b.dataset.layout;layoutModels()});
+document.querySelectorAll("[data-view]").forEach(b=>b.onclick=()=>{view=b.dataset.view;fit()});
+$("#showPelvis").onchange=()=>{updateVisibility();fit()};
+$("#showVertebrae").onchange=()=>{updateVisibility();fit()};
+$("#fit").onclick=fit;
+new ResizeObserver(()=>{renderer.setSize(stage.clientWidth,stage.clientHeight,false);camera.aspect=stage.clientWidth/Math.max(1,stage.clientHeight);camera.updateProjectionMatrix()}).observe(stage);
+(function loop(){requestAnimationFrame(loop);orbit.update();renderer.render(scene,camera)})();
+window.__fhsPostureComparisonQA={
+ ready:()=>loaded,counts:()=>Object.fromEntries(Object.entries(models).map(([id,x])=>[id,x.parts.length])),
+ layout:()=>layout,view:()=>view,
+ landmarks:()=>sourceMetrics?.currentModel,
+ currentPercentile:()=>sourceMetrics?.sourceSpinalFrameDistributions?.thoracicSagittalChordAngleFromVerticalDeg?.currentPercentileRank,
+ bbox:()=>{const b=new THREE.Box3();Object.values(models).forEach(m=>m.parts.forEach(o=>{if(o.visible)b.expandByObject(o)}));return {min:b.min.toArray(),max:b.max.toArray()}},
+};
+async function init(){
+ try{
+  const [a,b,metrics]=await Promise.all([
+   getJSON("./assets/fhs-original-frames.json"),
+   getJSON("./assets/fhs-peer-989-frames.json"),
+   getJSON("./assets/fhs-posture-peer-comparison.json")
+  ]);
+  if(a.kind!=="fhs-opensim-body-frames-v1"||b.kind!==a.kind||metrics.subjectModelsAnalyzed!==25)
+   throw Error("Неверные исходные научные метаданные");
+  models["110"].data=a;models["989"].data=b;sourceMetrics=metrics;
+  const one=metrics.currentModel,two=metrics.closestToCohortMedians[0];
+  if(!two.model.startsWith("989_"))throw Error("Некорректный кандидат FHS");
+  const fmt=n=>n.toFixed(1).replace(".",",");
+  $("#metrics").innerHTML=
+   "<tr><td>T1 впереди / позади начала таза</td><td>"+fmt(one.T1AnteriorToPelvisMm)+" мм</td><td>"+fmt(two.T1AnteriorToPelvisMm)+" мм</td></tr>"+
+   "<tr><td>Наклон линии T12–T1</td><td>"+fmt(one.thoracicSagittalChordAngleFromVerticalDeg)+"°</td><td>"+fmt(two.thoracicSagittalChordAngleFromVerticalDeg)+"°</td></tr>"+
+   "<tr><td>Наклон линии L5–L1</td><td>"+fmt(one.lumbarSagittalChordAngleFromVerticalDeg)+"°</td><td>"+fmt(two.lumbarSagittalChordAngleFromVerticalDeg)+"°</td></tr>";
+  const cached=await cacheRead();
+  if(cached?.blob){
+   $("#statusText").textContent="Восстанавливаю официальный FHS ZIP из предыдущей лаборатории…";
+   await handleBuffer(await cached.blob.arrayBuffer());
+  }else $("#statusText").textContent="Выбери официальный ZIP FHS, который использовался в предыдущей модели.";
+ }catch(e){console.error(e);$("#statusText").textContent="Не удалось подготовить сравнение: "+e.message}
+}
+init();
+</script>
+</body></html>
