@@ -60,6 +60,15 @@ jobs:
             await page.locator('#rig').click();
             await page.locator('#scene').screenshot({path:'qa-curl-bridge/curl-end.png'});
             const problems=[];
+            // Prevent the old failure where the A-pose passed numerical elbow
+            // tests while the hands curled toward the face from outstretched arms.
+            for(const side of ['l','r']){
+              const a=start.arms[side],sign=side==='l'?1:-1;
+              if(Math.abs(a.elbow[0])>.26||a.shoulder[1]-a.elbow[1]<.21)
+                problems.push(side+' neutral shoulder remains abducted');
+              if(Math.abs(a.wrist[0])>.28||a.wrist[1]>1.08)
+                problems.push(side+' wrist not in neutral standing corridor');
+            }
             for(const side of ['l','r']){
               const a=start.arms[side],b=peak.arms[side],c=end.arms[side];
               const dAngle=b.segmentAngle-a.segmentAngle;
