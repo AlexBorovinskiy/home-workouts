@@ -16,6 +16,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - name: Install geometry comparison dependency
+        run: python -m pip install 'numpy>=1.26,<3'
       - name: Download original FHS archive and homologous AAH bones
         run: |
           mkdir -p /tmp/aah-homologous qa-fhs-aah
