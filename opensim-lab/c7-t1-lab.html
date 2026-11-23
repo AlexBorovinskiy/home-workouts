@@ -81,6 +81,8 @@ a{color:var(--mint)}
 <button data-neck-scale="0.88875">Пробный FHS · 88,875%</button>
 </div>
 <div id="scaleStatus" class="status">Исходная шея MASI — 100%. Геометрия пока не откалибрована относительно FHS.</div>
+<h3>Расстояния и возможные пересечения C7–T1</h3>
+<div id="triangleAudit" class="status">После загрузки FHS ZIP здесь появится расчёт расстояний между треугольными поверхностями из OpenSim. Ближайшие точки — не обязательно суставные фасетки.</div>
 <h3>Проверка размеров костей</h3>
 <div id="sizeAudit" class="status">Пока нет FHS ZIP. После его загрузки рассчитаем точные размеры по вершинам каждой исходной костной сетки, а не по приблизительным рамкам Three.js.</div>
 </section>
@@ -103,7 +105,8 @@ a{color:var(--mint)}
 <label class="layer"><input type="checkbox" data-layer="chest" checked> MASI · грудная клетка (полупрозрачная)</label>
 <label class="layer"><input type="checkbox" data-layer="shoulder"> MASI · ключицы и лопатки</label>
 <label class="layer"><input type="checkbox" data-layer="reference"> MASI · старая цельная сетка позвоночника</label>
-<label class="layer"><input type="checkbox" data-layer="markers" checked> Белая точка сустава C7–T1</label>
+<label class="layer"><input type="checkbox" data-layer="markers" checked> Белая точка суставного ориентира C7–T1</label>
+<label class="layer"><input type="checkbox" data-layer="proximity" checked> Оранжевая линия — ближайший участок сеток (не фасетка)</label>
 <div class="buttons" style="margin-top:10px"><button id="reset">Сбросить вид</button></div>
 </section>
 <section class="card panel">
@@ -128,8 +131,8 @@ function resize(){const w=Math.max(1,stage.clientWidth),h=Math.max(1,stage.clien
 new ResizeObserver(resize).observe(stage);resize();
 const V=x=>new THREE.Vector3(...x);
 const MASI_SOURCE="https://raw.githubusercontent.com/MyoHub/myoconverter/main/models/osim/Neck6D/Geometry/";
-const layers={neck:true,fhs:true,chest:true,shoulder:false,reference:false,markers:true};
-const catParts={neck:new THREE.Group(),chest:new THREE.Group(),shoulder:new THREE.Group(),reference:new THREE.Group(),fhs:new THREE.Group(),markers:new THREE.Group()};
+const layers={neck:true,fhs:true,chest:true,shoulder:false,reference:false,markers:true,proximity:true};
+const catParts={neck:new THREE.Group(),chest:new THREE.Group(),shoulder:new THREE.Group(),reference:new THREE.Group(),fhs:new THREE.Group(),markers:new THREE.Group(),proximity:new THREE.Group()};
 Object.values(catParts).forEach(g=>scene.add(g));
 const fhsRoot=catParts.fhs;
 let manifests=null,focus="junction",direction="back",masiReady=false,fhsReady=false,allParts=new Map(),fhsParts=new Map(),neckVisualScale=1;
@@ -216,16 +219,20 @@ function fit(){
 }
 async function sourceJson(path){const r=await fetch(path);if(!r.ok)throw Error("Нет "+path);return r.json()}
 async function loadMasi(){
- const [neck,upper,reg,fhs]=await Promise.all([
+ const [neck,upper,reg,fhs,triangles]=await Promise.all([
   sourceJson("./assets/masi-neck-native.json"),
   sourceJson("./assets/masi-upper-addendum.json"),
   sourceJson("./assets/c7-t1-registration.json"),
-  sourceJson("./assets/fhs-original-frames.json")]);
+  sourceJson("./assets/fhs-original-frames.json"),
+  sourceJson("./assets/c7-t1-triangle-audit.json")]);
  if(reg.schema!=="c7-t1-masi-fhs-registration-candidate-v1"||
     reg.anatomicalCompatibilityVerified!==false||
     fhs.kind!=="fhs-opensim-body-frames-v1"||
-    reg.fhsArchiveRelativeOsimPath!==fhs.archiveRelativeOsimPath)throw Error("Несовместимые научные данные");
- manifests={neck,upper,reg,fhs};
+    reg.fhsArchiveRelativeOsimPath!==fhs.archiveRelativeOsimPath||
+     triangles.schema!=="C7T1-triangle-surface-diagnostic-v1"||
+     triangles.facetsSegmented!==false||triangles.isValidatedHybrid!==false||
+     triangles.trials?.length!==2)throw Error("Несовместимые научные данные");
+ manifests={neck,upper,reg,fhs,triangles};
  const all={...neck.bodyFrames,...upper.bodyFrames};
  const wanted=[...Array.from({length:7},(_,i)=>"cerv"+(i+1)),"skull","torso","lclavicle","rclavicle","lscapula","rscapula","spine"];
  const loaded=await Promise.all(wanted.map(async id=>{
@@ -258,6 +265,9 @@ async function loadMasi(){
   bounds:id=>{const m=fhsParts.get(id)||allParts.get(id);const b=new THREE.Box3().setFromObject(m);return {center:b.getCenter(new THREE.Vector3()).toArray(),size:b.getSize(new THREE.Vector3()).toArray()}},
   tightBounds:id=>tightBounds(id),
   sizes:()=>getBoneSizes(),
+  triangleAudit:()=>manifests.triangles,
+  currentProximity:()=>manifests.triangles.trials.find(t=>Math.abs(t.c7VisualScale-neckVisualScale)<1e-6),
+  proximityMarkers:()=>catParts.proximity.children.length,
   scale:()=>neckVisualScale,
   setScale:s=>setNeckScale(s),
   minVertexMm:()=>measureVertices(),
@@ -299,6 +309,7 @@ async function loadFhsZip(data){
  setStatus("Оригинальные 17 костей FHS загружены. Минимальная дистанция между вершинами C7 и T1: "+actual.toFixed(2)+" мм (научная диагностическая метрика, не размер суставной щели).");
  $("#zipMessage").textContent="Данные FHS получены из исходного архива. Сетка T1 выделена светло-зелёным. Файлы не загружались на сервер приложения.";
  renderSizes();
+ updateProximity();
  focus="junction";show();fit();
 }
 // Visualization-only uniform scaling about the shared C7-T1 anchor.
@@ -319,10 +330,42 @@ function setNeckScale(scale){
   suffix="Ближайшие вершины C7–T1: "+value.toFixed(2)+" мм. Это не размер суставной щели и не проверка столкновений. "+
   "Суставные координаты и параметры мышц не пересчитывались.";
   renderSizes();
+  updateProximity();
  }
  $("#scaleStatus").textContent=s===1?"Исходная шея MASI · 100%. "+suffix:
     "Пробное масштабирование шеи и черепа · 88,875%, вокруг C7–T1. "+suffix;
  show();fit();
+}
+function updateProximity(){
+ if(!fhsReady)return;
+ const trial=manifests.triangles.trials.find(t=>Math.abs(t.c7VisualScale-neckVisualScale)<1e-6);
+ if(!trial)throw Error("Нет проверенной поверхности для масштаба "+neckVisualScale);
+ for(const child of [...catParts.proximity.children]){
+  catParts.proximity.remove(child);
+  if(child.geometry)child.geometry.dispose();
+  if(child.material)child.material.dispose();
+ }
+ // Witness points on meshes, NOT anatomically segmented facets.
+ const a=V(trial.exampleClosestPositions.c7PointM),b=V(trial.exampleClosestPositions.t1PointM);
+ const lengthMm=a.distanceTo(b)*1000;
+ if(Math.abs(lengthMm-trial.vertexToTriangleMinMm)>.02)
+  throw Error("Свидетельские точки отличаются от рассчитанной дистанции");
+ const p1=new THREE.Mesh(new THREE.SphereGeometry(.0022,12,10),
+   new THREE.MeshBasicMaterial({color:0xffb466,depthTest:false}));
+ const p2=new THREE.Mesh(new THREE.SphereGeometry(.0022,12,10),
+   new THREE.MeshBasicMaterial({color:0xffdd8d,depthTest:false}));
+ p1.position.copy(a);p2.position.copy(b);
+ const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints([a,b]),
+   new THREE.LineBasicMaterial({color:0xffc070,depthTest:false}));
+ catParts.proximity.add(p1,p2,line);
+ const hits=trial.triangleIntersection.nonCoplanarEdgeIntersectingTrianglePairs;
+ $("#triangleAudit").textContent=
+    "Шея "+(neckVisualScale*100).toLocaleString("ru-RU",{maximumFractionDigits:3})+"%: "+
+    "ближайшая точка на треугольной поверхности — "+trial.vertexToTriangleMinMm.toFixed(3).replace(".",",")+" мм; "+
+    "выявлено пересечений треугольников — "+hits+"; "+
+    "вершин C7 в пределах 5 мм от поверхности T1 — "+trial.C7VerticesNearT1Within5mm+". "+
+    "Оранжевая линия соединяет ближайшую пару точек, но не размечает суставные фасетки. "+
+    "Нулевое число пересечений не исключает копланарное наложение или вложение сеток.";
 }
 function tightBounds(id){
  const m=fhsParts.get(id)||allParts.get(id);
@@ -413,7 +456,7 @@ document.querySelectorAll("[data-neck-scale]").forEach(b=>b.onclick=()=>setNeckS
 document.querySelectorAll("[data-focus]").forEach(b=>b.onclick=()=>{focus=b.dataset.focus;show();fit()});
 document.querySelectorAll("[data-view]").forEach(b=>b.onclick=()=>{direction=b.dataset.view;show();fit()});
 document.querySelectorAll("[data-layer]").forEach(c=>c.onchange=()=>{layers[c.dataset.layer]=c.checked;show();fit()});
-$("#reset").onclick=()=>{focus="junction";direction="back";Object.assign(layers,{neck:true,fhs:true,chest:true,shoulder:false,reference:false,markers:true});setNeckScale(1)};
+$("#reset").onclick=()=>{focus="junction";direction="back";Object.assign(layers,{neck:true,fhs:true,chest:true,shoulder:false,reference:false,markers:true,proximity:true});setNeckScale(1)};
 (function loop(){requestAnimationFrame(loop);orbit.update();renderer.render(scene,camera)})();
 loadMasi().catch(e=>{$("#loading").hidden=false;$("#loading").textContent="Ошибка загрузки: "+e.message;setStatus("Ошибка MASI: "+e.message);console.error(e)});
 </script></body></html>
