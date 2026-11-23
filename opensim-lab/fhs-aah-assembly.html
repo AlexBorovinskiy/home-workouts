@@ -1,7 +1,7 @@
 <!doctype html><html lang="ru"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0c2b38"><link rel="icon" href="data:,">
-<title>Сборка скелета: FHS + подвижные кисти AAH</title>
+<title>Полный скелет OpenSim · FHS + MASI + AAH + Rajagopal</title>
 <style>
 :root{color-scheme:dark;--ink:#effaf4;--muted:#afced0;--mint:#9de1d1;--line:#4a7480;--pane:#163d4a}
 *{box-sizing:border-box}body{margin:0;background:linear-gradient(155deg,#1b4750,#0c293a 52%,#081e2b);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--ink)}
@@ -36,8 +36,8 @@ label{font-size:12px;color:#e5f2ef}
 </style></head>
 <body><main>
 <header><span>HOME WORKOUTS · OPENSIM</span><a href="./aah-hand.html">К отдельной кисти</a></header>
-<h1>Единая сборка: туловище и подвижные кисти</h1>
-<p class="lead">Скелет <b>FHS</b>: 17 грудных и поясничных позвонков, 24 исходные осевые линии рёбер, плечи и руки. Отдельно восстанавливаются семь шейных позвонков и череп из <b>MASI</b>, а суставные кисти — из <b>AAH</b>. Совмещения двух независимых моделей пока диагностические, а не подтверждённая биомеханика.</p>
+<h1>Полный скелет человека · OpenSim</h1>
+<p class="lead">Полная визуальная сборка: <b>FHS</b> — позвоночник, таз, плечи и руки; <b>MASI</b> — семь шейных позвонков и настоящая объёмная грудная клетка; <b>AAH</b> — подвижные кисти; <b>Rajagopal 2023</b> — обе ноги и стопы. Соединения между разными моделями остаются диагностическими.</p>
 <div class="layout">
 <div>
 <section class="card"><div class="stage" id="stage">
@@ -47,8 +47,8 @@ label{font-size:12px;color:#e5f2ef}
 </div></section>
 <section class="card panel">
 <h2>Ограничения этой сборки</h2>
-<div class="warn">Это пока <b>совмещённая визуализация</b>, а не одна валидированная динамическая модель OpenSim. Совпадение полулунной кости задаёт точное начальное положение, но другие кости запястья и фаланги в исходных моделях расположены по-разному. Суставные оси запястья, силы, массы и мышечные крепления ещё не согласованы. Шея MASI C1–C7 и <b>оригинальная объёмная грудная клетка MASI ribcage.vtp</b> отображаются с пробным межмодельным совмещением; положение рёбер относительно грудных позвонков FHS ещё не анатомически валидировано. Тонкие линии FHS сохранены в альтернативном режиме для сравнения. Ноги добавим отдельно.</div>
-<p><a href="https://zenodo.org/records/18259702" target="_blank" rel="noopener">Исходный архив FHS</a> · <a href="https://github.com/nishbo/ms_arm_and_hand" target="_blank" rel="noopener">Источник AAH (MIT)</a>. Файл ZIP FHS используется только на устройстве; 3D-сетки AAH загружаются непосредственно из открытого авторского репозитория.</p>
+<div class="warn">Это пока <b>совмещённая визуализация</b>, а не одна валидированная динамическая модель OpenSim. Совпадение полулунной кости задаёт точное начальное положение, но другие кости запястья и фаланги в исходных моделях расположены по-разному. Суставные оси запястья, силы, массы и мышечные крепления ещё не согласованы. Шея MASI C1–C7 и <b>оригинальная объёмная грудная клетка MASI ribcage.vtp</b> отображаются с пробным межмодельным совмещением; положение рёбер относительно грудных позвонков FHS ещё не анатомически валидировано. Тонкие линии FHS сохранены в альтернативном режиме. Обе ноги добавлены из Rajagopal 2023, но их тазобедренные суставные поверхности и общий масштаб пока не валидированы. Пальцы стоп в Rajagopal представлены укрупнёнными сегментами, не отдельными фалангами.</div>
+<p><a href="https://zenodo.org/records/18259702" target="_blank" rel="noopener">Исходный архив FHS</a> · <a href="https://github.com/nishbo/ms_arm_and_hand" target="_blank" rel="noopener">Источник AAH (MIT)</a> · <a href="https://github.com/opensim-org/opensim-models/tree/master/Models/Rajagopal" target="_blank" rel="noopener">Источник ног Rajagopal</a>. Файл ZIP FHS используется только на устройстве; 3D-сетки AAH загружаются непосредственно из открытого авторского репозитория.</p>
 </section>
 </div>
 <aside>
@@ -78,6 +78,8 @@ label{font-size:12px;color:#e5f2ef}
 <div class="buttons">
 <button data-view="front" class="on">Спереди</button>
 <button data-view="back">Сзади</button>
+<button data-view="profile">Сбоку</button>
+<button data-view="legs">Ноги крупно</button>
 <button data-view="right">Правая кисть</button>
 <button data-view="left">Левая кисть</button>
 </div>
@@ -99,12 +101,15 @@ label{font-size:12px;color:#e5f2ef}
 <label class="check"><input id="shoulders" type="checkbox" checked> Плечи и предплечья</label>
 <label class="check"><input id="head" type="checkbox" checked> Череп и шея</label>
 <label class="check"><input id="pelvis" type="checkbox" checked> Таз</label>
+<label class="check"><input id="legs" type="checkbox" checked> Обе ноги и стопы Rajagopal</label>
+<p id="legsStatus">Загружаю исходные модели ног OpenSim 4.6. Соединение с FHS выполняется через систему координат таза — это предварительная регистрация.</p>
 <div class="buttons" style="margin-top:9px"><button id="reset">Сбросить ракурс</button></div>
 <h3>Состав сцены</h3>
 <div class="stats">
 <div class="stat"><strong id="countFHS">—</strong><span>поверхностей FHS</span></div>
 <div class="stat"><strong id="countAAH">—</strong><span>сеток AAH</span></div>
 <div class="stat"><strong id="countRibs">—</strong><span>рёбер</span></div>
+<div class="stat"><strong id="countLegs">—</strong><span>поверхностей ног</span></div>
 </div>
 <p id="wristReport" class="box">Кисти AAH будут закреплены через одинаковые исходные сетки полулунных костей. Оригинальная поза FHS не используется как целевое положение каждого пальца.</p>
 </section></aside></div></main>
@@ -124,7 +129,7 @@ const V=a=>new THREE.Vector3(...a);
 const basis=a=>new THREE.Matrix4().makeBasis(...a.map(V));
 const rows=a=>new THREE.Matrix4().set(a[0][0],a[0][1],a[0][2],0,a[1][0],a[1][1],a[1][2],0,a[2][0],a[2][1],a[2][2],0,0,0,0,1);
 const c={bone:0xdddcce,spine:0x9ad2c6,rib:0xc7c7b9,arm:0xbdb3dc,hand:0x9de3cf,pelvis:0xd6b78d};
-const fhsRoot=new THREE.Group(),handRoot=new THREE.Group();scene.add(fhsRoot,handRoot);
+const fhsRoot=new THREE.Group(),handRoot=new THREE.Group(),legsRoot=new THREE.Group();scene.add(fhsRoot,handRoot,legsRoot);
 const group={head:new THREE.Group(),spine:new THREE.Group(),ribs:new THREE.Group(),shoulders:new THREE.Group(),pelvis:new THREE.Group(),rigidHands:new THREE.Group()};
 Object.values(group).forEach(g=>fhsRoot.add(g));
 const neckRoot=new THREE.Group(),neckScaffold=new THREE.Group(),masiRibsGroup=new THREE.Group();
@@ -132,9 +137,11 @@ neckRoot.add(neckScaffold,masiRibsGroup);fhsRoot.add(neckRoot);neckRoot.visible=
 const aahGroup={right:new THREE.Group(),left:new THREE.Group()};Object.values(aahGroup).forEach(g=>handRoot.add(g));
 let fhs=null,aah=null,mode="aah",pose="curl",bend=0,view="front",loadedFhs=false,loadedAAH=false,loadAAHStarted=false;
 let neckMode="masi",ribMode="masi",neckReady=false,neckLoadStarted=false,ribProxies=0,ribSegments=0,neckJointResidualMm=null;
-const neckBones=new Map(),handMesh={right:new Map(),left:new Map()},fhsMeshes=[];
+let legData=null,legsReady=false,legLoadStarted=false,legPelvisResidualMm=null;
+const neckBones=new Map(),handMesh={right:new Map(),left:new Map()},legMeshes=new Map(),fhsMeshes=[];
 const sourceAAH="https://raw.githubusercontent.com/nishbo/ms_arm_and_hand/main/AAH%20Model/Geometry/";
 const sourceMASI="https://raw.githubusercontent.com/MyoHub/myoconverter/main/models/osim/Neck6D/Geometry/";
+const sourceRajagopal="https://raw.githubusercontent.com/opensim-org/opensim-models/master/Geometry/";
 function fit(){
  if(!loadedFhs)return;
  const b=new THREE.Box3();
@@ -142,6 +149,9 @@ function fit(){
   const side=view==="right"?"R":"L";
   const meshes=mode==="aah"&&loadedAAH?[...aahGroup[view].children]:[...group.rigidHands.children].filter(m=>m.userData.body==="hand_"+side);
   for(const obj of meshes)b.expandByObject(obj);
+ }else if(view==="legs"){
+  if(legsReady&&legsRoot.visible)b.expandByObject(legsRoot);
+  if(group.pelvis.visible)b.expandByObject(group.pelvis);
  }else{
   for(const g of Object.values(group))if(g.visible)b.expandByObject(g);
   if(neckRoot.visible){
@@ -149,12 +159,15 @@ function fit(){
    if(masiRibsGroup.visible)b.expandByObject(masiRibsGroup);
   }
   if(mode==="aah"&&loadedAAH)for(const g of Object.values(aahGroup))b.expandByObject(g);
+  if(legsRoot.visible&&legsReady)b.expandByObject(legsRoot);
  }
  if(b.isEmpty())return;
  const center=b.getCenter(new THREE.Vector3()),size=b.getSize(new THREE.Vector3());
  const tan=Math.tan(THREE.MathUtils.degToRad(camera.fov/2)),a=Math.max(.34,camera.aspect);
  const d=1.6*Math.max(size.y/(2*tan),size.x/(2*tan*a),size.z/(2*tan*a),.12);
- const direction=view==="back"?new THREE.Vector3(-1,.11,.12):view==="front"?new THREE.Vector3(1,.11,.15):
+ const direction=view==="back"?new THREE.Vector3(-1,.11,.12):
+   view==="profile"?new THREE.Vector3(.02,.09,1):
+   view==="front"||view==="legs"?new THREE.Vector3(1,.11,.15):
    view==="right"?new THREE.Vector3(1,.25,1):new THREE.Vector3(1,.25,-1);
  orbit.target.copy(center);camera.position.copy(center).add(direction.normalize().multiplyScalar(d));camera.lookAt(center);orbit.update();
  document.querySelectorAll("[data-view]").forEach(x=>x.classList.toggle("on",x.dataset.view===view));
@@ -269,6 +282,7 @@ async function readFHSZIP(buffer){
  updateVisibility();fit();
  await startAAH();
  await startNeck();
+ await startLegs();
 }
 async function startNeck(){
  if(!loadedFhs||neckLoadStarted)return;
@@ -417,7 +431,7 @@ async function startAAH(){
   status("FHS + AAH загружены: 118 FHS-сеток, 54 подвижных поверхности кистей. Относительное положение запястий проверено по полулунной кости.");
   applyHands();updateVisibility();fit();
   window.__assemblyQA={
-   ready:()=>loadedFhs&&loadedAAH&&neckReady,
+   ready:()=>loadedFhs&&loadedAAH&&neckReady&&legsReady,
    fhsCount:()=>fhsMeshes.length,
    ribProxyCount:()=>ribProxies,
    ribSegmentCount:()=>ribSegments,
@@ -433,6 +447,16 @@ async function startAAH(){
    neckCenters:()=>[...neckBones.values()].map(m=>m.getWorldPosition(new THREE.Vector3()).toArray()),
    isNeckVisible:()=>neckRoot.visible&&neckScaffold.visible,
    aahCount:()=>count,
+    legsReady:()=>legsReady,
+    legCount:()=>legMeshes.size,
+    legVisible:()=>legsRoot.visible,
+    legSource:()=>legData?.source?.model,
+    legPelvisMismatchMm:()=>legPelvisResidualMm,
+    legBoneNames:()=>[...legMeshes.keys()],
+    legPosition:id=>legMeshes.get(id)?.getWorldPosition(new THREE.Vector3()).toArray(),
+    legHipWorld:side=>V(legData.jointWorldPoints["hip_"+side].parentPoint).applyMatrix4(legsRoot.matrixWorld).toArray(),
+    legFootWorld:side=>legMeshes.get("calcn_"+side)?.getWorldPosition(new THREE.Vector3()).toArray(),
+    legBoundingBox:()=>{const b=new THREE.Box3().setFromObject(legsRoot);return {min:b.min.toArray(),max:b.max.toArray()}},
    sideCount:side=>aahGroup[side].children.length,
    mode:()=>mode,pose:()=>pose,bend:()=>bend,
    handOrigin:side=>{const P=side==="right"?"RA":"LA";const m=handMesh[side].get(P+"3L");return m.getWorldPosition(new THREE.Vector3()).toArray()},
@@ -478,6 +502,7 @@ function updateVisibility(){
  group.spine.visible=$("#spine").checked;
  group.ribs.visible=showRibs&&(!neckReady||ribMode==="fhs");group.shoulders.visible=$("#shoulders").checked;
  group.pelvis.visible=$("#pelvis").checked;
+ legsRoot.visible=legsReady&&$("#legs").checked;
  document.querySelectorAll("[data-hands]").forEach(b=>b.classList.toggle("on",b.dataset.hands===mode));
  $("#wristReport").textContent=replace?
   "AAH: подвижные кости обеих кистей совмещены с FHS по одинаковой исходной полулунной кости (масштаб 88,875%). Запястный сустав и положения других костей не валидированы.":
@@ -503,8 +528,8 @@ document.querySelectorAll("[data-pose]").forEach(b=>b.onclick=()=>{
 });
 $("#bend").oninput=e=>{bend=Number(e.target.value)/100;applyHands()};
 document.querySelectorAll("[data-view]").forEach(b=>b.onclick=()=>{view=b.dataset.view;fit()});
-for(const id of ["ribs","spine","shoulders","head","pelvis"])$("#"+id).onchange=()=>{updateVisibility();fit()};
-$("#reset").onclick=()=>{view="front";bend=0;pose="curl";mode="aah";neckMode="masi";ribMode="masi";applyHands();updateVisibility();fit()};
+for(const id of ["ribs","spine","shoulders","head","pelvis","legs"])$("#"+id).onchange=()=>{updateVisibility();fit()};
+$("#reset").onclick=()=>{view="front";bend=0;pose="curl";mode="aah";neckMode="masi";ribMode="masi";$("#legs").checked=true;applyHands();updateVisibility();fit()};
 new ResizeObserver(()=>{renderer.setSize(stage.clientWidth,stage.clientHeight,false);camera.aspect=stage.clientWidth/Math.max(1,stage.clientHeight);camera.updateProjectionMatrix()}).observe(stage);
 (function loop(){requestAnimationFrame(loop);orbit.update();renderer.render(scene,camera)})();
 async function init(){
