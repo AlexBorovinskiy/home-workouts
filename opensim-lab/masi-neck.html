@@ -1,0 +1,147 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><link rel="icon" href="data:,"><meta name="theme-color" content="#092331"><title>MASI · настоящие C1–C7 в OpenSim</title>
+<style>
+:root{color-scheme:dark;--bg:#092331;--panel:#143743;--line:#38616c;--ink:#f1fcf9;--muted:#aeced0;--mint:#8adfcf}*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(145deg,#1b4c59 0,var(--bg) 50%);color:var(--ink);font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+main{max-width:1100px;margin:auto;padding:16px 12px 52px}
+header{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:11px;letter-spacing:.1em;color:var(--mint);font-weight:800}
+a{color:var(--mint)}header a{padding:9px 12px;border:1px solid #3a6b74;border-radius:16px;text-decoration:none;color:var(--ink);letter-spacing:0;font-weight:500}
+h1{font-size:clamp(24px,5vw,37px);margin:25px 0 10px;letter-spacing:-.035em}
+.lead{color:var(--muted);line-height:1.65;max-width:800px}
+.layout{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(260px,.75fr);gap:12px;margin-top:16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden;margin-bottom:12px}
+.stage{height:min(72vh,690px);min-height:470px;touch-action:none;position:relative;background:radial-gradient(ellipse at 50% 42%,#28515a,#092130 80%)}
+canvas{width:100%;height:100%;display:block;touch-action:none}
+.hud{position:absolute;top:12px;left:11px;padding:8px 12px;border-radius:16px;background:#0c2b39e8;color:#d9f3ec;font-size:11px;border:1px solid #457a83}
+.help{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);border-radius:18px;background:#082b3bdf;padding:8px 12px;font-size:11px;white-space:nowrap;color:#c2dadc}
+.loading{position:absolute;top:48%;left:50%;transform:translate(-50%,-50%);max-width:85%;text-align:center;font-size:13px;line-height:1.55;background:#092a38e8;border:1px solid #507983;border-radius:14px;padding:14px}
+.loading[hidden]{display:none}
+.controls{padding:15px;display:grid;gap:12px}.buttons{display:flex;gap:8px;flex-wrap:wrap}
+button{background:#254e5b;border:1px solid #567e8b;color:var(--ink);font:inherit;font-weight:700;padding:10px 12px;min-height:42px;border-radius:10px;cursor:pointer}
+button.on{background:var(--mint);color:#06313b;border-color:var(--mint)}
+.side{padding:16px}h2{font-size:17px;margin:0 0 9px}p{color:var(--muted);line-height:1.65}
+.stat{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #325361}.stat strong{color:var(--ink)}
+.warning{background:#463527;border:1px solid #856747;padding:12px;border-radius:11px;color:#ffddb5;font-size:12px;line-height:1.6}
+.note{font-size:12px}
+@media(max-width:740px){.layout{grid-template-columns:1fr}.stage{height:62vh;min-height:435px}.side{padding:15px}}
+</style></head>
+<body><main>
+<header><span>HOME WORKOUTS / SCIENTIFIC MODELS</span><a href="./original-anatomy.html">Старая FHS</a></header>
+<h1>MASI · отдельные шейные позвонки</h1>
+<p class="lead">Новая исследовательская основа: оригинальная MASI (2017), рассчитанная в OpenSim 4.6. Позвонки C1–C7 имеют собственные тела, а не сложены под черепом в один жёсткий сегмент, как в нашей старой версии Framingham.</p>
+<div class="layout">
+<section class="card">
+<div class="stage" id="stage"><canvas id="canvas" aria-label="3D-шпейный отдел MASI C1–C7"></canvas>
+<div class="hud" id="hud">MASI · ожидание исходной геометрии</div>
+<div class="loading" id="loading">Загружаю научные поверхности C1–C7…</div>
+<div class="help">Вращение — одним пальцем · масштаб — двумя</div></div>
+<div class="controls">
+<div class="buttons" id="what"><button data-layer="neck" class="on">C1–C7 + череп</button><button data-layer="bare">Только C1–C7</button><button data-layer="torso">Шея и грудная клетка</button></div>
+<div class="buttons" id="views"><button data-camera="side" class="on">Сбоку</button><button data-camera="front">Спереди</button><button data-camera="back">Сзади</button></div>
+<div class="buttons" id="bones"><button data-bone="all" class="on">Все позвонки</button><button data-bone="cerv1">C1</button><button data-bone="cerv2">C2</button><button data-bone="cerv3">C3</button><button data-bone="cerv4">C4</button><button data-bone="cerv5">C5</button><button data-bone="cerv6">C6</button><button data-bone="cerv7">C7</button></div>
+<div id="status" class="note">Структура и координаты вычислены настоящим OpenSim. Анатомические поверхности подгружаются из открытого набора Neck6D.</div>
+</div></section>
+<aside><section class="card side"><h2>Проверенная структура</h2>
+<div class="stat"><span>Отдельных сегментов C1–C7</span><strong>7</strong></div>
+<div class="stat"><span>Координат всей модели</span><strong>73</strong></div>
+<div class="stat"><span>Техническое ядро</span><strong>OpenSim 4.6</strong></div>
+<div class="stat"><span>Исходная модель</span><strong>MASI v2</strong></div>
+<p class="note">Положение каждой кости получено напрямую из OpenSim после сборки модели. Для изображения используются поверхности Neck6D с совпадающими именами файлов. Тождественность их байтов авторскому комплекту MASI отдельно не подтверждена.</p>
+</section>
+<section class="card side"><h2>Важно для тренировок</h2>
+<div class="warning"><strong>Это ещё не тренажёр.</strong> MASI имеет подвижную шейную кинематическую цепь, но нам ещё предстоит проверить визуальные поверхности, соединение с остальным скелетом, движения упражнений и нагрузки. Никакого заключения о безопасной технике эта демонстрация не даёт.</div>
+<p class="note">Модель: <a href="https://doi.org/10.6084/m9.figshare.4249808.v2">Cazzola et al. MASI (MIT)</a>. Геометрия: <a href="https://github.com/MyoHub/myoconverter/tree/main/models/osim/Neck6D/Geometry">MyoHub Neck6D (MIT)</a>.</p>
+</section></aside>
+</div></main>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+const $=x=>document.querySelector(x);
+const stage=$('#stage'),renderer=new THREE.WebGLRenderer({canvas:$('#canvas'),antialias:true,alpha:true,preserveDrawingBuffer:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.6));
+renderer.setClearColor(0x102c3a,0);
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(38,1,.005,25);
+scene.add(new THREE.HemisphereLight(0xe6f9f2,0x557681,2.5));
+const light=new THREE.DirectionalLight(0xffeee0,2.3);light.position.set(2,4,4);scene.add(light);
+const orbit=new OrbitControls(camera,renderer.domElement);orbit.enableDamping=true;orbit.minDistance=.05;orbit.maxDistance=5;
+let data=null,layer='neck',direction='side',selectedBone='all';
+const parts=new Map();
+function resize(){renderer.setSize(stage.clientWidth,stage.clientHeight,false);camera.aspect=stage.clientWidth/Math.max(1,stage.clientHeight);camera.updateProjectionMatrix()}
+new ResizeObserver(resize).observe(stage);resize();
+function arr(node){let s=node?.textContent?.trim();return s?s.split(/\s+/).map(Number):[]}
+function parseVtp(text,name){
+ const doc=new DOMParser().parseFromString(text,'application/xml');
+ if(doc.querySelector('parsererror'))throw Error('Неверный VTP '+name);
+ const piece=doc.querySelector('VTKFile > PolyData > Piece');
+ if(!piece)throw Error('Нет PolyData '+name);
+ const pos=arr(piece.querySelector('Points > DataArray'));
+ const arrays=[...piece.querySelectorAll('Polys > DataArray')];
+ const conn=arr(arrays.find(x=>x.getAttribute('Name')==='connectivity')||arrays[0]);
+ const end=arr(arrays.find(x=>x.getAttribute('Name')==='offsets')||arrays[1]);
+ if(!pos.length||pos.length%3||!conn.length||!end.length)throw Error('Нет геометрии '+name);
+ const idx=[];let start=0;
+ for(const stop of end){
+  if(stop>conn.length||stop<start)throw Error('Поврежденные полигоны');
+  for(let i=start+1;i<stop-1;i++)idx.push(conn[start],conn[i],conn[i+1]);
+  start=stop;
+ }
+ if(idx.some(v=>!Number.isInteger(v)||v<0||v>=pos.length/3))throw Error('Неверные индексы '+name);
+ const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));geo.setIndex(idx);geo.computeVertexNormals();
+ return geo;
+}
+const vec=v=>new THREE.Vector3(...v);
+function applyMode(){
+ for(const [id,m] of parts){
+  const isNeck=id.startsWith('cerv');
+  m.visible=isNeck||(id==='skull'&&layer!=='bare')||(id==='torso'&&layer==='torso');
+  m.material.color.setHex(isNeck?(selectedBone==='all'||selectedBone===id?0xf0c68d:0x739fa2):id==='skull'?0xd7ddd1:0x668a93);
+ }
+ document.querySelectorAll('[data-layer]').forEach(b=>b.classList.toggle('on',b.dataset.layer===layer));
+ document.querySelectorAll('[data-camera]').forEach(b=>b.classList.toggle('on',b.dataset.camera===direction));
+ document.querySelectorAll('[data-bone]').forEach(b=>b.classList.toggle('on',b.dataset.bone===selectedBone));
+ $('#status').textContent='Видны '+[...parts.values()].filter(m=>m.visible).length+' исходных 3D-поверхностей. Желтым отмечен'+(selectedBone==='all'?' весь шейный отдел.':' '+selectedBone.toUpperCase()+'.');
+}
+function fit(){
+ if(parts.size<7)return;
+ let box=new THREE.Box3();
+ for(const [id,m] of parts)if(m.visible)box.expandByObject(m);
+ if(box.isEmpty())return;
+ const center=box.getCenter(new THREE.Vector3()),size=box.getSize(new THREE.Vector3());
+ const h=Math.tan(THREE.MathUtils.degToRad(camera.fov/2));
+ const dist=Math.max(.23,1.3*Math.max(size.y/(2*h),size.x/(2*h*Math.max(.33,camera.aspect)),size.z/(2*h*Math.max(.33,camera.aspect))));
+ const d=direction==='front'?new THREE.Vector3(1,.06,.1):direction==='back'?new THREE.Vector3(-1,.06,-.1):new THREE.Vector3(.08,.06,1);
+ orbit.target.copy(center);camera.position.copy(center).add(d.normalize().multiplyScalar(dist));camera.lookAt(center);orbit.update();
+}
+async function load(){
+ const r=await fetch('./assets/masi-neck-native.json');if(!r.ok)throw Error('Отсутствуют исходные координаты MASI');
+ data=await r.json();
+ if(data.schema!=='masi-cervical-native-OpenSim-4.6-v1')throw Error('Несовместимая версия модели');
+ const ids=Object.keys(data.bodyFrames).filter(x=>x.startsWith('cerv')||x==='skull'||x==='torso');
+ let loaded=0;
+ const base='https://raw.githubusercontent.com/MyoHub/myoconverter/main/models/osim/Neck6D/Geometry/';
+ for(const id of ids){
+  const b=data.bodyFrames[id];
+  const v=await fetch(base+b.file);
+  if(!v.ok)throw Error('Нельзя загрузить '+b.file+' (HTTP '+v.status+')');
+  const geometry=parseVtp(await v.text(),b.file);
+  const material=new THREE.MeshStandardMaterial({color:id.startsWith('cerv')?0xf0c68d:id==='skull'?0xd7ddd1:0x668a93,roughness:.65,side:THREE.DoubleSide});
+  const mesh=new THREE.Mesh(geometry,material);
+  const basis=b.rotation.map((_,col)=>new THREE.Vector3(b.rotation[0][col],b.rotation[1][col],b.rotation[2][col]));
+  mesh.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(...basis));
+  mesh.position.copy(vec(b.position));mesh.scale.set(...b.scale);mesh.userData={body:id,file:b.file};
+  parts.set(id,mesh);scene.add(mesh);loaded++;
+  $('#loading').textContent='Читаю поверхности MASI: '+loaded+' из '+ids.length+'…';
+ }
+ if(loaded<9)throw Error('Не все шейные сегменты загружены');
+ applyMode();fit();$('#loading').hidden=true;$('#hud').textContent='OpenSim MASI v2 · '+loaded+' реальных поверхностей';
+ window.__masiQA={ready:()=>true,counts:()=>({parts:parts.size,cervical:[...parts.keys()].filter(id=>id.startsWith('cerv')).length}),
+   bounds:(id)=>{let box=new THREE.Box3().setFromObject(parts.get(id));return {center:box.getCenter(new THREE.Vector3()).toArray(),size:box.getSize(new THREE.Vector3()).toArray()}},
+   select:(l,v)=>{layer=l;applyMode();if(v)direction=v;fit()},parts:()=>[...parts.keys()]};
+}
+document.querySelectorAll('[data-layer]').forEach(b=>b.onclick=()=>{layer=b.dataset.layer;applyMode();fit()});
+document.querySelectorAll('[data-camera]').forEach(b=>b.onclick=()=>{direction=b.dataset.camera;applyMode();fit()});
+document.querySelectorAll('[data-bone]').forEach(b=>b.onclick=()=>{selectedBone=b.dataset.bone;applyMode()});
+(function render(){requestAnimationFrame(render);orbit.update();renderer.render(scene,camera)})();
+load().catch(e=>{$('#loading').hidden=false;$('#loading').textContent='Не удалось открыть модель: '+e.message;$('#status').textContent=e.message;console.error(e)});
+</script></body></html>
