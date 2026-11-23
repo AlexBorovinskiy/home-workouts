@@ -1,0 +1,62 @@
+name: QA native FHS-AAH wrist geometry and frame compatibility
+on:
+  push:
+    paths:
+      - 'opensim-lab/audit_fhs_aah_wrist.py'
+      - '.github/workflows/qa-fhs-aah-wrist.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  compare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 17
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Download original FHS archive and homologous AAH bones
+        run: |
+          mkdir -p /tmp/aah-homologous qa-fhs-aah
+          curl -fL --retry 3 --max-time 180 'https://zenodo.org/records/18259702/files/FHS_dataset_4.x.zip?download=1' -o /tmp/FHS_dataset_4.x.zip
+          for bone in lunate scaphoid capitate trapezium 2mc 2proxph 2distph; do
+            curl -fL --retry 3 --max-time 90 \
+              "https://raw.githubusercontent.com/nishbo/ms_arm_and_hand/main/AAH%20Model/Geometry/$bone.vtp" \
+              -o "/tmp/aah-homologous/$bone.vtp"
+            curl -fL --retry 3 --max-time 90 \
+              "https://raw.githubusercontent.com/nishbo/ms_arm_and_hand/main/AAH%20Model/Geometry/$bone"_l.vtp \
+              -o "/tmp/aah-homologous/$bone"_l.vtp
+          done
+      - name: Compare original mesh vertices and OpenSim body transforms
+        run: |
+          python opensim-lab/audit_fhs_aah_wrist.py \
+            --fhs-zip /tmp/FHS_dataset_4.x.zip \
+            --fhs-frames opensim-lab/assets/fhs-original-frames.json \
+            --aah-poses opensim-lab/assets/aah-hand-poses.json \
+            --aah-geometry /tmp/aah-homologous \
+            --output qa-fhs-aah/wrist-source-audit.json
+      - name: Validate registration math and state scientific uncertainty
+        run: |
+          python - <<'PY'
+          import json,math
+          d=json.load(open('qa-fhs-aah/wrist-source-audit.json'))
+          assert d['schema']=='FHS-AAH-wrist-homology-audit-v1'
+          for side in ('right','left'):
+            v=d['sides'][side]
+            assert len(v['sourceMeshComparisons'])==7
+            assert v['anatomicalJointFitValidated'] is False
+            assert v['anchorMismatchMm'] < .0001
+            assert .6<v['globalScale']<1.1
+            assert all(math.isfinite(q) for row in v['registrationRotation'] for q in row)
+            assert all(math.isfinite(q) for q in v['registrationTranslationM'])
+            print('FHS_AAH_MESH_COMPATIBILITY',side,'RMS',
+              v['rmsHomologousFhsVsAahAfterRegistrationMm'],'source match',
+              v['allHomologousRawMeshesIdentical'])
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: FHS-AAH-wrist-source-homology-and-registration
+          path: qa-fhs-aah/
+          retention-days: 30
