@@ -36,7 +36,7 @@ hr{border:0;border-top:1px solid var(--line);margin:18px 0}
 <body><main>
 <header><span>HOME WORKOUTS / RETARGET LAB</span><a href="./index.html">К ригу</a></header>
 <h1>Сгибание рук · перенос движения</h1>
-<p class="lead">Пилот единого рига тела. Используются исходная кожа и 53 кости MakeHuman CC0; три кадра берутся из нашего файла упражнения. Сгибание локтей переносится по геометрии суставов, а не по совпадению локальных осей двух моделей.</p>
+<p class="lead">Пилот единого рига тела. Начальная A-поза переводится в стойку с опущенными руками по анатомическим осям туловища; затем применяются три кадра нашего упражнения. Сгибание локтей переносится по геометрии суставов, а не по совпадению локальных осей двух моделей.</p>
 <div class="layout">
 <section>
 <div id="stage"><canvas id="scene" aria-label="Полная трехмерная модель человека"></canvas>
@@ -62,7 +62,7 @@ hr{border:0;border-top:1px solid var(--line);margin:18px 0}
 <div class="status" id="status">Проверяю исходные файлы…</div>
 <hr>
 <div class="eyebrow">Что подтверждает эта лаборатория</div>
-<p>Один и тот же набор ключевых кадров управляет обеими руками полнотелой модели. Плечи, корпус и ноги остаются привязанными к исходному ригу. Камера свободно вращается вокруг модели.</p>
+<p>Один и тот же набор ключевых кадров управляет обеими руками полнотелой модели. Плечи переводятся в общую стойку у корпуса, остальные сегменты остаются в едином риге. Камера свободно вращается вокруг модели.</p>
 <p><strong>Пока не подтверждены:</strong> супинация предплечья, контакт кистей с гантелями, распределение нагрузки, точность техники. Это проверка маршрута переноса анимации, а не готовый урок.</p>
 <hr>
 <div class="eyebrow">Источники</div>
@@ -90,7 +90,7 @@ orbit.minDistance=.15;orbit.maxDistance=20;
 new ResizeObserver(()=>{const w=stage.clientWidth,h=stage.clientHeight;
  renderer.setSize(w,h,false);camera.aspect=w/Math.max(1,h);camera.updateProjectionMatrix();
 }).observe(stage);
-const state={model:null,bones:{},rest:{},geometry:null,frames:null,helper:null,ready:false,phase:0,playing:false,started:0};
+const state={model:null,bones:{},rest:{},geometry:null,shoulders:null,frames:null,helper:null,ready:false,phase:0,playing:false,started:0};
 const P=()=>new THREE.Vector3(),Q=()=>new THREE.Quaternion();
 function landmarks(){
  state.model.updateMatrixWorld(true);
@@ -117,6 +117,39 @@ function restore(){
   const r=state.rest[name];bone.position.copy(r.pos);bone.quaternion.copy(r.quat);
  }
 }
+// Reusable standing-pose calibration from the model's anatomical axes.
+// A-pose (abducted arms) is not a neutral dumbbell-curl stance.
+function calculateStandingShoulders(){
+ restore();state.model.updateMatrixWorld(true);
+ const pelvis=state.bones.pelvis.getWorldPosition(P());
+ const chest=state.bones.spine_03.getWorldPosition(P());
+ const up=chest.sub(pelvis).normalize();
+ const left=state.bones.upperarm_l.getWorldPosition(P());
+ const right=state.bones.upperarm_r.getWorldPosition(P());
+ const lateral=left.clone().sub(right).normalize();
+ const forward=P().crossVectors(lateral,up).normalize();
+ const result={};
+ for(const side of ["l","r"]){
+  const sh=state.bones["upperarm_"+side],el=state.bones["lowerarm_"+side];
+  const origin=sh.getWorldPosition(P()),end=el.getWorldPosition(P());
+  const current=end.sub(origin).normalize();
+  const target=up.clone().multiplyScalar(-1)
+   .addScaledVector(lateral,side==="l"?.07:-.07)
+   .addScaledVector(forward,.12).normalize();
+  const worldDelta=Q().setFromUnitVectors(current,target);
+  const parentWorld=sh.parent.getWorldQuaternion(Q());
+  const localDelta=parentWorld.clone().invert().multiply(worldDelta).multiply(parentWorld);
+  result[side]=localDelta;
+ }
+ return result;
+}
+function applyStandingShoulders(){
+ for(const side of ["l","r"]){
+  const name="upperarm_"+side,bone=state.bones[name];
+  bone.quaternion.copy(state.rest[name].quat).premultiply(state.shoulders[side]);
+ }
+ state.model.updateMatrixWorld(true);
+}
 function sampleAngle(t,side){
  const u=THREE.MathUtils.clamp(t,0,1)*2;
  const i=Math.min(Math.floor(u),1),frac=u-i;
@@ -127,7 +160,7 @@ function sampleAngle(t,side){
 function poseAt(t){
  if(!state.ready)return;
  state.phase=THREE.MathUtils.clamp(t,0,1);
- restore();state.model.updateMatrixWorld(true);
+ restore();applyStandingShoulders();
  for(const side of ["l","r"]){
   const bone=state.bones["lowerarm_"+side];
   const parentQ=bone.parent.getWorldQuaternion(Q());
@@ -140,7 +173,7 @@ function poseAt(t){
  $("#phaseLabel").textContent=Math.round(100*state.phase)+"%";
  $("#elbowL").textContent=sampleAngle(state.phase,"l").toFixed(0)+"°";
  $("#elbowR").textContent=sampleAngle(state.phase,"r").toFixed(0)+"°";
- $("#status").textContent="Геометрический перенос сгибания локтей. Супинация и хват не перенесены.";
+ $("#status").textContent="Плечи калиброваны для стойки · локти сгибаются по источнику · супинация и хват пока не перенесены.";
 }
 function fit(){
  const box=new THREE.Box3().setFromObject(state.model);
@@ -170,6 +203,8 @@ async function init(){
  for(const key of ["upperarm_l","upperarm_r","lowerarm_l","lowerarm_r","hand_l","hand_r"])
   if(!state.bones[key])throw Error("В 3D-риге отсутствует "+key);
  restore();state.model.updateMatrixWorld(true);
+ state.shoulders=calculateStandingShoulders();
+ applyStandingShoulders();
  const joints=landmarks(),geometry={};
  for(const side of ["l","r"]){
   const [shoulder,elbow,wrist]=joints[side];
@@ -193,7 +228,8 @@ async function init(){
    builtInClipCount:gltf.animations.length}),
   poseAt,metrics,
   neutralAngles:()=>Object.fromEntries(["l","r"].map(x=>[x,THREE.MathUtils.radToDeg(state.geometry[x].neutralAngle)])),
-  boneNames:()=>Object.keys(state.bones)
+  boneNames:()=>Object.keys(state.bones),
+  shoulderPose:()=>Object.fromEntries(["l","r"].map(side=>[side,state.shoulders[side].toArray()]))
  };
 }
 $("#start").onclick=()=>{state.playing=false;$("#play").textContent="▶ Воспроизвести";poseAt(0)};
