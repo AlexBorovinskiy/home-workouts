@@ -59,7 +59,9 @@ jobs:
               hipR:q.legHipWorld('r'),hipL:q.legHipWorld('l'),
               footR:q.legFootWorld('r'),footL:q.legFootWorld('l'),
               auditReady:q.postureAuditReady(),auditHeight:q.postureAuditHeight(),
-              markers:q.postureLandmarkCount(),markerVisible:q.postureMarkerVisible()};
+              markers:q.postureLandmarkCount(),markerVisible:q.postureMarkerVisible(),
+              heightMode:q.heightMode(),scale:q.displayScaleFactor(),
+              nominalHeightCm:q.nominalHeightCm(),visibleBounds:q.worldVisibleBounds()};
           });
           const d=(a,b)=>Math.sqrt(a.reduce((s,v,i)=>s+(v-b[i])**2,0))*1000;
           try{
@@ -71,7 +73,22 @@ jobs:
             if(!(await page.evaluate(()=>window.__assemblyQA?.ready())))
               throw Error('Assembly loading failed: '+await page.locator('#status').innerText());
             await page.waitForFunction(()=>window.__assemblyQA?.postureAuditReady(),null,{timeout:25000});
+            const personalized=await read();
+            const expectedFactor=1820/1499.471;
+            if(personalized.heightMode!=='182'||Math.abs(personalized.scale-expectedFactor)>1e-6||
+               Math.abs(personalized.nominalHeightCm-182)>.001||
+               Math.abs(personalized.visibleBounds.min[1])>.012||
+               Math.abs(personalized.visibleBounds.heightCm-182)>.4)
+              throw Error('Target 182 cm full-body anatomy mismatch '+JSON.stringify(personalized));
+            await page.locator('#canvas').screenshot({path:'qa-assembly/personalized-full-skeleton-182cm-front.png'});
+            await page.locator('[data-view="profile"]').click();
+            await page.locator('#canvas').screenshot({path:'qa-assembly/personalized-full-skeleton-182cm-side.png'});
+            await page.locator('[data-view="front"]').click();
+            await page.locator('[data-height="source"]').click();
             const open=await read();
+            if(open.heightMode!=='source'||Math.abs(open.scale-1)>1e-9||
+               Math.abs(open.nominalHeightCm-149.9471)>.001)
+               throw Error('Original OpenSim source scale is not recoverable');
             if(!open.auditReady||Math.abs(open.auditHeight-1499.471)>.1||open.markers<8)
               throw Error('Source posture report or 3D reference markers not loaded '+JSON.stringify(open));
             if(open.fhs!==118||open.aah!==54||open.left!==27||open.right!==27||
@@ -146,15 +163,24 @@ jobs:
             await page.locator('[data-hands="aah"]').click();
             await page.locator('[data-pose="cylinder"]').click();
             await page.locator('#canvas').screenshot({path:'qa-assembly/right-trial-grip-no-handle.png'});
+            await page.locator('[data-height="182"]').click();
+            const finalScale=await read();
+            if(finalScale.heightMode!=='182'||Math.abs(finalScale.nominalHeightCm-182)>.001||
+               Math.abs(finalScale.visibleBounds.heightCm-182)>.4)
+               throw Error('182 cm after pose switching does not preserve whole body');
+            await page.locator('[data-view="front"]').click();
+            await page.locator('#canvas').screenshot({path:'qa-assembly/personalized-full-skeleton-182cm-hands-curled.png'});
             if(errors.length)throw Error('JavaScript page errors '+JSON.stringify(errors));
             writeFileSync('qa-assembly/report.json',JSON.stringify({
-              open,curled,rightShift,leftShift,allAnchorsMatch:true,errors},null,2));
+              open,curled,rightShift,leftShift,personalized,finalScale,allAnchorsMatch:true,errors},null,2));
             console.log('FHS_AAH_ASSEMBLY_MOBILE_QA_SUCCESS',JSON.stringify({
               fhs:open.fhs,aah:open.aah,neckBones:open.neck.length,
               ribProxies:open.ribProxies,ribSegments:open.ribSegments,
               masiRibTriangles:open.masiRibTriangles,
               rajagopalLegMeshes:open.legCount,
               postureHeightMm:open.auditHeight,landmark3DObjects:open.markers,
+              personalizedHeightCm:personalized.visibleBounds.heightCm,
+              personalizedGlobalFactor:personalized.scale,
               legRDropM:legDropR,legLDropM:legDropL,
               rawWristAnchorMismatchMm:Math.max(
               d(open.rightAnchor,open.rightTarget),d(open.leftAnchor,open.leftTarget)),
