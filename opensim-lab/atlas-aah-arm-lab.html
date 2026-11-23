@@ -1,0 +1,363 @@
+<!doctype html><html lang="ru"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b2b3b"><link rel="icon" href="data:,">
+<title>Atlas × OpenSim · первая подвижная рука</title>
+<style>
+:root{color-scheme:dark;--accent:#93e1cf;--line:#4b7380;--panel:#143b49;--muted:#afcace}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(145deg,#173f4c,#0b2637 68%,#071b29);color:#eef8f5;font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+main{max-width:1180px;margin:auto;padding:16px 13px 70px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:11px;color:var(--accent);letter-spacing:.1em;font-weight:800}
+.top a{color:#e8f5f3;border:1px solid var(--line);border-radius:11px;text-decoration:none;padding:8px 10px;font-size:12px;letter-spacing:0}
+h1{font-size:clamp(25px,5vw,37px);line-height:1.12;margin:22px 0 10px;letter-spacing:-.035em}
+.intro{color:var(--muted);line-height:1.7;font-size:13px;max-width:920px;margin:0 0 18px}
+.layout{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(290px,.85fr);gap:12px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:15px;margin-bottom:12px;overflow:hidden}
+.stage{height:min(75vh,720px);min-height:465px;position:relative;background:radial-gradient(ellipse at 48% 40%,#305460,#092738 75%);touch-action:none}
+canvas{width:100%;height:100%;display:block;touch-action:none}
+.hud{position:absolute;top:10px;left:10px;right:10px;width:max-content;max-width:calc(100% - 20px);background:#092f3de8;border:1px solid #618d94;border-radius:9px;padding:9px 12px;font-size:11px;line-height:1.5}
+.hint{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);background:#092a39dd;border-radius:30px;padding:8px 12px;color:#c2dfdd;font-size:11px;white-space:nowrap;pointer-events:none}
+.panel{padding:15px}
+h2{font-size:17px;margin:0 0 10px}
+h3{font-size:11px;margin:16px 0 7px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+p{font-size:12px;line-height:1.7;color:var(--muted)}
+.buttons{display:flex;gap:7px;flex-wrap:wrap}
+button{border:1px solid #658590;border-radius:9px;background:#285365;color:#eaf8f6;padding:9px 11px;cursor:pointer;font:inherit;font-weight:660;min-height:42px}
+button.on{border-color:var(--accent);background:var(--accent);color:#163841}
+button:disabled{opacity:.42}
+input[type=range]{width:100%;accent-color:var(--accent)}
+label{font-size:12px;color:#e1efeb;display:flex;align-items:center;gap:8px}
+input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent)}
+.status{border:1px solid #4f7985;background:#0a2d3c;border-radius:10px;padding:11px;font-size:12px;line-height:1.7}
+.warning{border:1px solid #8d6f52;background:#40372e;color:#f3ddbf;border-radius:10px;padding:11px;font-size:12px;line-height:1.6}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.stats div{background:#0b2d3c;border-radius:10px;padding:10px}
+.stats strong{display:block;font-size:18px}
+.stats small{font-size:10px;color:var(--muted)}
+a{color:var(--accent)}
+@media(max-width:760px){.layout{grid-template-columns:1fr}.stage{height:61vh;min-height:430px}}
+</style></head><body>
+<main>
+<div class="top"><span>HOME WORKOUTS · OPENSIM × ANATOMY</span><a href="./anatomy-reference.html">К исходному атласу</a></div>
+<h1>Первая подвижная рука — кости атласа + риг OpenSim</h1>
+<p class="intro">Настоящие кости <b>правой руки Écorché</b> остаются в своей исходной анатомической позе. К ним применяется движение пальцев и локтевого сустава, экспортированное из <b>AAH / OpenSim 4.6</b>. Это отдельный эксперимент, не затрагивающий прежнюю рабочую модель.</p>
+<div class="layout">
+<div>
+<section class="card">
+<div class="stage" id="stage">
+<canvas id="scene" aria-label="Правое предплечье и кисть анатомического атласа с экспериментальным OpenSim ригом"></canvas>
+<div class="hud" id="hud">Подключаю Écorché и OpenSim 4.6…</div>
+<div class="hint">Пальцем вращать · двумя приближать</div>
+</div></section>
+<section class="card panel">
+<h2>Что проверяем</h2>
+<div class="warning"><b>Это пробное перенесение кинематики, не готовая биомеханическая модель.</b> Суставы AAH и атлас имеют разную геометрию и положения. Здесь их совмещение вычислено по центрам одноимённых костей запястья и пясти; положение локтевого центра оценено по поверхностям плечевой и локтевой костей. Точность суставных поверхностей, сухожилия, мышцы, столкновения и усилия не проверены. Комбинация жестов — визуальная интерполяция отдельных OpenSim-траекторий.</div>
+<p>Исходники: <a href="https://github.com/Charleeh/ecorche" target="_blank" rel="noopener">Écorché / BodyParts3D / Z-Anatomy</a> (CC BY-SA 4.0), <a href="https://github.com/nishbo/ms_arm_and_hand" target="_blank" rel="noopener">AAH OpenSim</a> (MIT). В анатомическом источнике отсутствуют две отдельные сетки запястья — трёхгранная и трапециевидная кости; для этого опыта они <b>не создаются искусственно</b>.</p>
+</section>
+</div>
+<aside>
+<section class="card panel">
+<h2>Управление ригом</h2>
+<div id="status" class="status">Читаю анатомическую геометрию и исходные движения суставов…</div>
+<h3>Локоть · координата AAH ra_el_e_f</h3>
+<input type="range" id="elbow" min="0" max="120" value="0" step="1" disabled aria-label="Сгибание локтя">
+<div id="elbowValue" style="font-size:12px;color:var(--muted)">0°</div>
+<h3>Сгибание пальцев · AAH</h3>
+<div class="buttons"><button data-pose="curl" class="on">Сжать пальцы</button><button data-pose="cylinder">Поза для цилиндра</button></div>
+<input type="range" id="finger" min="0" max="100" value="0" step="1" disabled aria-label="Сгибание пальцев">
+<div id="fingerValue" style="font-size:12px;color:var(--muted)">0%</div>
+<h3>Сравнение</h3>
+<div class="buttons"><button data-mode="rig" class="on">Риг AAH</button><button data-mode="source">Без движений</button></div>
+<label style="margin-top:11px"><input type="checkbox" id="ghost"> Показывать исходную позу полупрозрачно</label>
+<h3>Ракурс</h3>
+<div class="buttons">
+<button data-view="rightarm" class="on">Правая рука</button>
+<button data-view="front">Всё тело</button>
+<button data-view="side">Сбоку</button>
+</div>
+<h3>Контроль совмещения</h3>
+<div class="stats">
+<div><strong id="boneCount">—</strong><small>оригинальных костей руки</small></div>
+<div><strong id="registration">—</strong><small>ошибка сопоставления ориентиров</small></div>
+</div>
+<p id="accuracyText">Геометрию кисти сопоставим по полулунной кости и второй, третьей и пятой пястным костям. Это проверяемая регистрация, а не ручная подгонка костей.</p>
+<div class="buttons"><button id="reset">Исходная поза</button></div>
+</section>
+</aside>
+</div>
+</main>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from "three";
+import {OrbitControls} from "three/addons/controls/OrbitControls.js";
+import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
+import {MeshoptDecoder} from "three/addons/libs/meshopt_decoder.module.js";
+const $=s=>document.querySelector(s),V=a=>new THREE.Vector3(...a),M4=()=>new THREE.Matrix4();
+const rows=r=>M4().set(r[0][0],r[0][1],r[0][2],0,r[1][0],r[1][1],r[1][2],0,r[2][0],r[2][1],r[2][2],0,0,0,0,1);
+const frameM=f=>{const m=rows(f.R);m.setPosition(V(f.p));return m};
+const scene=new THREE.Scene(),canvas=$("#scene"),stage=$("#stage"),camera=new THREE.PerspectiveCamera(37,1,.01,25);
+const renderer=new THREE.WebGLRenderer({canvas,alpha:true,antialias:true,preserveDrawingBuffer:true});
+renderer.setClearColor(0x092739,0);renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.35));renderer.outputColorSpace=THREE.SRGBColorSpace;
+scene.add(new THREE.HemisphereLight(0xeafaf4,0x37566b,2.35));
+const lamp=new THREE.DirectionalLight(0xffefd9,2.15);lamp.position.set(3,4,4);scene.add(lamp);
+const controls=new OrbitControls(camera,canvas);controls.enableDamping=true;controls.minDistance=.09;controls.maxDistance=8;
+const atlasSrc="https://raw.githubusercontent.com/Charleeh/ecorche/320805e06aee51e2e6f6b22533eb2a59d43f2d4d/model/ecorche.meshopt.glb";
+const sourceVTP="https://raw.githubusercontent.com/nishbo/ms_arm_and_hand/main/AAH%20Model/Geometry/";
+const nameMap={
+ RA1H:"Right humerus",RA2U:"Right ulna",RA2R:"Right radius",
+ RA3L:"Right lunate",RA3S:"Right scaphoid",RA3P:"Right pisiform",
+ RA3C:"Right capitate",RA3T:"Right trapezium",RA3H:"Right hamate",
+ RA4M1:"Right first metacarpal bone",RA4M2:"Right second metacarpal bone",
+ RA4M3:"Right third metacarpal bone",RA4M4:"Right fourth metacarpal bone",
+ RA4M5:"Right fifth metacarpal bone",
+ RA5P1:"Proximal phalanx of right thumb",RA6D1:"Distal phalanx of right thumb",
+ RA5P2:"Proximal phalanx of right index finger",RA6M2:"Middle phalanx of right index finger",RA7D2:"Distal phalanx of right index finger",
+ RA5P3:"Proximal phalanx of right middle finger",RA6M3:"Middle phalanx of right middle finger",RA7D3:"Distal phalanx of right middle finger",
+ RA5P4:"Proximal phalanx of right ring finger",RA6M4:"Middle phalanx of right ring finger",RA7D4:"Distal phalanx of right ring finger",
+ RA5P5:"Proximal phalanx of right little finger",RA6M5:"Middle phalanx of right little finger",RA7D5:"Distal phalanx of right little finger"
+};
+const landmarks=[
+ ["RA3L","lunate.vtp"],["RA4M2","2mc.vtp"],["RA4M3","3mc.vtp"],["RA4M5","5mc.vtp"],
+ ["RA2R","radius.vtp"]
+];
+let atlas=null,original=[],bones=[],rig=new Map(),poseFrames=null,elbowFrames=null,registration=null;
+let elbow=0,finger=0,pose="curl",mode="rig",view="rightarm",ready=false,sourceAtlas=null;
+const sourceCenters=new Map(),targetCenters=new Map(),sourceRest=new Map();
+const nameOf=x=>x.userData?.name||x.name;
+function status(s){$("#status").textContent=s}
+function vecCenter(mesh){
+ mesh.geometry.computeBoundingBox();
+ const center=mesh.geometry.boundingBox.getCenter(new THREE.Vector3());
+ return center.applyMatrix4(mesh.matrixWorld);
+}
+function parseVtpCenter(xmlStr,file){
+ const doc=new DOMParser().parseFromString(xmlStr,"application/xml");
+ if(doc.querySelector("parsererror"))throw Error("Невалидный VTP "+file);
+ const points=doc.querySelector("VTKFile > PolyData > Piece > Points > DataArray");
+ if(!points||points.getAttribute("format")!=="ascii")throw Error("AAH не ASCII VTP "+file);
+ const vals=(points.textContent||"").trim().split(/\s+/).map(Number);
+ if(!vals.length||vals.length%3!==0||vals.some(x=>!Number.isFinite(x)))throw Error("Неизвестные координаты VTP "+file);
+ const mn=new THREE.Vector3(Infinity,Infinity,Infinity),mx=new THREE.Vector3(-Infinity,-Infinity,-Infinity);
+ for(let i=0;i<vals.length;i+=3){const v=new THREE.Vector3(vals[i],vals[i+1],vals[i+2]);mn.min(v);mx.max(v)}
+ return mn.add(mx).multiplyScalar(.5);
+}
+function basisFromCenters(C){
+ const wrist=C.get("RA3L");
+ const spread=C.get("RA4M2").clone().sub(C.get("RA4M5"));
+ const palm=C.get("RA4M3").clone().sub(wrist);
+ if(spread.length()<.025||palm.length()<.02)throw Error("Недостаточно отдельных анатомических ориентиров");
+ const y=palm.normalize(),x=spread.addScaledVector(y,-spread.dot(y)).normalize();
+ const z=x.clone().cross(y).normalize();
+ x.crossVectors(y,z).normalize();
+ return M4().makeBasis(x,y,z);
+}
+function deriveRegistration(){
+ const srcBasis=basisFromCenters(sourceCenters),dstBasis=basisFromCenters(targetCenters);
+ const rot=dstBasis.clone().multiply(srcBasis.clone().invert());
+ const quat=new THREE.Quaternion().setFromRotationMatrix(rot);
+ const sourceW=sourceCenters.get("RA3L"),targetW=targetCenters.get("RA3L");
+ const ratios=[
+  targetCenters.get("RA4M3").distanceTo(targetW)/sourceCenters.get("RA4M3").distanceTo(sourceW),
+  targetCenters.get("RA4M2").distanceTo(targetCenters.get("RA4M5"))/
+  sourceCenters.get("RA4M2").distanceTo(sourceCenters.get("RA4M5")),
+ ];
+ const scale=(ratios[0]+ratios[1])/2;
+ if(!(scale>.45&&scale<2.5))throw Error("Несоизмеримые размеры анатомических источников "+scale);
+ const G=M4().compose(targetW,quat,new THREE.Vector3(scale,scale,scale))
+            .multiply(M4().makeTranslation(-sourceW.x,-sourceW.y,-sourceW.z));
+ const err=[];
+ for(const id of ["RA3L","RA4M2","RA4M3","RA4M5","RA2R"]){
+  err.push({id,mm:sourceCenters.get(id).clone().applyMatrix4(G).distanceTo(targetCenters.get(id))*1000});
+ }
+ const palm=err.filter(x=>x.id!=="RA2R");
+ const rms=Math.sqrt(palm.reduce((a,x)=>a+x.mm*x.mm,0)/palm.length);
+ return {G,inverse:G.clone().invert(),rot:quat,scale,rms,errors:err};
+}
+function sourceMotion(body,samples,u){
+ const f=Math.max(0,Math.min(1,u))*(samples.length-1);
+ const i=Math.min(samples.length-2,Math.floor(f)),frac=f-i;
+ const A=samples[i].frames[body],B=samples[i+1].frames[body];
+ if(!A||!B)throw Error("OpenSim body pose missing "+body);
+ const p=V(A.p).lerp(V(B.p),frac);
+ const qA=new THREE.Quaternion().setFromRotationMatrix(rows(A.R)),
+       qB=new THREE.Quaternion().setFromRotationMatrix(rows(B.R));
+ return M4().compose(p,qA.slerp(qB,frac),new THREE.Vector3(1,1,1));
+}
+function getElbowQuaternion(angle){
+ const arr=elbowFrames.samples;
+ const c=Math.min(Math.max(angle,arr[0].elbowFlexionDeg),arr[arr.length-1].elbowFlexionDeg);
+ let i=0;while(i<arr.length-2&&arr[i+1].elbowFlexionDeg<c)i++;
+ const a=arr[i],b=arr[i+1],t=(c-a.elbowFlexionDeg)/(b.elbowFlexionDeg-a.elbowFlexionDeg);
+ const qa=new THREE.Quaternion().setFromRotationMatrix(rows(a.frames.RA2U.R));
+ const qb=new THREE.Quaternion().setFromRotationMatrix(rows(b.frames.RA2U.R));
+ const qr=new THREE.Quaternion().setFromRotationMatrix(rows(arr[0].frames.RA2U.R));
+ return qa.slerp(qb,t).multiply(qr.invert());
+}
+function elbowPivotFromOriginal(){
+ const h=bones.find(b=>nameOf(b)===nameMap.RA1H),u=bones.find(b=>nameOf(b)===nameMap.RA2U);
+ if(!h||!u)throw Error("Нет плечевой/локтевой костей");
+ const avgEnd=(obj,isMin)=>{
+  const geo=obj.geometry,arr=geo.getAttribute("position");obj.updateMatrixWorld(true);
+  let limit=isMin?Infinity:-Infinity;
+  const local=new THREE.Vector3();
+  for(let i=0;i<arr.count;i++){local.fromBufferAttribute(arr,i).applyMatrix4(obj.matrixWorld);limit=isMin?Math.min(limit,local.y):Math.max(limit,local.y)}
+  const threshold=.018;
+  const sum=new THREE.Vector3();let n=0;
+  for(let i=0;i<arr.count;i++){
+   local.fromBufferAttribute(arr,i).applyMatrix4(obj.matrixWorld);
+   if(Math.abs(local.y-limit)<threshold){sum.add(local);n++}
+  }
+  if(!n)throw Error("Нет конечной суставной поверхности");
+  return sum.multiplyScalar(1/n);
+ };
+ const lowerH=avgEnd(h,true),upperU=avgEnd(u,false);
+ const midpoint=lowerH.clone().add(upperU).multiplyScalar(.5);
+ return {p:midpoint,gapMm:lowerH.distanceTo(upperU)*1000};
+}
+function getElbowWorld(){
+ const source=registration.rot.clone();
+ const q=getElbowQuaternion(elbow);
+ return source.multiply(q).multiply(registration.rot.clone().invert()).normalize();
+}
+function applyPose(){
+ if(!ready)return;
+ const q=getElbowWorld();
+ const pivot=sourceAtlas.p;
+ const E=M4().makeTranslation(pivot.x,pivot.y,pivot.z)
+  .multiply(M4().makeRotationFromQuaternion(q))
+  .multiply(M4().makeTranslation(-pivot.x,-pivot.y,-pivot.z));
+ const steps=poseFrames.right.trajectories[pose];
+ for(const [body,r] of rig){
+  const start=sourceRest.get(body);
+  let delta=M4();
+  if(start&&steps[0].frames[body]){
+   const now=sourceMotion(body,steps,finger);
+   delta.copy(registration.G).multiply(now).multiply(start.clone().invert()).multiply(registration.inverse);
+  }
+  const M=r.rest.clone();
+  if(body!=="RA1H")M.premultiply(E);
+  // Body-specific finger motion in atlas coordinate, conjugated from source AAH.
+  if(body!=="RA1H")M.multiplyMatrices(E,delta.clone().multiply(r.rest));
+  else M.copy(r.rest);
+  r.mesh.matrix.copy(M);r.mesh.matrixWorldNeedsUpdate=true;
+ }
+ scene.updateMatrixWorld(true);
+ $("#elbowValue").textContent=elbow+"°";
+ $("#fingerValue").textContent=Math.round(finger*100)+"%";
+}
+function appearance(){
+ for(const r of rig.values()){
+  r.mesh.visible=mode==="rig";
+  r.source.visible=mode==="source"||$("#ghost").checked;
+  if(r.source.visible){
+   r.source.material.transparent=true;
+   r.source.material.opacity=mode==="source"?1:.17;
+  }
+ }
+ document.querySelectorAll("[data-mode]").forEach(b=>b.classList.toggle("on",b.dataset.mode===mode));
+ if(ready&&view==="rightarm")fit();
+}
+function fit(){
+ if(!ready)return;
+ scene.updateMatrixWorld(true);
+ const relevant=view==="rightarm"?[...rig.values()].map(x=>mode==="rig"?x.mesh:x.source):bones;
+ const box=new THREE.Box3();for(const b of relevant)if(b.visible)box.expandByObject(b);
+ if(box.isEmpty())return;
+ const centre=box.getCenter(new THREE.Vector3()),size=box.getSize(new THREE.Vector3());
+ const aspect=Math.max(.35,camera.aspect),tan=Math.tan(THREE.MathUtils.degToRad(camera.fov/2));
+ const d=1.6*Math.max(size.y/(2*tan),size.x/(2*tan*aspect),size.z/(2*tan*aspect),.12);
+ const dir=view==="side"?new THREE.Vector3(1,.06,.03):new THREE.Vector3(0,.06,1);
+ controls.target.copy(centre);camera.position.copy(centre).add(dir.normalize().multiplyScalar(d));camera.lookAt(centre);controls.update();
+ document.querySelectorAll("[data-view]").forEach(b=>b.classList.toggle("on",b.dataset.view===view));
+}
+function buildRig(){
+ atlas.updateMatrixWorld(true);
+ bones=original.filter(o=>o.isMesh&&o.userData.layer==="skeleton"&&o.userData.tissue==="bone");
+ const map=new Map(bones.map(o=>[nameOf(o),o]));
+ for(const [body,name] of Object.entries(nameMap)){
+  const src=map.get(name);
+  if(!src)throw Error("В атласе отсутствует кость "+name);
+  const cp=src.clone(false);
+  cp.geometry=src.geometry;
+  cp.material=new THREE.MeshStandardMaterial({color:/^RA[567]/.test(body)?0xe2c5a5:0xdcdad0,metalness:0,roughness:.73,side:THREE.DoubleSide});
+  cp.matrixAutoUpdate=false;
+  cp.matrix.copy(src.matrixWorld);
+  cp.matrixWorldNeedsUpdate=true;
+  scene.add(cp);
+  rig.set(body,{mesh:cp,source:src,rest:src.matrixWorld.clone()});
+ }
+ if(rig.size!==28)throw Error("Неверное количество анатомически сопоставленных костей "+rig.size);
+ for(const [body] of landmarks)targetCenters.set(body,vecCenter(rig.get(body).source));
+ for(const b of original)if(b.isMesh&&b.userData.layer!=="skeleton")b.visible=false;
+ for(const b of bones)if(![...rig.values()].some(x=>x.source===b)){
+  b.material=new THREE.MeshStandardMaterial({color:0x809caa,roughness:.85,transparent:true,opacity:.20,depthWrite:false,side:THREE.DoubleSide});
+ }
+ for(const r of rig.values()){
+  r.source.material=new THREE.MeshStandardMaterial({color:0xdbc6a5,transparent:true,opacity:.15,roughness:.75,depthWrite:false,side:THREE.DoubleSide});
+  r.source.visible=false;
+ }
+}
+function getJSON(url){return fetch(url).then(r=>{if(!r.ok)throw Error("HTTP "+r.status+" "+url);return r.json()})}
+async function init(){
+ try{
+  const [gltf,fingers,elbows]=await Promise.all([
+    new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(atlasSrc),
+    getJSON("./assets/aah-hand-poses.json"),
+    getJSON("./assets/aah-elbow-source-poses.json")
+  ]);
+  if(fingers.schema!=="AAH-bilateral-OpenSim-pose-export-v1"||elbows.schema!=="AAH-OpenSim46-elbow-source-poses-v1"||
+     elbows.coordinate!=="ra_el_e_f"||!fingers.right.actualOpenSimAssemblyForEachSample)
+     throw Error("Неверный формат экспортированных движений OpenSim");
+  poseFrames=fingers;elbowFrames=elbows;
+  atlas=gltf.scene;scene.add(atlas);atlas.updateMatrixWorld(true);
+  atlas.traverse(o=>{if(o.isMesh)original.push(o)});
+  buildRig();
+  status("Сопоставляю полулунную и пястные кости двух источников…");
+  const neutral=fingers.right.trajectories.curl[0].frames;
+  for(const [body,file] of landmarks){
+   const req=await fetch(sourceVTP+encodeURIComponent(file));
+   if(!req.ok)throw Error("Не удалось получить оригинальную кость AAH "+file);
+   const center=parseVtpCenter(await req.text(),file);
+   sourceCenters.set(body,center.applyMatrix4(frameM(neutral[body])));
+  }
+  for(const id of Object.keys(nameMap))sourceRest.set(id,frameM(neutral[id]));
+  registration=deriveRegistration();
+  sourceAtlas=elbowPivotFromOriginal();
+  $("#boneCount").textContent=rig.size.toString();
+  $("#registration").textContent=registration.rms.toFixed(1).replace(".",",")+" мм";
+  $("#accuracyText").textContent=
+    "Среднее квадратичное расхождение 4 ориентиров кисти: "+registration.rms.toFixed(2).replace(".",",")+" мм. "+
+    "Контрольный ориентир лучевой кости: "+registration.errors.find(e=>e.id==="RA2R").mm.toFixed(1).replace(".",",")+
+    " мм. Расхождение поверхностей локтя по оценке: "+sourceAtlas.gapMm.toFixed(1).replace(".",",")+" мм. "+
+    "Эти числа оценивают регистрацию, но не суставную валидность.";
+  if(registration.rms>35||registration.errors.find(x=>x.id==="RA2R").mm>100)
+    throw Error("Слишком большое рассогласование анатомических ориентиров: ручную анимацию блокируем. "+$("#accuracyText").textContent);
+  ready=true;
+  $("#elbow").disabled=false;$("#finger").disabled=false;
+  status("Готова пробная анимация: "+rig.size+" оригинальных костей Écorché. Риг AAH задаёт сгибание локтя и пальцев; остальные кости атласа не меняются.");
+  $("#hud").textContent="Écorché × AAH / OpenSim 4.6 · 28 атласных костей · эксперимент";
+  applyPose();appearance();fit();
+ }catch(e){console.error("Atlas-to-AAH arm retarget:",e);status("Не удалось построить проверенный риг: "+e.message);$("#hud").textContent="Эксперимент не прошёл проверку источников";}
+}
+$("#elbow").oninput=e=>{elbow=Number(e.target.value);applyPose()};
+$("#finger").oninput=e=>{finger=Number(e.target.value)/100;applyPose()};
+document.querySelectorAll("[data-pose]").forEach(b=>b.onclick=()=>{pose=b.dataset.pose;document.querySelectorAll("[data-pose]").forEach(k=>k.classList.toggle("on",k.dataset.pose===pose));applyPose()});
+document.querySelectorAll("[data-view]").forEach(b=>b.onclick=()=>{view=b.dataset.view;fit()});
+document.querySelectorAll("[data-mode]").forEach(b=>b.onclick=()=>{mode=b.dataset.mode;appearance()});
+$("#ghost").onchange=appearance;
+$("#reset").onclick=()=>{elbow=0;finger=0;pose="curl";$("#elbow").value="0";$("#finger").value="0";document.querySelectorAll("[data-pose]").forEach(b=>b.classList.toggle("on",b.dataset.pose==="curl"));applyPose();fit()};
+new ResizeObserver(()=>{renderer.setSize(stage.clientWidth,stage.clientHeight,false);camera.aspect=stage.clientWidth/Math.max(1,stage.clientHeight);camera.updateProjectionMatrix()}).observe(stage);
+(function render(){requestAnimationFrame(render);controls.update();renderer.render(scene,camera)})();
+window.__armQA={
+ ready:()=>ready,boneCount:()=>rig.size,sourceCount:()=>bones.length,
+ registration:()=>registration?{rms:registration.rms,scale:registration.scale,errors:registration.errors}:null,
+ elbowPivot:()=>sourceAtlas?.p.toArray(),elbowGap:()=>sourceAtlas?.gapMm,
+ elbowAngle:()=>elbow,fingerProgress:()=>finger,view:()=>view,mode:()=>mode,
+ coordinates:()=>elbowFrames?.coordinate,
+ boneOrigin:id=>rig.get(id)?.mesh.getWorldPosition(new THREE.Vector3()).toArray(),
+ sourceBoneOrigin:id=>rig.get(id)?.source.getWorldPosition(new THREE.Vector3()).toArray(),
+ meshWorldPosition:id=>{const r=rig.get(id);return r?.mesh.localToWorld(new THREE.Vector3()).toArray()},
+ visible:()=>[...rig.values()].filter(r=>r.mesh.visible).length
+};
+init();
+</script></body></html>
