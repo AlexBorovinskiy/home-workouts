@@ -1,0 +1,40 @@
+name: Test MIT AAH scapula and thumb kinematics
+on:
+  push:
+    paths:
+      - 'opensim-lab/test_aah_shoulder.py'
+      - '.github/workflows/qa-aah-shoulder.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install OpenSim 4.6
+        run: python -m pip install 'opensim==4.6'
+      - name: Obtain AAH research models directly from MIT GitHub source
+        shell: bash
+        run: |
+          curl -fL --retry 2 --max-time 90 \
+            'https://raw.githubusercontent.com/nishbo/ms_arm_and_hand/master/AAH%20Model/RightArmAndHand_NoMuscles.osim' \
+            -o /tmp/aah-right.osim
+          test -s /tmp/aah-right.osim
+      - name: Run native coordinate assembly and movement tests
+        run: |
+          mkdir -p qa-aah-shoulder
+          python opensim-lab/test_aah_shoulder.py \
+            --model /tmp/aah-right.osim \
+            --output qa-aah-shoulder/diagnostics.json \
+            --side right
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: aah-right-arm-and-thumb-opensim-qa
+          path: qa-aah-shoulder/
+          retention-days: 7
