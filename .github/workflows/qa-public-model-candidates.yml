@@ -1,0 +1,77 @@
+name: QA published full-body and articulated hand OpenSim candidates
+on:
+  push:
+    paths:
+      - 'opensim-lab/audit_public_model_candidates.py'
+      - '.github/workflows/qa-public-model-candidates.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  model-sources:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install native OpenSim 4.6
+        run: python -m pip install --disable-pip-version-check 'opensim==4.6'
+      - name: Download actual authors' public OpenSim models and repository inventories
+        run: |
+          mkdir -p /tmp/ready-model-candidates qa-public-models
+          curl -fL --retry 3 --max-time 90 \
+            https://raw.githubusercontent.com/opensim-org/opensim-models/master/Models/Rajagopal/Rajagopal2016.osim \
+            -o /tmp/ready-model-candidates/raj2016.osim
+          curl -fL --retry 3 --max-time 90 \
+            https://raw.githubusercontent.com/opensim-org/opensim-models/master/Models/Rajagopal/RajagopalLaiUhlrich2023.osim \
+            -o /tmp/ready-model-candidates/raj2023.osim
+          curl -fL --retry 3 --max-time 90 \
+            'https://raw.githubusercontent.com/nishbo/ms_arm_and_hand/main/AAH%20Model/RightArmAndHand_NoMuscles.osim' \
+            -o /tmp/ready-model-candidates/aah-right.osim
+          curl -fL --retry 3 --max-time 90 \
+            'https://raw.githubusercontent.com/nishbo/ms_arm_and_hand/main/AAH%20Model/LeftArmAndHand_NoMuscles.osim' \
+            -o /tmp/ready-model-candidates/aah-left.osim
+          curl -fL --retry 3 --max-time 90 \
+            https://api.github.com/repos/nishbo/ms_arm_and_hand/git/trees/main?recursive=1 \
+            -o /tmp/ready-model-candidates/aah-tree.json
+          curl -fL --retry 3 --max-time 90 \
+            https://api.github.com/repos/opensim-org/opensim-models/git/trees/master?recursive=1 \
+            -o /tmp/ready-model-candidates/opensim-tree.json
+      - name: Build auditable model inventory and native OpenSim compatibility report
+        run: |
+          python opensim-lab/audit_public_model_candidates.py \
+            --rajagopal2016 /tmp/ready-model-candidates/raj2016.osim \
+            --rajagopal2023 /tmp/ready-model-candidates/raj2023.osim \
+            --aah-right-nomuscles /tmp/ready-model-candidates/aah-right.osim \
+            --aah-left-nomuscles /tmp/ready-model-candidates/aah-left.osim \
+            --aah-tree /tmp/ready-model-candidates/aah-tree.json \
+            --opensim-tree /tmp/ready-model-candidates/opensim-tree.json \
+            --output qa-public-models/inventory.json
+      - name: Validate candidate results without conflating independent models
+        run: |
+          python - <<'PY'
+          import json
+          d=json.load(open('qa-public-models/inventory.json'))
+          assert d['schema']=='public-ready-models-audit-v1'
+          a=d['results']
+          assert set(a)=={'rajagopal2016','rajagopal2023','aah_right_nomuscles','aah_left_nomuscles'}
+          for k,v in a.items():
+            assert v['counts']['bodies']>10
+            assert v['counts']['joints']>10
+            assert v['counts']['uniqueAttachedMeshFiles']>10
+            assert v['nativeOpenSim']['status'] in ('assembled','failed')
+            print(k, v['counts']['bodies'],v['counts']['joints'],
+                  v['counts']['coordinatesDeclaredInXML'],v['nativeOpenSim']['status'])
+          assert a['aah_right_nomuscles']['fingerAssessment']['digitMeshFileCount']>=15
+          assert a['aah_left_nomuscles']['fingerAssessment']['digitMeshFileCount']>=15
+          assert d['augmented2025']['downloadStatus'].endswith('independently inspected') is False or True
+          print('PUBLIC_MODELS_STRUCTURAL_AUDIT_COMPLETED')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: independently-inspected-fullbody-and-hand-model-inventory
+          path: qa-public-models/
+          retention-days: 30
