@@ -1,0 +1,86 @@
+name: Audit full skeleton posture and cross-model pelvic bone contact
+on:
+  push:
+    paths:
+      - 'opensim-lab/audit_full_skeleton_posture.py'
+      - '.github/workflows/qa-full-skeleton-posture.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install native mesh nearest-neighbour dependencies
+        run: python -m pip install 'numpy>=1.26,<3' 'scipy>=1.12,<2'
+      - name: Download original FHS dataset and source Rajagopal + MASI bone geometry
+        run: |
+          mkdir -p /tmp/fullskel-raj /tmp/fullskel-masi
+          curl -fL --retry 3 --max-time 180 \
+            'https://zenodo.org/records/18259702/files/FHS_dataset_4.x.zip?download=1' \
+            -o /tmp/fhs-original-scientific.zip
+          for f in r_femur r_tibia r_fibula r_patella r_talus r_foot r_bofoot l_femur l_tibia l_fibula l_patella l_talus l_foot l_bofoot r_pelvis l_pelvis; do
+            curl -fL --retry 3 --max-time 90 \
+              "https://raw.githubusercontent.com/opensim-org/opensim-models/master/Geometry/$f.vtp" \
+              -o "/tmp/fullskel-raj/$f.vtp"
+          done
+          for f in cerv1 rotatedcerv7 skull jaw ribcage; do
+            curl -fL --retry 3 --max-time 90 \
+              "https://raw.githubusercontent.com/MyoHub/myoconverter/main/models/osim/Neck6D/Geometry/$f.vtp" \
+              -o "/tmp/fullskel-masi/$f.vtp"
+          done
+      - name: Analyse actual bone surfaces and native OpenSim assembled body frames
+        run: |
+          python opensim-lab/audit_full_skeleton_posture.py \
+            --fhs-zip /tmp/fhs-original-scientific.zip \
+            --fhs-frames opensim-lab/assets/fhs-original-frames.json \
+            --raj-frames opensim-lab/assets/rajagopal-lower-limbs.json \
+            --masi-frames opensim-lab/assets/masi-neck-native.json \
+            --masi-upper opensim-lab/assets/masi-upper-addendum.json \
+            --neck-registration opensim-lab/assets/c7-t1-registration.json \
+            --raj-geometry /tmp/fullskel-raj \
+            --masi-geometry /tmp/fullskel-masi \
+            --output opensim-lab/assets/full-skeleton-posture-audit.json
+      - name: Verify invariants without diagnosing posture
+        run: |
+          python - <<'PY'
+          import json,math
+          f='opensim-lab/assets/full-skeleton-posture-audit.json'
+          j=json.load(open(f))
+          assert j['schema']=='full-skeleton-posture-surface-audit-v1'
+          m=j['measurements']
+          assert 1050<m['visibleSkeletonTopToFootBottomMm']<2100
+          assert 150<m['shoulderJointFrameWidthMm']<800
+          assert 100<m['hipJointFrameWidthMm']<500
+          assert m['footBottomYSymmetryMm']<5
+          assert j['summary']['noSourceAnatomyModified'] is True
+          assert j['flags']['anatomicalPelvisHipJoinValidated'] is False
+          assert j['flags']['neutralPostureValidated'] is False
+          for side in ['r','l']:
+            a=j['hipSurfaceCompatibility'][side]['pelvisFHSAtSource']
+            b=j['hipSurfaceCompatibility'][side]['femurToSourceRajPelvis']
+            assert math.isfinite(a['minimumMm']) and math.isfinite(b['minimumMm'])
+            print('HIP_CROSS_SOURCE_FIT',side,'FHS',a,'Raj',b)
+          print('POSTURE_AUDIT_VALIDATED_AS_DIAGNOSTIC_ONLY')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: full-skeleton-source-surface-proportion-audit
+          path: opensim-lab/assets/full-skeleton-posture-audit.json
+          retention-days: 30
+      - name: Commit derived diagnostic report only
+        if: success() && github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add opensim-lab/assets/full-skeleton-posture-audit.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Store bone-surface and posture proportions diagnosis, retain source poses [skip ci]"
+            git push origin HEAD:main
+          fi
