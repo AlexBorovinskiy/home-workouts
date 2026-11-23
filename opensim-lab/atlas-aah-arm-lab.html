@@ -527,8 +527,10 @@ function planDumbbellGrip(){
   };
   const palm=samples[0].clouds.palm;
   let best=null;
-  for(let yy=-.010;yy<=.034001;yy+=.003){
-   for(let zz=.002;zz<=.050001;zz+=.003){
+  // Broad symmetric search allows the grip pocket to be on either side
+  // of the neutral palm normal; don't bias the handle above curled fingers.
+  for(let yy=-.032;yy<=.052001;yy+=.006){
+   for(let zz=-.041;zz<=.067001;zz+=.006){
     const palmGap=cloudMin(palm,yy,zz);
     let cost=44*Math.pow(palmGap-.007,2)+
       (palmGap<.002?650*Math.pow(.002-palmGap,2):0);
@@ -537,13 +539,16 @@ function planDumbbellGrip(){
     for(const digit of Object.keys(contactDigits)){
      let choice=null;
      for(const sample of samples){
+      // Cylinder grip must actually FLEX all four fingers.
+      // A straight finger touching metal is not a grasp.
+      if(sample.u<(digit==="thumb"?.5:.7))continue;
       const d=cloudMin(sample.clouds[digit],yy,zz);
       const collision=cloudMin(sample.clouds["collision_"+digit],yy,zz);
       const penalty=22*Math.pow(d-.006,2)+
        (d>.024?130*Math.pow(d-.024,2):0)+
        (d<.003?240*Math.pow(.003-d,2):0)+
        (collision<.002?1200*Math.pow(.002-collision,2):0)+
-       .00001*Math.pow(sample.u-.8,2);
+       .00035*Math.pow(sample.u-.9,2);
       if(!choice||penalty<choice.penalty)
        choice={u:sample.u,gap:d,collision,penalty};
      }
@@ -552,7 +557,7 @@ function planDumbbellGrip(){
      if(choice.collision<.002)penetrations++;
      if(choice.gap>=.003&&choice.gap<=.024&&choice.collision>=.002)contacts++;
     }
-    cost+=.00004*Math.pow(5-contacts,2);
+    cost+=.00012*Math.pow(5-contacts,2);
     if(!best||cost<best.cost)
      best={y:yy,z:zz,cost,phases,gaps,collisions,palmGap,contacts,penetrations};
    }
@@ -566,7 +571,7 @@ function planDumbbellGrip(){
   gripPlan={y:best.y,z:best.z,origin:frame.origin.toArray(),
    x:frame.x.toArray(),normal:frame.z.toArray(),palmGapMm:best.palmGap*1000,
    status:best.penetrations===0&&best.contacts>=3?"geometry-pass":"needs-retarget",
-   sampledDigits:{...best.phases},contactCount:best.contacts,
+   sampledDigits:{...best.phases},minimumFlexion:0.7,contactCount:best.contacts,
    collisionCount:best.penetrations,
    score:{cost:best.cost,gap:best.gaps,collisionGap:best.collisions}};
   completed=true;return gripPlan;
