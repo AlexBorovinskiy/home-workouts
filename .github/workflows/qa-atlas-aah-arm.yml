@@ -49,7 +49,7 @@ jobs:
             await page.waitForFunction(()=>window.__armQA?.ready()||
               document.querySelector('#status')?.textContent?.includes('Не удалось построить'),null,{timeout:120000});
             const open=await read();
-            if(!open.ready||open.bones!==28||open.atlasBones!==198||open.visible!==25||
+            if(!open.ready||open.bones!==28||open.atlasBones!==198||open.visible!==27||
                open.coordinate!=='ra_el_e_f'||open.reg.rms>35||open.reg.scale<.45||
                open.axisMode!=='anatomic'||Math.abs(open.axis[0])!==1||
                !open.gripReady||!open.gripVisible||!open.contact||open.handleDiameter!==24)
