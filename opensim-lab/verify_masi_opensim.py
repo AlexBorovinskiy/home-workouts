@@ -19,7 +19,10 @@ def xml_inventory(path):
     model=root.find("Model")
     if model is None:raise ValueError("Missing OpenSim Model root")
     body_items=model.findall("./BodySet/objects/Body")
-    joint_objects=list(model.findall("./JointSet/objects/*"))
+    joint_objects=list(model.findall(".//*Joint"))
+    # OpenSim 3.x embeds the joint inside each Body, rather than a JointSet.
+    from collections import Counter
+    elementCounts=dict(Counter(x.tag for x in model.iter()))
     muscles=list(model.findall("./ForceSet/objects/*"))
     meshes=model.findall(".//Mesh")
     geom_files=sorted(set(v.text.strip() for v in model.findall(".//mesh_file") if v.text and v.text.strip()))
@@ -35,7 +38,7 @@ def xml_inventory(path):
     return {"modelName":model.get("name"),"opensimDocumentVersion":root.get("Version"),
       "bodyCountXml":len(body_items),"bodyNames":[b.get("name") for b in body_items],
       "candidateNeckAndLimbBodies":important,
-      "jointCountXml":len(joint_objects),"joints":linklist,
+      "jointCountXml":len(joint_objects),"joints":linklist,"xmlElementCounts":elementCounts,
       "forceObjectsXml":len(muscles),"meshCount":len(meshes),
       "referencedMeshFiles":geom_files,
       "sourceFileSizeBytes":pathlib.Path(path).stat().st_size}
