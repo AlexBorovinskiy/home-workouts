@@ -1,0 +1,364 @@
+<!doctype html><html lang="ru"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0c2b38"><link rel="icon" href="data:,">
+<title>Сборка скелета: FHS + подвижные кисти AAH</title>
+<style>
+:root{color-scheme:dark;--ink:#effaf4;--muted:#afced0;--mint:#9de1d1;--line:#4a7480;--pane:#163d4a}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(155deg,#1b4750,#0c293a 52%,#081e2b);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--ink)}
+main{max-width:1190px;margin:auto;padding:15px 12px 55px}
+header{display:flex;gap:10px;align-items:center;justify-content:space-between;color:var(--mint);font-size:11px;letter-spacing:.08em;font-weight:800}
+header a{font-size:12px;letter-spacing:0;border:1px solid var(--line);padding:9px 12px;border-radius:12px;color:var(--ink);text-decoration:none}
+h1{font-size:clamp(24px,4.8vw,38px);letter-spacing:-.035em;line-height:1.13;margin:23px 0 10px}
+.lead{line-height:1.7;color:var(--muted);margin:0 0 15px;max-width:890px}
+.layout{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(285px,.85fr);gap:12px}
+.card{border:1px solid var(--line);border-radius:15px;background:var(--pane);overflow:hidden;margin-bottom:12px}
+.stage{height:min(75vh,750px);min-height:475px;position:relative;touch-action:none;background:radial-gradient(ellipse at center,#315961 0%,#092739 76%)}
+canvas{display:block;width:100%;height:100%;touch-action:none}
+.hud{position:absolute;top:9px;left:9px;padding:8px 12px;background:#082c3de8;border:1px solid #5a8489;border-radius:10px;font-size:11px;pointer-events:none;line-height:1.5}
+.hint{position:absolute;bottom:9px;left:50%;transform:translateX(-50%);background:#0b3042bf;border-radius:25px;color:#c9e6e2;padding:7px 11px;font-size:11px;white-space:nowrap;pointer-events:none}
+.panel{padding:15px}h2{font-size:17px;margin:0 0 10px}h3{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:15px 0 8px}
+button,.action{color:var(--ink);font:inherit;font-weight:680;border:1px solid #5c8490;background:#285364;padding:9px 11px;min-height:42px;border-radius:9px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center}
+button.on{background:var(--mint);color:#10333b;border-color:var(--mint)}
+button:disabled{opacity:.45;cursor:not-allowed}
+.buttons{display:flex;gap:7px;flex-wrap:wrap}.box{border:1px solid var(--line);border-radius:10px;padding:11px;background:#0b2e3d;font-size:12px;line-height:1.65}
+.warn{background:#403528;border:1px solid #837150;color:#f2dcb8;border-radius:11px;padding:11px;font-size:12px;line-height:1.65}
+p{color:var(--muted);font-size:12px;line-height:1.75}a{color:var(--mint)}
+.check{display:flex;gap:8px;align-items:center;font-size:12px;min-height:32px}
+input[type=checkbox],input[type=range]{accent-color:var(--mint)}input[type=checkbox]{width:17px;height:17px}
+input[type=range]{width:100%}
+input[type=file]{display:none}
+label{font-size:12px;color:#e5f2ef}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat{padding:8px;text-align:center;background:#0b2e3d;border-radius:10px}
+.stat strong{display:block;font-size:24px}.stat span{font-size:10px;color:var(--muted)}
+.badge{color:var(--mint);font-weight:700}
+@media(max-width:760px){.layout{grid-template-columns:1fr}.stage{height:61vh;min-height:430px}.panel{padding:13px}}
+</style></head>
+<body><main>
+<header><span>HOME WORKOUTS · OPENSIM</span><a href="./aah-hand.html">К отдельной кисти</a></header>
+<h1>Единая сборка: туловище и подвижные кисти</h1>
+<p class="lead">Реальная геометрия <b>FHS</b>: голова, позвоночник, рёбра, плечевой пояс и руки. Вместо неподвижных кистей FHS можно включить суставные кисти <b>AAH</b> с движением всех пальцев. Совмещение выполняется по общей геометрии полулунной кости запястья, без ручного перемещения.</p>
+<div class="layout">
+<div>
+<section class="card"><div class="stage" id="stage">
+<canvas id="canvas" aria-label="Общая анатомическая модель FHS с подвижными AAH кистями"></canvas>
+<div class="hud" id="hud">FHS · подготавливаю научные данные</div>
+<div class="hint">Пальцем — вращать · двумя — приближать</div>
+</div></section>
+<section class="card panel">
+<h2>Ограничения этой сборки</h2>
+<div class="warn">Это пока <b>совмещённая визуализация</b>, а не одна валидированная динамическая модель OpenSim. Совпадение полулунной кости задаёт точное начальное положение, но другие кости запястья и фаланги в исходных моделях расположены по-разному. Суставные оси запястья, силы, массы и мышечные крепления ещё не согласованы. Шея FHS остаётся упрощённой, отдельные ноги добавим позднее.</div>
+<p><a href="https://zenodo.org/records/18259702" target="_blank" rel="noopener">Исходный архив FHS</a> · <a href="https://github.com/nishbo/ms_arm_and_hand" target="_blank" rel="noopener">Источник AAH (MIT)</a>. Файл ZIP FHS используется только на устройстве; 3D-сетки AAH загружаются непосредственно из открытого авторского репозитория.</p>
+</section>
+</div>
+<aside>
+<section class="card panel">
+<h2>Подготовка модели</h2>
+<div class="box" id="status">Проверяю наличие сохранённого научного архива FHS…</div>
+<div class="buttons" style="margin-top:10px">
+<button id="pick">Выбрать архив FHS</button>
+<a class="action" href="https://zenodo.org/records/18259702/files/FHS_dataset_4.x.zip?download=1" target="_blank" rel="noopener">Скачать ZIP</a>
+</div>
+<input id="file" type="file" accept=".zip,application/zip">
+<p>Если ты уже загружал архив в предыдущей лаборатории в этом браузере, страница попытается восстановить его автоматически.</p>
+<h3>Источник кистей</h3>
+<div class="buttons">
+<button data-hands="aah" class="on">Подвижные AAH</button>
+<button data-hands="fhs">Исходные FHS</button>
+</div>
+<h3>Положение пальцев</h3>
+<div class="buttons">
+<button data-pose="open" class="on">Разжаты</button>
+<button data-pose="curl">Сжать пальцы</button>
+<button data-pose="cylinder">Пробная поза хвата</button>
+</div>
+<input id="bend" type="range" min="0" max="100" value="0" step="1" aria-label="Степень сгибания обеих кистей">
+<div id="bendLabel" style="font-size:11px;color:var(--muted)">Сгибание: 0%</div>
+<h3>Ракурс</h3>
+<div class="buttons">
+<button data-view="front" class="on">Спереди</button>
+<button data-view="back">Сзади</button>
+<button data-view="right">Правая кисть</button>
+<button data-view="left">Левая кисть</button>
+</div>
+<h3>Видимость</h3>
+<label class="check"><input id="ribs" type="checkbox" checked> Рёбра и грудина</label>
+<label class="check"><input id="spine" type="checkbox" checked> Позвоночник</label>
+<label class="check"><input id="shoulders" type="checkbox" checked> Плечи и предплечья</label>
+<label class="check"><input id="head" type="checkbox" checked> Голова и шея FHS</label>
+<label class="check"><input id="pelvis" type="checkbox" checked> Таз</label>
+<div class="buttons" style="margin-top:9px"><button id="reset">Сбросить ракурс</button></div>
+<h3>Состав сцены</h3>
+<div class="stats">
+<div class="stat"><strong id="countFHS">—</strong><span>поверхностей FHS</span></div>
+<div class="stat"><strong id="countAAH">—</strong><span>сеток AAH</span></div>
+<div class="stat"><strong id="countRibs">—</strong><span>рёбер</span></div>
+</div>
+<p id="wristReport" class="box">Кисти AAH будут закреплены через одинаковые исходные сетки полулунных костей. Оригинальная поза FHS не используется как целевое положение каждого пальца.</p>
+</section></aside></div></main>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from "three";
+import {OrbitControls} from "three/addons/controls/OrbitControls.js";
+const $=s=>document.querySelector(s),stage=$("#stage"),canvas=$("#canvas"),scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(37,1,.003,30);
+const renderer=new THREE.WebGLRenderer({canvas,alpha:true,antialias:true,preserveDrawingBuffer:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.35));renderer.outputColorSpace=THREE.SRGBColorSpace;
+renderer.setClearColor(0x0b2937,0);scene.add(new THREE.HemisphereLight(0xe2f9f1,0x3c6476,2.25));
+const light=new THREE.DirectionalLight(0xfff2df,2.65);light.position.set(3,5,3);scene.add(light);
+const fill=new THREE.DirectionalLight(0x9fcddb,1.1);fill.position.set(-3,1,-4);scene.add(fill);
+const orbit=new OrbitControls(camera,canvas);orbit.enableDamping=true;orbit.minDistance=.06;orbit.maxDistance=8;
+const V=a=>new THREE.Vector3(...a);
+const basis=a=>new THREE.Matrix4().makeBasis(...a.map(V));
+const rows=a=>new THREE.Matrix4().set(a[0][0],a[0][1],a[0][2],0,a[1][0],a[1][1],a[1][2],0,a[2][0],a[2][1],a[2][2],0,0,0,0,1);
+const c={bone:0xdddcce,spine:0x9ad2c6,rib:0xc7c7b9,arm:0xbdb3dc,hand:0x9de3cf,pelvis:0xd6b78d};
+const fhsRoot=new THREE.Group(),handRoot=new THREE.Group();scene.add(fhsRoot,handRoot);
+const group={head:new THREE.Group(),spine:new THREE.Group(),ribs:new THREE.Group(),shoulders:new THREE.Group(),pelvis:new THREE.Group(),rigidHands:new THREE.Group()};
+Object.values(group).forEach(g=>fhsRoot.add(g));
+const aahGroup={right:new THREE.Group(),left:new THREE.Group()};Object.values(aahGroup).forEach(g=>handRoot.add(g));
+let fhs=null,aah=null,mode="aah",pose="curl",bend=0,view="front",loadedFhs=false,loadedAAH=false,loadAAHStarted=false;
+const handMesh={right:new Map(),left:new Map()},fhsMeshes=[];
+const sourceAAH="https://raw.githubusercontent.com/nishbo/ms_arm_and_hand/main/AAH%20Model/Geometry/";
+function fit(){
+ if(!loadedFhs)return;
+ const b=new THREE.Box3();
+ if(["left","right"].includes(view)){
+  const side=view==="right"?"R":"L";
+  const meshes=mode==="aah"&&loadedAAH?[...aahGroup[view].children]:[...group.rigidHands.children].filter(m=>m.userData.body==="hand_"+side);
+  for(const obj of meshes)b.expandByObject(obj);
+ }else{
+  for(const g of Object.values(group))if(g.visible)b.expandByObject(g);
+  if(mode==="aah"&&loadedAAH)for(const g of Object.values(aahGroup))b.expandByObject(g);
+ }
+ if(b.isEmpty())return;
+ const center=b.getCenter(new THREE.Vector3()),size=b.getSize(new THREE.Vector3());
+ const tan=Math.tan(THREE.MathUtils.degToRad(camera.fov/2)),a=Math.max(.34,camera.aspect);
+ const d=1.6*Math.max(size.y/(2*tan),size.x/(2*tan*a),size.z/(2*tan*a),.12);
+ const direction=view==="back"?new THREE.Vector3(-1,.11,.12):view==="front"?new THREE.Vector3(1,.11,.15):
+   view==="right"?new THREE.Vector3(1,.25,1):new THREE.Vector3(1,.25,-1);
+ orbit.target.copy(center);camera.position.copy(center).add(direction.normalize().multiplyScalar(d));camera.lookAt(center);orbit.update();
+ document.querySelectorAll("[data-view]").forEach(x=>x.classList.toggle("on",x.dataset.view===view));
+}
+function category(body){
+ if(body==="head_neck")return "head";
+ if(/^rib\d+_[RL]$/.test(body)||body==="sternum")return "ribs";
+ if(/^(thoracic|lumbar|sacrum)/.test(body))return "spine";
+ if(body==="pelvis")return "pelvis";
+ if(body==="hand_R"||body==="hand_L")return "rigidHands";
+ if(/^(clavicle|scapula|humerus|radius|ulna)/.test(body))return "shoulders";
+ return null;
+}
+function parseVtp(text,name){
+ const doc=new DOMParser().parseFromString(text,"application/xml");
+ if(doc.querySelector("parsererror"))throw Error("XML повреждён: "+name);
+ const piece=doc.querySelector("VTKFile > PolyData > Piece");
+ if(!piece)throw Error("Нет PolyData: "+name);
+ const data=piece.querySelector("Points > DataArray");
+ if(!data||data.getAttribute("format")!=="ascii")throw Error("Не-ASCII VTP: "+name);
+ const n=a=>(a?.textContent||"").trim().split(/\s+/).map(Number);
+ const vertices=n(data);
+ if(!vertices.length||vertices.length%3||vertices.some(x=>!Number.isFinite(x)))throw Error("Неправильные вершины: "+name);
+ function indexSet(tag){
+  const arrays=[...piece.querySelectorAll(tag+" > DataArray")];
+  if(!arrays.length)return [];
+  const a=n(arrays.find(a=>a.getAttribute("Name")==="connectivity")||arrays[0]);
+  const ends=n(arrays.find(a=>a.getAttribute("Name")==="offsets")||arrays[1]);
+  return {a,ends};
+ }
+ let pts=[],p=indexSet("Polys");
+ if(p.a?.length){let prev=0;for(const end of p.ends){if(end>p.a.length||end<=prev)throw Error("Неправильный полигон "+name);
+  for(let i=prev+1;i<end-1;i++)pts.push(p.a[prev],p.a[i],p.a[i+1]);prev=end}}
+ let line=[],l=indexSet("Lines");
+ if(l.a?.length){let prev=0;for(const end of l.ends){if(end>l.a.length||end<=prev)throw Error("Неправильные линии "+name);
+  for(let i=prev+1;i<end;i++)line.push(l.a[i-1],l.a[i]);prev=end}}
+ const edges=pts.length===0;
+ const indices=edges?line:pts;
+ if(!indices.length||indices.some(i=>!Number.isInteger(i)||i<0||i>=vertices.length/3))throw Error("Неизвестная геометрия "+name);
+ const geo=new THREE.BufferGeometry();geo.setAttribute("position",new THREE.Float32BufferAttribute(vertices,3));geo.setIndex(indices);
+ if(!edges)geo.computeVertexNormals();
+ return {geo,edges};
+}
+function disposeGroup(g){for(const m of [...g.children]){g.remove(m);m.geometry?.dispose();m.material?.dispose()}}
+function status(s){$("#status").textContent=s}
+async function getJSON(path){const r=await fetch(path);if(!r.ok)throw Error(path+" HTTP "+r.status);return r.json()}
+async function readFHSZIP(buffer){
+ if(!fhs||!window.JSZip)throw Error("Нет манифеста или JSZip");
+ status("Читаю архив и оригинальные кости FHS…");
+ const zip=await JSZip.loadAsync(buffer);
+ const path=fhs.archiveRelativeOsimPath;
+ if(!zip.file(path))throw Error("В архиве нет исследовательской модели "+path);
+ const prefix=path.slice(0,path.lastIndexOf("/Male/"))+"/Geometry/";
+ let count=0,ribs=0;
+ for(const g of Object.values(group))disposeGroup(g);
+ for(const [body,defs] of Object.entries(fhs.anatomyMeshes)){
+  const cat=category(body);if(!cat)continue;
+  const frame=fhs.bodyFrames[body];
+  if(!frame)throw Error("Нет исходной позиции FHS "+body);
+  const rot=new THREE.Quaternion().setFromRotationMatrix(basis(frame.basisColumns));
+  const target=group[cat];
+  for(const desc of defs){
+   const file=zip.file(prefix+desc.file);
+   if(!file)throw Error("Нет кости в архиве "+desc.file);
+   const {geo,edges}=parseVtp(await file.async("string"),desc.file);
+   const mat=edges?new THREE.LineBasicMaterial({color:c.rib}):
+    new THREE.MeshStandardMaterial({color:c[cat==="rigidHands"?"hand":cat==="head"?"bone":cat==="ribs"?"rib":cat==="shoulders"?"arm":cat]||c.bone,
+      roughness:.7,metalness:.01,side:THREE.DoubleSide,transparent:cat==="rigidHands",opacity:cat==="rigidHands"?.75:1});
+   const mesh=edges?new THREE.LineSegments(geo,mat):new THREE.Mesh(geo,mat);
+   mesh.position.copy(V(frame.origin));mesh.quaternion.copy(rot);mesh.scale.set(...desc.scaleFactors);
+   mesh.userData={body,file:desc.file,cat};
+   target.add(mesh);fhsMeshes.push(mesh);
+   count++;if(/^rib/.test(body))ribs++;
+   if(count%12===0){status("Собрано "+count+" из 118 оригинальных сеток FHS…");await new Promise(r=>setTimeout(r,0))}
+  }
+ }
+ if(count!==118||ribs!==24)throw Error("Ожидалось 118 сеток и 24 ребра: "+count+" / "+ribs);
+ $("#countFHS").textContent=String(count);$("#countRibs").textContent=String(ribs);
+ loadedFhs=true;status("FHS готов: "+count+" исходных сеток. "+(loadedAAH?"AAH подключена.":"Загружаю подвижные кисти AAH."));
+ updateVisibility();fit();
+ await startAAH();
+}
+async function cacheRead(){
+ if(!("indexedDB" in window))return null;
+ return new Promise((resolve,reject)=>{
+  const req=indexedDB.open("home-workouts-fhs-data",1);
+  req.onerror=()=>reject(req.error);req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains("archive"))req.result.createObjectStore("archive")};
+  req.onsuccess=()=>{
+   const db=req.result,tx=db.transaction("archive","readonly"),item=tx.objectStore("archive").get("fhs-2026-scientific-zip");
+   item.onsuccess=()=>{resolve(item.result||null);db.close()};
+   item.onerror=()=>{reject(item.error);db.close()};
+  };
+ });
+}
+async function cachePut(file){
+ if(!("indexedDB" in window))return;
+ return new Promise((resolve,reject)=>{
+  const req=indexedDB.open("home-workouts-fhs-data",1);
+  req.onerror=()=>reject(req.error);req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains("archive"))req.result.createObjectStore("archive")};
+  req.onsuccess=()=>{
+   const db=req.result,tx=db.transaction("archive","readwrite");
+   tx.objectStore("archive").put({blob:file,modelPath:fhs.archiveRelativeOsimPath,savedAt:new Date().toISOString()},"fhs-2026-scientific-zip");
+   tx.oncomplete=()=>{db.close();resolve()};
+   tx.onerror=()=>{db.close();reject(tx.error)};
+  };
+ });
+}
+async function startAAH(){
+ if(!loadedFhs||loadAAHStarted)return;
+ loadAAHStarted=true;
+ try{
+  if(!aah)aah=await getJSON("./assets/aah-hand-poses.json");
+  if(aah.schema!=="AAH-bilateral-OpenSim-pose-export-v1")throw Error("Несовместимая кинематика");
+  let count=0;
+  for(const side of ("right","left")){
+   const def=aah[side],P=side==="right"?"RA":"LA",S=side==="right"?"R":"L";
+   const old=def.trajectories.curl[0].frames[P+"3L"],fhsHand=fhs.bodyFrames["hand_"+S];
+   // Align the unmodified AAH lunate (same source VTP as FHS lunate) to its
+   // FHS world attachment. R = R(FHS hand) * R(AAH lunate)^T, translation
+   // t = p(FHS hand) - 0.88875 * R * p(AAH lunate).
+   const scale=fhs.anatomyMeshes["hand_"+S].find(e=>e.file===(side==="right"?"lunate.vtp":"lunate_l.vtp"))?.scaleFactors;
+   if(!scale||Math.abs(scale[0]-.88875)>.00001||scale.some(q=>Math.abs(q-scale[0])>.00001))
+     throw Error("AAH: несогласованный масштаб исходного запястья FHS");
+   const rf=new THREE.Quaternion().setFromRotationMatrix(basis(fhsHand.basisColumns));
+   const ra=new THREE.Quaternion().setFromRotationMatrix(rows(old.R));
+   const R=rf.clone().multiply(ra.clone().invert());
+   const group=aahGroup[side];group.scale.setScalar(scale[0]);group.quaternion.copy(R);
+   group.position.copy(V(fhsHand.origin)).sub(V(old.p).applyQuaternion(R).multiplyScalar(scale[0]));
+   const anchor=V(old.p).applyMatrix4(new THREE.Matrix4().compose(group.position,group.quaternion,group.scale));
+   const err=anchor.distanceTo(V(fhsHand.origin))*1000;
+   if(err>.001)throw Error("AAH: не удалось совмещение полулунной кости "+side);
+   for(const info of def.displayMeshes.filter(x=>/^([RL]A)(?:3|4|5|6|7)/.test(x.body))){
+    const response=await fetch(sourceAAH+encodeURIComponent(info.file));
+    if(!response.ok)throw Error("Нет авторской сетки AAH "+info.file+": HTTP "+response.status);
+    const {geo,edges}=parseVtp(await response.text(),info.file);
+    if(edges)throw Error("Неожиданные линии вместо кости AAH");
+    const color=/[RL]A[567].*1$/.test(info.body)?0xf0bd87:0x99dbc9;
+    const m=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({color,roughness:.62,side:THREE.DoubleSide}));
+    m.scale.set(...info.scale);m.userData={body:info.body,side};
+    group.add(m);handMesh[side].set(info.body,m);count++;
+    if(count%9===0){status("Подключаю кисти AAH "+count+" костных поверхностей…");await new Promise(r=>setTimeout(r,0))}
+   }
+  }
+  if(count!==54)throw Error("Некорректное число костей AAH: "+count);
+  $("#countAAH").textContent=String(count);
+  loadedAAH=true;
+  status("FHS + AAH загружены: 118 FHS-сеток, 54 подвижных поверхности кистей. Относительное положение запястий проверено по полулунной кости.");
+  applyHands();updateVisibility();fit();
+  window.__assemblyQA={
+   ready:()=>loadedFhs&&loadedAAH,
+   fhsCount:()=>Object.values(group).reduce((sum,g)=>sum+g.children.length,0),
+   aahCount:()=>count,
+   sideCount:side=>aahGroup[side].children.length,
+   mode:()=>mode,pose:()=>pose,bend:()=>bend,
+   handOrigin:side=>{const P=side==="right"?"RA":"LA";const m=handMesh[side].get(P+"3L");return m.getWorldPosition(new THREE.Vector3()).toArray()},
+   fhsHandOrigin:side=>fhs.bodyFrames["hand_"+(side==="right"?"R":"L")].origin,
+   bodyPosition:(side,b)=>handMesh[side].get(b).getWorldPosition(new THREE.Vector3()).toArray(),
+   setBend:n=>{bend=n;applyHands()},
+   setPose:s=>{pose=s;applyHands()},
+   setMode:s=>{mode=s;updateVisibility()},
+   camera:v=>{view=v;fit()}
+  };
+ }catch(e){console.error(e);status("FHS загружена, но AAH пока не удалось присоединить: "+e.message)}
+}
+function applyHands(){
+ if(!loadedAAH)return;
+ for(const side of ["right","left"]){
+  const steps=aah[side].trajectories[pose],t=bend*(steps.length-1),i=Math.min(steps.length-2,Math.floor(t)),f=t-i;
+  for(const [name,m] of handMesh[side]){
+   const a=steps[i].frames[name],b=steps[i+1].frames[name];
+   if(!a||!b)throw Error("Нет OpenSim положения для "+name);
+   m.position.copy(V(a.p)).lerp(V(b.p),f);
+   const qa=new THREE.Quaternion().setFromRotationMatrix(rows(a.R));
+   const qb=new THREE.Quaternion().setFromRotationMatrix(rows(b.R));
+   m.quaternion.copy(qa).slerp(qb,f);
+  }
+ }
+ handRoot.updateMatrixWorld(true);$("#bend").value=String(Math.round(bend*100));
+ $("#bendLabel").textContent="Сгибание: "+Math.round(bend*100)+"%";
+ document.querySelectorAll("[data-pose]").forEach(b=>b.classList.toggle("on",
+   b.dataset.pose==="open"?bend===0:pose===b.dataset.pose&&bend>0));
+}
+function updateVisibility(){
+ const replace=mode==="aah"&&loadedAAH;
+ group.rigidHands.visible=!replace;
+ for(const g of Object.values(aahGroup))g.visible=replace;
+ group.head.visible=$("#head").checked;group.spine.visible=$("#spine").checked;
+ group.ribs.visible=$("#ribs").checked;group.shoulders.visible=$("#shoulders").checked;
+ group.pelvis.visible=$("#pelvis").checked;
+ document.querySelectorAll("[data-hands]").forEach(b=>b.classList.toggle("on",b.dataset.hands===mode));
+ $("#wristReport").textContent=replace?
+  "AAH: подвижные кости обеих кистей совмещены с FHS по одинаковой исходной полулунной кости (масштаб 88,875%). Запястный сустав и положения других костей не валидированы.":
+  "Исходные FHS: кости запястья, пясти и фаланги отображаются, но все 27 сеток каждой кисти принадлежат одному неподвижному телу hand_R/L.";
+}
+$("#pick").onclick=()=>$("#file").click();
+$("#file").onchange=async()=>{
+ const file=$("#file").files?.[0];if(!file)return;
+ try{await readFHSZIP(await file.arrayBuffer());try{await cachePut(file)}catch(e){console.warn("Cache write:",e)}}
+ catch(e){console.error(e);status("Ошибка FHS ZIP: "+e.message)}
+};
+document.querySelectorAll("[data-hands]").forEach(b=>b.onclick=()=>{mode=b.dataset.hands;updateVisibility()});
+document.querySelectorAll("[data-pose]").forEach(b=>b.onclick=()=>{
+ if(b.dataset.pose==="open"){bend=0;pose="curl"}
+ else{pose=b.dataset.pose;bend=1}
+ applyHands();
+});
+$("#bend").oninput=e=>{bend=Number(e.target.value)/100;applyHands()};
+document.querySelectorAll("[data-view]").forEach(b=>b.onclick=()=>{view=b.dataset.view;fit()});
+for(const id of ["ribs","spine","shoulders","head","pelvis"])$("#"+id).onchange=()=>{updateVisibility();fit()};
+$("#reset").onclick=()=>{view="front";bend=0;pose="curl";mode="aah";applyHands();updateVisibility();fit()};
+new ResizeObserver(()=>{renderer.setSize(stage.clientWidth,stage.clientHeight,false);camera.aspect=stage.clientWidth/Math.max(1,stage.clientHeight);camera.updateProjectionMatrix()}).observe(stage);
+(function loop(){requestAnimationFrame(loop);orbit.update();renderer.render(scene,camera)})();
+async function init(){
+ try{
+  fhs=await getJSON("./assets/fhs-original-frames.json");
+  if(fhs.kind!=="fhs-opensim-body-frames-v1")throw Error("Неверный источник FHS");
+  const cache=await cacheRead();
+  if(cache?.blob&&cache.modelPath===fhs.archiveRelativeOsimPath){
+   status("Восстанавливаю исходный архив FHS из памяти браузера…");
+   try{await readFHSZIP(await cache.blob.arrayBuffer());return}
+   catch(e){console.warn(e);status("Сохранённый архив не удалось открыть: "+e.message)}
+  }
+  status("Чтобы собрать скелет, выбери исходный FHS ZIP. Кнопка «Скачать ZIP» ведёт на официальный архив.");
+ }catch(e){console.error(e);status("Ошибка подготовки: "+e.message)}
+}
+init();
+</script></body></html>
