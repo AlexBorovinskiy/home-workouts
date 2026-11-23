@@ -1,0 +1,76 @@
+{
+  "schema": "C7T1-triangle-surface-diagnostic-v1",
+  "sourceRegistration": "MASI/FHS native 4.6 C7–T1 joints, single-joint registration",
+  "provenance": "GitHub Actions scientific QA run 45137392647 / triangle-surface-audit.json",
+  "units": "metres in positions, millimetres in distances",
+  "trials": [
+    {
+      "c7VisualScale": 1,
+      "vertexToTriangleMinMm": 1.88213,
+      "possibleSurfaceIntersection": false,
+      "testedTriangleCounts": {
+        "C7": 288,
+        "T1": 424
+      },
+      "C7VerticesNearT1Within5mm": 7,
+      "T1VerticesNearC7Within5mm": 9,
+      "C7VerticesNearT1Within2mm": 3,
+      "T1VerticesNearC7Within2mm": 0,
+      "exampleClosestPositions": {
+        "c7PointM": [
+          0.46041582508963136,
+          1.4773970166567212,
+          0.5950373630763632
+        ],
+        "t1PointM": [
+          0.4597107710093779,
+          1.475652403883469,
+          0.594996927244858
+        ]
+      },
+      "triangleIntersection": {
+        "aabbCandidateTrianglePairs": 239,
+        "nonCoplanarEdgeIntersectingTrianglePairs": 0
+      }
+    },
+    {
+      "c7VisualScale": 0.88875,
+      "vertexToTriangleMinMm": 1.86979,
+      "possibleSurfaceIntersection": false,
+      "testedTriangleCounts": {
+        "C7": 288,
+        "T1": 424
+      },
+      "C7VerticesNearT1Within5mm": 7,
+      "T1VerticesNearC7Within5mm": 8,
+      "C7VerticesNearT1Within2mm": 3,
+      "T1VerticesNearC7Within2mm": 0,
+      "exampleClosestPositions": {
+        "c7PointM": [
+          0.4591100744183741,
+          1.4779102866276665,
+          0.5950852094942127
+        ],
+        "t1PointM": [
+          0.4584096444124532,
+          1.4761771158407402,
+          0.5950450388597976
+        ]
+      },
+      "triangleIntersection": {
+        "aabbCandidateTrianglePairs": 197,
+        "nonCoplanarEdgeIntersectingTrianglePairs": 0
+      }
+    }
+  ],
+  "medicalInterpretation": "NOT verified facet joint contact; triangles are unannotated rendering meshes, cartilage/ligaments absent",
+  "validatedAnatomicalLandmarks": false,
+  "facetsSegmented": false,
+  "jointKinematicsUpdated": false,
+  "isValidatedHybrid": false,
+  "methodLimitations": [
+    "Zero detected non-coplanar edge intersections does not exclude coplanar overlap, containment or anatomic issues",
+    "Vertex-to-triangle distances are global geometric minima, not necessarily between articulating facet surfaces",
+    "Trials represent registered static pose only, and model kinematics remain scientifically unverified"
+  ]
+}
