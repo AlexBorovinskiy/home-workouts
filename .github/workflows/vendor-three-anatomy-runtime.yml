@@ -1,0 +1,53 @@
+name: Vendor reproducible Three.js anatomy runtime as local ES module
+on:
+  push:
+    paths:
+      - '.github/workflows/vendor-three-anatomy-runtime.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build original licensed Three.js runtime
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/atlas-vendor opensim-lab/vendor
+          cd /tmp/atlas-vendor
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund --save-exact 'three@0.186.1' 'esbuild@0.25.12'
+          cat > entry.mjs <<'JAVASCRIPT'
+          // One static module avoids CDN network dependency on iPhone.
+          export * from 'three';
+          export { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+          export { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+          export { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+          JAVASCRIPT
+          node ./node_modules/esbuild/bin/esbuild entry.mjs \
+            --bundle --format=esm --target=es2022 --minify \
+            --outfile="$GITHUB_WORKSPACE/opensim-lab/vendor/three-anatomy.mjs"
+          cp node_modules/three/LICENSE "$GITHUB_WORKSPACE/opensim-lab/vendor/THREE-MIT-LICENSE.txt"
+      - name: Validate generated static browser module
+        run: |
+          node --input-type=module <<'JS'
+          import * as x from './opensim-lab/vendor/three-anatomy.mjs';
+          const required=['Vector3','Matrix4','Mesh','Scene','WebGLRenderer','OrbitControls','GLTFLoader','MeshoptDecoder'];
+          for(const name of required)if(!x[name])throw Error('Missing '+name);
+          console.log('LOCAL_THREE_ANATOMY_RUNTIME_OK',required.join(','),x.REVISION);
+          JS
+          test $(wc -c < opensim-lab/vendor/three-anatomy.mjs) -lt 4000000
+      - name: Commit exact reproducible MIT runtime
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add opensim-lab/vendor/three-anatomy.mjs opensim-lab/vendor/THREE-MIT-LICENSE.txt
+          if ! git diff --cached --quiet; then
+            git commit -m 'Vendor Three.js 0.186.1 atlas runtime to avoid external CDN dependency [skip ci]'
+            git push origin HEAD:main
+          fi
