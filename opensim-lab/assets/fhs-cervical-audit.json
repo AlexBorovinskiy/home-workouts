@@ -1,0 +1,304 @@
+{
+  "kind": "FHS-native-cervical-VTP-geometry-audit-v1",
+  "source": "https://zenodo.org/records/18259702",
+  "subjectPath": "FHS_dataset_4.x - Copia/Male/Age4049/110_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+  "unit": "m (positions); mm (distances and size)",
+  "method": "Original VTP ASCII vertices * per-Mesh scale_factors, OpenSim Body.getTransformInGround native 4.6",
+  "cervical": {
+    "C1": {
+      "id": "C1",
+      "file": "cerv1.vtp",
+      "vertices": 310,
+      "minM": [
+        -0.042251,
+        0.523582,
+        -0.036402
+      ],
+      "maxM": [
+        0.008884,
+        0.539434,
+        0.036402
+      ],
+      "centerM": [
+        -0.016684,
+        0.531508,
+        0
+      ],
+      "sizeMm": [
+        51.14,
+        15.85,
+        72.8
+      ]
+    },
+    "C2": {
+      "id": "C2",
+      "file": "cerv2.vtp",
+      "vertices": 142,
+      "minM": [
+        -0.075961,
+        0.519341,
+        -0.024634
+      ],
+      "maxM": [
+        -0.024304,
+        0.554347,
+        0.024851
+      ],
+      "centerM": [
+        -0.050132,
+        0.536844,
+        0.000108
+      ],
+      "sizeMm": [
+        51.66,
+        35.01,
+        49.49
+      ]
+    },
+    "C3": {
+      "id": "C3",
+      "file": "cerv3.vtp",
+      "vertices": 142,
+      "minM": [
+        -0.076418,
+        0.522191,
+        -0.023962
+      ],
+      "maxM": [
+        -0.02427,
+        0.54785,
+        0.024172
+      ],
+      "centerM": [
+        -0.050344,
+        0.53502,
+        0.000105
+      ],
+      "sizeMm": [
+        52.15,
+        25.66,
+        48.13
+      ]
+    },
+    "C4": {
+      "id": "C4",
+      "file": "cerv4.vtp",
+      "vertices": 142,
+      "minM": [
+        -0.076846,
+        0.525588,
+        -0.024849
+      ],
+      "maxM": [
+        -0.023134,
+        0.546977,
+        0.025067
+      ],
+      "centerM": [
+        -0.04999,
+        0.536282,
+        0.000109
+      ],
+      "sizeMm": [
+        53.71,
+        21.39,
+        49.92
+      ]
+    },
+    "C5": {
+      "id": "C5",
+      "file": "cerv5.vtp",
+      "vertices": 142,
+      "minM": [
+        -0.083395,
+        0.525217,
+        -0.026973
+      ],
+      "maxM": [
+        -0.022589,
+        0.547162,
+        0.027211
+      ],
+      "centerM": [
+        -0.052992,
+        0.536189,
+        0.000119
+      ],
+      "sizeMm": [
+        60.81,
+        21.95,
+        54.18
+      ]
+    },
+    "C6": {
+      "id": "C6",
+      "file": "cerv6.vtp",
+      "vertices": 142,
+      "minM": [
+        -0.083189,
+        0.524768,
+        -0.030278
+      ],
+      "maxM": [
+        -0.022407,
+        0.550708,
+        0.030545
+      ],
+      "centerM": [
+        -0.052798,
+        0.537738,
+        0.000134
+      ],
+      "sizeMm": [
+        60.78,
+        25.94,
+        60.82
+      ]
+    },
+    "C7": {
+      "id": "C7",
+      "file": "rotatedcerv7.vtp",
+      "vertices": 142,
+      "minM": [
+        -0.082635,
+        0.523865,
+        -0.030278
+      ],
+      "maxM": [
+        -0.022048,
+        0.550425,
+        0.030545
+      ],
+      "centerM": [
+        -0.052342,
+        0.537145,
+        0.000134
+      ],
+      "sizeMm": [
+        60.59,
+        26.56,
+        60.82
+      ]
+    }
+  },
+  "skull": {
+    "id": "skull",
+    "file": "skull.vtp",
+    "vertices": 3305,
+    "minM": [
+      -0.123927,
+      0.50528,
+      -0.071611
+    ],
+    "maxM": [
+      0.049675,
+      0.671123,
+      0.071611
+    ],
+    "centerM": [
+      -0.037126,
+      0.588201,
+      0
+    ],
+    "sizeMm": [
+      173.6,
+      165.84,
+      143.22
+    ]
+  },
+  "jaw": {
+    "id": "jaw",
+    "file": "jaw.vtp",
+    "vertices": 1459,
+    "minM": [
+      -0.031175,
+      0.466693,
+      -0.054887
+    ],
+    "maxM": [
+      0.045728,
+      0.555011,
+      0.054887
+    ],
+    "centerM": [
+      0.007276,
+      0.510852,
+      0
+    ],
+    "sizeMm": [
+      76.9,
+      88.32,
+      109.77
+    ]
+  },
+  "T1": {
+    "id": "T1",
+    "file": "thoracic1_s.vtp",
+    "vertices": 212,
+    "minM": [
+      -0.074868,
+      0.502131,
+      -0.03337
+    ],
+    "maxM": [
+      -0.02925,
+      0.534931,
+      0.033601
+    ],
+    "centerM": [
+      -0.052059,
+      0.518531,
+      0.000115
+    ],
+    "sizeMm": [
+      45.62,
+      32.8,
+      66.97
+    ]
+  },
+  "craniocaudalOrderByBoundingBoxCenter": [
+    "C6",
+    "C7",
+    "C2",
+    "C4",
+    "C5",
+    "C3",
+    "C1"
+  ],
+  "C1VsSkullMm": 0.43,
+  "C7VsT1Mm": 3.17,
+  "adjacentSurfaceDistances": {
+    "C1": {
+      "next": "C2",
+      "closestVertexMm": 0.12
+    },
+    "C2": {
+      "next": "C3",
+      "closestVertexMm": 0.55
+    },
+    "C3": {
+      "next": "C4",
+      "closestVertexMm": 0.09
+    },
+    "C4": {
+      "next": "C5",
+      "closestVertexMm": 0.38
+    },
+    "C5": {
+      "next": "C6",
+      "closestVertexMm": 0.01
+    },
+    "C6": {
+      "next": "C7",
+      "closestVertexMm": 0
+    },
+    "C7": {
+      "next": "T1",
+      "closestVertexMm": 3.17
+    }
+  },
+  "sameRigidBody": "head_neck",
+  "independentCervicalJoints": false,
+  "anatomicalValidation": false,
+  "note": "Mesh surfaces are preexisting, but all C1-C7 share head_neck rigid transform; visual placement does not establish physiological cervical mechanics."
+}
