@@ -453,7 +453,12 @@ function placeSupport(){
  const c=id=>vecCenter(rig.get(id).mesh);
  const m2=c("RA4M2"),m3=c("RA4M3"),m5=c("RA4M5"),w=c("RA3L");
  const palm=m2.clone().add(m3).add(m5).multiplyScalar(1/3);
- const longitudinal=m3.clone().sub(w).normalize();
+ // Use the true span from wrist to the EXTENDED fingertips to infer
+ // the plane touched by an open hand. Metacarpal centers alone yielded
+ // a false flat palm with fingertips 40–50 mm above the support.
+ const distal=["RA7D2","RA7D3","RA7D4","RA7D5"]
+  .map(c).reduce((acc,p)=>acc.add(p),new THREE.Vector3()).multiplyScalar(.25);
+ const longitudinal=distal.clone().sub(w).normalize();
  const across=m2.clone().sub(m5);
  across.addScaledVector(longitudinal,-across.dot(longitudinal)).normalize();
  const normal=across.clone().cross(longitudinal).normalize();
@@ -503,10 +508,12 @@ function placeSupport(){
   dot.material.color.setHex(gap<=22?0x93e1cf:0xe2ad72);
  }
  const near=Object.keys(gaps).filter(k=>gaps[k]<=22);
+ const supportPass=near.includes("palm")&&
+  ["index","middle","ring","little"].filter(k=>near.includes(k)).length>=3;
  supportSurface.group.visible=true;
  supportMetrics={task:handTask,extensionDeg:wristExtensionDeg,
   palmNormal:[0,1,0],floorY,gapsMm:gaps,
-  nearbyZones:near,minimumBoneGapMm:7,
+  nearbyZones:near,contactReady:supportPass,minimumBoneGapMm:7,
   method:"sampled-bone-surfaces with nominal 7 mm skin allowance"};
  const names={palm:"Ладонь",index:"Указ.",middle:"Средн.",ring:"Безым.",
   little:"Мизин.",thumb:"Больш."};
@@ -515,6 +522,8 @@ function placeSupport(){
   " · запястье "+wristExtensionDeg+"°. Расстояния костей до пола: "+
   Object.entries(gaps).map(([k,v])=>names[k]+" "+v.toFixed(0)+" мм").join(" · ")+
   ". Вблизи плоскости "+near.length+"/6 зон. "+
+  (supportPass?"Пробная плоскостная посадка достигнута. ":
+   "ОПОРА НЕ СОГЛАСОВАНА: некоторые пальцы далеко от пола. ")+
   "Контакт кожи и распределение нагрузки пока не проверены.";
 }
 function chooseHandTask(next){
@@ -524,6 +533,7 @@ function chooseHandTask(next){
  $("#supportControls").hidden=!support;
  if(support){
   gripVisible=false;pose="curl";finger=0;elbow=0;
+  muscleMode="bones";
   wristExtensionDeg=next==="pushup"?72:68;
   $("#finger").value="0";$("#elbow").value="0";
   $("#wristExtension").value=String(wristExtensionDeg);
