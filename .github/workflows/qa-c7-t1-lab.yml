@@ -65,6 +65,23 @@ jobs:
               const words=await page.locator('#sizeAudit').innerText();
               if(!words.includes('C7')||!words.includes('T1')||!words.includes('1.32'))throw Error('Scale audit not rendered: '+words);
             }
+            // Compare the actual geometry-only scale trial with Python source-mesh audit.
+            const origT1=data.exactT1.sizeMm;
+            await page.locator('[data-neck-scale="0.88875"]').click();
+            const scaled=await page.evaluate(()=>{
+              const q=window.__c7t1QA;
+              return {s:q.scale(),distance:q.minVertexMm(),c7:q.tightBounds('cerv7').sizeMm,t1:q.tightBounds('thoracic1').sizeMm};
+            });
+            if(Math.abs(scaled.s-.88875)>1e-7||Math.abs(scaled.distance-3.3768)>.10)
+              throw Error('Trial scaled geometry disagrees with source audit '+JSON.stringify(scaled));
+            if(scaled.c7.some((x,i)=>Math.abs(x-data.exactC7.sizeMm[i]*.88875)>.03)||
+               scaled.t1.some((x,i)=>Math.abs(x-origT1[i])>.01))
+              throw Error('Trial changed non-neck bone size: '+JSON.stringify({scaled,origT1}));
+            await page.locator('#canvas').screenshot({path:'qa-c7-t1-web/neck-trial-scale-88-875.png'});
+            await page.locator('[data-neck-scale="1"]').click();
+            const restored=await page.evaluate(()=>({s:window.__c7t1QA.scale(),distance:window.__c7t1QA.minVertexMm()}));
+            if(Math.abs(restored.s-1)>1e-7||Math.abs(restored.distance-data.closestMm)>.001)
+              throw Error('Original MASI scale not restored '+JSON.stringify(restored));
             await page.locator('#canvas').screenshot({path:'qa-c7-t1-web/neck-T1-joined-back.png'});
             await page.locator('[data-view="side"]').click();
             await page.locator('#canvas').screenshot({path:'qa-c7-t1-web/neck-T1-joined-side.png'});
