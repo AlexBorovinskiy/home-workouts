@@ -1,0 +1,70 @@
+name: Export FHS 989 spine posture comparison reference
+on:
+  push:
+    paths:
+      - '.github/workflows/build-fhs-989-reference.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  export:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install native OpenSim author-model runtime
+        run: python -m pip install 'opensim==4.6'
+      - name: Load original FHS source, including author subject 989
+        run: |
+          curl -fL --retry 3 --max-time 180 'https://zenodo.org/records/18259702/files/FHS_dataset_4.x.zip?download=1' -o /tmp/fhs-original.zip
+          python - <<'PY'
+          import zipfile
+          source='FHS_dataset_4.x - Copia/Male/Age4049/989_SizeScaled_CurvatureAdjust_MuscleAdjust.osim'
+          with zipfile.ZipFile('/tmp/fhs-original.zip') as z:
+            open('/tmp/fhs-989.osim','wb').write(z.read(source))
+          PY
+      - name: Export second source's assembled vertebra frames without re-modeling
+        run: |
+          python opensim-lab/export_original_mesh_frames.py \
+            --model /tmp/fhs-989.osim \
+            --archive-relative 'FHS_dataset_4.x - Copia/Male/Age4049/989_SizeScaled_CurvatureAdjust_MuscleAdjust.osim' \
+            --output opensim-lab/assets/fhs-peer-989-frames.json
+      - name: Validate homologous body and mesh keys against FHS 110
+        run: |
+          python - <<'PY'
+          import json
+          x=json.load(open('opensim-lab/assets/fhs-original-frames.json'))
+          y=json.load(open('opensim-lab/assets/fhs-peer-989-frames.json'))
+          assert x['kind']==y['kind']=='fhs-opensim-body-frames-v1'
+          assert set(x['bodyFrames'])==set(y['bodyFrames'])
+          assert set(x['anatomyMeshes'])==set(y['anatomyMeshes'])
+          assert sum(map(len,x['anatomyMeshes'].values()))==118
+          assert sum(map(len,y['anatomyMeshes'].values()))==118
+          for body in ('pelvis','thoracic1','thoracic6','thoracic12','lumbar1','lumbar5'):
+            assert len(x['bodyFrames'][body]['origin'])==3
+            assert len(y['bodyFrames'][body]['origin'])==3
+          print('FHS_110_VS_989_NATIVE_GEOMETRY_KEYS_MATCH',len(y['bodyFrames']))
+          for model in [x,y]:
+            b=model['bodyFrames']
+            d=b['thoracic1']['origin'][0]-b['pelvis']['origin'][0]
+            print('FHS_NATIVE_BACK_POSTURE',model['modelName'],round(d*1000,2),'mm')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fhs-989-native-author-vertebra-body-frames
+          path: opensim-lab/assets/fhs-peer-989-frames.json
+          retention-days: 30
+      - name: Commit source-assembled frame metadata only
+        if: success() && github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add opensim-lab/assets/fhs-peer-989-frames.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Store alternative source FHS subject 989 spinal assembly for safe posture comparison [skip ci]"
+            git push origin HEAD:main
+          fi
