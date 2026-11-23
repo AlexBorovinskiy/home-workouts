@@ -83,6 +83,12 @@ a{color:var(--accent)}
 <input id="handleDepth" type="range" min="-20" max="20" step="1" value="0" disabled aria-label="Смещение рукоятки по нормали ладони">
 <div id="contactReport" class="status" style="margin-top:8px">Измеряю положение пальцев относительно металлической рукоятки…</div>
 <p>Рукоять не должна проходить сквозь фаланги: проверяется расстояние до костной поверхности с запасом для мягких тканей. Это пока визуальный захват без силы, веса и физики контакта.</p>
+<h3>Угол рукояти относительно ладони</h3>
+<label style="margin-top:8px">Диагональ в ладони <strong id="handleYawValue">авто</strong></label>
+<input id="handleYaw" type="range" min="-30" max="30" step="1" value="0" disabled aria-label="Диагональ рукоятки относительно линии пястных костей">
+<label style="margin-top:8px">Наклон к ладони <strong id="handlePitchValue">авто</strong></label>
+<input id="handlePitch" type="range" min="-18" max="18" step="1" value="0" disabled aria-label="Наклон рукоятки из плоскости ладони">
+<p>При автоподборе рассчитываются оба угла и сгибание пальцев. Если изменить угол вручную, геометрия захвата пересчитывается после отпускания ползунка.</p>
 <h3>Сгибание пальцев · AAH</h3>
 <div class="buttons"><button data-pose="curl" class="on">Сжать пальцы</button><button data-pose="cylinder">Поза для цилиндра</button></div>
 <input type="range" id="finger" min="0" max="100" value="0" step="1" disabled aria-label="Сгибание пальцев">
@@ -186,7 +192,7 @@ let dumbbell=null,gripBase=null,gripFrame=null,gripPlan=null,gripVisible=false,g
 let handleDiameterMm=24,handleOffsetMm=0,handleDepthMm=0,contactResult=null,thumbCorrection=null,thumbFit=null;
 const sourceCenters=new Map(),targetCenters=new Map(),sourceRest=new Map(),jointPivots=new Map();
 let muscleMode="bones",muscleOverlays=[],muscleSkin=null;
-let gripDigitProgress=null,gripPlanning=false;
+let gripDigitProgress=null,gripPlanning=false,manualGripAngles=null;
 const contactDigits={
  index:["RA5P2","RA6M2","RA7D2"],
  middle:["RA5P3","RA6M3","RA7D3"],
@@ -440,9 +446,9 @@ function currentPalmFrame(){
   .addScaledVector(y,-.011);
  return {x,y,z,origin};
 }
-function contactCloud(id,frame){
+function contactCloud(id,frame,vertexLimit=150){
  const mesh=rig.get(id).mesh,attr=mesh.geometry.attributes.position;
- const stride=Math.max(1,Math.floor(attr.count/150));
+ const stride=Math.max(1,Math.floor(attr.count/vertexLimit));
  const pts=[],p=new THREE.Vector3();
  for(let i=0;i<attr.count;i+=stride){
   p.fromBufferAttribute(attr,i).applyMatrix4(mesh.matrixWorld).sub(frame.origin);
@@ -450,18 +456,18 @@ function contactCloud(id,frame){
  }
  return pts;
 }
-function collectContactClouds(frame){
+function collectContactClouds(frame,vertexLimit=150){
  const clouds={};
  for(const [digit,parts] of Object.entries(contactDigits)){
   // Proximal phalanx bases are NEAR the palm even when the hand is OPEN.
   // They must not count as grasping the bar. Measure the mid/distal digit
   // surfaces (for the thumb both available phalanges).
   const contactParts=digit==="thumb"?parts:parts.slice(1);
-  clouds[digit]=contactParts.flatMap(id=>contactCloud(id,frame));
+  clouds[digit]=contactParts.flatMap(id=>contactCloud(id,frame,vertexLimit));
   // Bases must not be used to claim contact, but cannot penetrate metal.
-  clouds["collision_"+digit]=parts.flatMap(id=>contactCloud(id,frame));
+  clouds["collision_"+digit]=parts.flatMap(id=>contactCloud(id,frame,vertexLimit));
 }
- clouds.palm=["RA4M2","RA4M3","RA4M4","RA4M5"].flatMap(id=>contactCloud(id,frame));
+ clouds.palm=["RA4M2","RA4M3","RA4M4","RA4M5"].flatMap(id=>contactCloud(id,frame,vertexLimit));
  return clouds;
 }
 function fitScore(clouds,y,z,radius){
@@ -497,6 +503,9 @@ function fitScore(clouds,y,z,radius){
 }
 // Discrete pose-space IK: choose an independent measured AAH flexion
 // phase for each digit while the handle is anchored to the MCP plane.
+// Multi-variable handle + digit optimizer. Axes are expressed in the
+// orthonormal MCP palm frame, avoiding hardcoded camera/world rotations.
+// theta = diagonal in palm plane, phi = out-of-palm tilt (degrees).
 function planDumbbellGrip(){
  const prior={finger,pose,elbow,gripDigitProgress,gripPlanning,thumbCorrection};
  let completed=false;
@@ -510,70 +519,144 @@ function planDumbbellGrip(){
   const curledTip=vecCenter(rig.get("RA7D3").mesh);
   if(curledTip.clone().sub(openTip).dot(frame.z)<0)frame.z.negate();
   if(frame.x.clone().cross(frame.y).dot(frame.z)<0)frame.x.negate();
+
+  const localWorldPoint=world=>{
+   const d=world.clone().sub(frame.origin);
+   return [d.dot(frame.x),d.dot(frame.y),d.dot(frame.z)];
+  };
+  // Source OpenSim trajectories are sampled once. These are observed bone
+  // positions, not manually synthesized joint rotations.
   const samples=[];
   for(let step=0;step<=10;step++){
    finger=step/10;applyPose();scene.updateMatrixWorld(true);
-   samples.push({u:step/10,clouds:collectContactClouds(frame)});
+   const clouds=collectContactClouds(frame,28),ends={};
+   for(const [digit,parts] of Object.entries(contactDigits))
+    ends[digit]=[
+     localWorldPoint(vecCenter(rig.get(parts[0]).mesh)),
+     localWorldPoint(vecCenter(rig.get(parts[parts.length-1]).mesh))
+    ];
+   samples.push({u:step/10,clouds,ends});
   }
   const radius=handleDiameterMm/2000;
-  const cloudMin=(pts,y,z)=>{
-   let nearest=Infinity;
-   for(const p of pts){
-    const dx=Math.max(0,Math.abs(p[0])-.073);
-    const d=Math.hypot(p[1]-y,p[2]-z,dx);
-    if(d<nearest)nearest=d;
-   }
-   return nearest-radius;
-  };
   const palm=samples[0].clouds.palm;
-  let best=null;
-  // Broad symmetric search allows the grip pocket to be on either side
-  // of the neutral palm normal; don't bias the handle above curled fingers.
-  for(let yy=-.032;yy<=.052001;yy+=.006){
-   for(let zz=-.041;zz<=.067001;zz+=.006){
-    const palmGap=cloudMin(palm,yy,zz);
-    let cost=44*Math.pow(palmGap-.007,2)+
-      (palmGap<.002?650*Math.pow(.002-palmGap,2):0);
-    const phases={},gaps={},collisions={};
-    let contacts=0,penetrations=palmGap<.002?1:0;
-    for(const digit of Object.keys(contactDigits)){
-     let choice=null;
-     for(const sample of samples){
-      // Cylinder grip must actually FLEX all four fingers.
-      // A straight finger touching metal is not a grasp.
-      if(sample.u<(digit==="thumb"?.5:.7))continue;
-      const d=cloudMin(sample.clouds[digit],yy,zz);
-      const collision=cloudMin(sample.clouds["collision_"+digit],yy,zz);
-      const penalty=22*Math.pow(d-.006,2)+
-       (d>.024?130*Math.pow(d-.024,2):0)+
-       (d<.003?240*Math.pow(.003-d,2):0)+
-       (collision<.002?1200*Math.pow(.002-collision,2):0)+
-       .00035*Math.pow(sample.u-.9,2);
-      if(!choice||penalty<choice.penalty)
-       choice={u:sample.u,gap:d,collision,penalty};
-     }
-     phases[digit]=choice.u;gaps[digit]=choice.gap;
-     collisions[digit]=choice.collision;cost+=choice.penalty;
-     if(choice.collision<.002)penetrations++;
-     if(choice.gap>=.003&&choice.gap<=.024&&choice.collision>=.002)contacts++;
+
+  function evaluate(yy,zz,theta,phi){
+   const rt=THREE.MathUtils.degToRad(theta);
+   const rp=THREE.MathUtils.degToRad(phi);
+   const ax=Math.cos(rt)*Math.cos(rp),ay=Math.sin(rt)*Math.cos(rp),az=Math.sin(rp);
+   // Shortest point-to-segment distance for the actual tilted handle.
+   const clearance=points=>{
+    let nearest=Infinity;
+    for(const p of points){
+     const dx=p[0],dy=p[1]-yy,dz=p[2]-zz;
+     const along=dx*ax+dy*ay+dz*az;
+     const radialSq=Math.max(0,dx*dx+dy*dy+dz*dz-along*along);
+     const beyond=Math.max(0,Math.abs(along)-.073);
+     const d=Math.sqrt(radialSq+beyond*beyond);
+     if(d<nearest)nearest=d;
     }
-    cost+=.00012*Math.pow(5-contacts,2);
-    if(!best||cost<best.cost)
-     best={y:yy,z:zz,cost,phases,gaps,collisions,palmGap,contacts,penetrations};
+    return nearest-radius;
+   };
+   const wrapAngle=endPoints=>{
+    const project=p=>{
+     const dx=p[0],dy=p[1]-yy,dz=p[2]-zz;
+     const along=dx*ax+dy*ay+dz*az;
+     return [dx-along*ax,dy-along*ay,dz-along*az];
+    };
+    const p=project(endPoints[0]),q=project(endPoints[1]);
+    const len=Math.hypot(...p)*Math.hypot(...q);
+    if(len<1e-8)return 0;
+    return Math.acos(THREE.MathUtils.clamp(
+     (p[0]*q[0]+p[1]*q[1]+p[2]*q[2])/len,-1,1));
+   };
+   const palmGap=clearance(palm);
+   let cost=48*Math.pow(palmGap-.007,2)+
+     (palmGap<.002?720*Math.pow(.002-palmGap,2):0);
+   // Mild regularization only. Source geometry and nonpenetration dominate.
+   cost+=.000004*Math.pow(theta/20,2)+.000006*Math.pow(phi/12,2);
+   const phases={},gaps={},collisions={},wraps={};
+   let contacts=0,penetrations=palmGap<.002?1:0,wrapped=0;
+   for(const digit of Object.keys(contactDigits)){
+    let choice=null;
+    for(const sample of samples){
+     if(sample.u<(digit==="thumb"?.5:.7))continue;
+     const d=clearance(sample.clouds[digit]);
+     const collision=clearance(sample.clouds["collision_"+digit]);
+     const wrap=wrapAngle(sample.ends[digit]);
+     const minWrap=digit==="thumb"?.28:.62;
+     const penalty=26*Math.pow(d-.006,2)+
+      (d>.024?145*Math.pow(d-.024,2):0)+
+      (d<.003?260*Math.pow(.003-d,2):0)+
+      (collision<.002?1300*Math.pow(.002-collision,2):0)+
+      .0015*Math.pow(Math.max(0,minWrap-wrap),2)+
+      .00012*Math.pow(sample.u-.9,2);
+     if(!choice||penalty<choice.penalty)
+      choice={u:sample.u,gap:d,collision,wrap,penalty};
+    }
+    phases[digit]=choice.u;gaps[digit]=choice.gap;
+    collisions[digit]=choice.collision;
+    wraps[digit]=THREE.MathUtils.radToDeg(choice.wrap);
+    cost+=choice.penalty;
+    if(choice.collision<.002)penetrations++;
+    if(choice.gap>=.003&&choice.gap<=.024&&choice.collision>=.002)contacts++;
+    if(choice.wrap>=(digit==="thumb"?.28:.62))wrapped++;
    }
+   cost+=.00012*Math.pow(5-contacts,2)+.00017*Math.pow(5-wrapped,2);
+   return {y:yy,z:zz,theta,phi,cost,phases,gaps,collisions,wraps,
+    palmGap,contacts,wrapped,penetrations};
   }
-  if(!best)throw Error("Не удалось согласовать рукоять и кисть");
-  const R=M4().makeBasis(frame.x,frame.y,frame.z);
-  R.setPosition(frame.origin);
-  gripFrame=frame;
-  gripBase=R.multiply(M4().makeTranslation(0,best.y,best.z));
+
+  const angles=(from,to,step)=>{const result=[];for(let n=from;n<=to+.0001;n+=step)result.push(n);return result};
+  let best=null;
+  const consider=(yy,zz,theta,phi)=>{
+   const candidate=evaluate(yy,zz,theta,phi);
+   if(!best||candidate.cost<best.cost)best=candidate;
+  };
+  const thetaCandidates=manualGripAngles?[manualGripAngles.theta]:[-30,-15,0,15,30];
+  const phiCandidates=manualGripAngles?[manualGripAngles.phi]:[-18,-9,0,9,18];
+  // Coarse bounded 4-D search; ~1,600 candidates, then local refinement.
+  for(const theta of thetaCandidates)for(const phi of phiCandidates)
+   for(const yy of angles(-.032,.052,.012))
+    for(const zz of angles(-.041,.067,.015))
+     consider(yy,zz,theta,phi);
+  if(!best)throw Error("Не удалось подобрать геометрию рукоятки");
+  const coarse={...best};
+  const moreTheta=manualGripAngles?[manualGripAngles.theta]:
+   angles(Math.max(-30,coarse.theta-8),Math.min(30,coarse.theta+8),4);
+  const morePhi=manualGripAngles?[manualGripAngles.phi]:
+   angles(Math.max(-18,coarse.phi-6),Math.min(18,coarse.phi+6),3);
+  for(const theta of moreTheta)for(const phi of morePhi)
+   for(const yy of angles(coarse.y-.006,coarse.y+.006,.003))
+    for(const zz of angles(coarse.z-.006,coarse.z+.006,.003))
+     consider(yy,zz,theta,phi);
+
+  // Handle origin is offset in PALM coordinates, then oriented around
+  // that origin. Rotating the handle must never translate it accidentally.
+  const rt=THREE.MathUtils.degToRad(best.theta),rp=THREE.MathUtils.degToRad(best.phi);
+  const axis=frame.x.clone().multiplyScalar(Math.cos(rt)*Math.cos(rp))
+   .addScaledVector(frame.y,Math.sin(rt)*Math.cos(rp))
+   .addScaledVector(frame.z,Math.sin(rp)).normalize();
+  const across=frame.y.clone().addScaledVector(axis,-frame.y.dot(axis)).normalize();
+  const normal=axis.clone().cross(across).normalize();
+  const center=frame.origin.clone().addScaledVector(frame.y,best.y)
+   .addScaledVector(frame.z,best.z);
+  gripBase=M4().makeBasis(axis,across,normal);
+  gripBase.setPosition(center);
+  gripFrame={origin:center.clone(),x:axis,y:across,z:normal};
   gripDigitProgress=best.phases;
-  gripPlan={y:best.y,z:best.z,origin:frame.origin.toArray(),
-   x:frame.x.toArray(),normal:frame.z.toArray(),palmGapMm:best.palmGap*1000,
-   status:best.penetrations===0&&best.contacts>=3?"geometry-pass":"needs-retarget",
+  gripPlan={y:best.y,z:best.z,thetaDeg:best.theta,phiDeg:best.phi,
+   origin:frame.origin.toArray(),center:center.toArray(),
+   x:axis.toArray(),normal:normal.toArray(),palmGapMm:best.palmGap*1000,
+   status:best.penetrations===0&&best.contacts>=3&&best.wrapped>=3?
+    "geometry-pass":"needs-retarget",
    sampledDigits:{...best.phases},minimumFlexion:0.7,contactCount:best.contacts,
+   wrappedDigits:best.wrapped,wrapAnglesDeg:best.wraps,
    collisionCount:best.penetrations,
    score:{cost:best.cost,gap:best.gaps,collisionGap:best.collisions}};
+  $("#handleYaw").value=String(Math.round(best.theta));
+  $("#handlePitch").value=String(Math.round(best.phi));
+  $("#handleYawValue").textContent=best.theta.toFixed(0)+"°";
+  $("#handlePitchValue").textContent=best.phi.toFixed(0)+"°";
   completed=true;return gripPlan;
  }finally{
   elbow=prior.elbow;pose=prior.pose;finger=prior.finger;
@@ -594,7 +677,7 @@ function calculateThumbOpposition(){
  if(!rootPivot)throw Error("Нет суставного ориентира основания большого пальца");
  const tip=vecCenter(rig.get("RA6D1").mesh);
  const origin=new THREE.Vector3().setFromMatrixPosition(gripBase);
- const lateral=gripFrame.x.clone().normalize();
+ const lateral=new THREE.Vector3().setFromMatrixColumn(gripBase,0).normalize();
  const t=THREE.MathUtils.clamp(tip.clone().sub(origin).dot(lateral),-.05,.05);
  const onAxis=origin.clone().addScaledVector(lateral,t);
  let radial=tip.clone().sub(onAxis);
@@ -912,6 +995,7 @@ async function init(){
   ready=true;gripReady=true;
   $("#elbow").disabled=false;$("#finger").disabled=false;
   $("#handleDiameter").disabled=false;$("#handleOffset").disabled=false;$("#handleDepth").disabled=false;
+   $("#handleYaw").disabled=false;$("#handlePitch").disabled=false;
   gripVisible=true;elbow=75;pose="cylinder";finger=1;
   $("#elbow").value="75";$("#finger").value="100";
   document.querySelectorAll("[data-pose]").forEach(b=>b.classList.toggle("on",b.dataset.pose==="cylinder"));
@@ -953,11 +1037,23 @@ $("#handleDiameter").oninput=e=>{
 };
 $("#autoGrip").onclick=()=>{
  if(!ready)return;
+ manualGripAngles=null;
  handleOffsetMm=0;handleDepthMm=0;
  $("#handleOffset").value="0";$("#handleDepth").value="0";
  $("#handleOffsetValue").textContent="0 мм";$("#handleDepthValue").textContent="0 мм";
  planDumbbellGrip();calculateThumbOpposition();applyPose();fit();
 };
+for(const id of ["handleYaw","handlePitch"]){
+ const slider=$("#"+id);
+ const label=$(id==="handleYaw"?"#handleYawValue":"#handlePitchValue");
+ slider.oninput=e=>{label.textContent=Number(e.target.value)+"°";};
+ slider.onchange=()=>{
+  if(!ready)return;
+  manualGripAngles={theta:Number($("#handleYaw").value),
+                    phi:Number($("#handlePitch").value)};
+  planDumbbellGrip();calculateThumbOpposition();applyPose();fit();
+ };
+}
 $("#handleDepth").oninput=e=>{
  if(!ready)return;handleDepthMm=Number(e.target.value);
  $("#handleDepthValue").textContent=handleDepthMm+" мм";applyPose();
