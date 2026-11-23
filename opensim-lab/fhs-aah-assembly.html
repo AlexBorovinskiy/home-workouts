@@ -47,7 +47,7 @@ label{font-size:12px;color:#e5f2ef}
 </div></section>
 <section class="card panel">
 <h2>Ограничения этой сборки</h2>
-<div class="warn">Это пока <b>совмещённая визуализация</b>, а не одна валидированная динамическая модель OpenSim. Совпадение полулунной кости задаёт точное начальное положение, но другие кости запястья и фаланги в исходных моделях расположены по-разному. Суставные оси запястья, силы, массы и мышечные крепления ещё не согласованы. Шея MASI C1–C7 показана в исходных позах с визуальным совмещением C7–T1, но её межмодельные суставы и мышцы не валидированы. Рёбра FHS в оригинале представлены линиями; объёмная толщина добавлена только для наглядности, не является анатомическим измерением. Ноги добавим отдельно.</div>
+<div class="warn">Это пока <b>совмещённая визуализация</b>, а не одна валидированная динамическая модель OpenSim. Совпадение полулунной кости задаёт точное начальное положение, но другие кости запястья и фаланги в исходных моделях расположены по-разному. Суставные оси запястья, силы, массы и мышечные крепления ещё не согласованы. Шея MASI C1–C7 и <b>оригинальная объёмная грудная клетка MASI ribcage.vtp</b> отображаются с пробным межмодельным совмещением; положение рёбер относительно грудных позвонков FHS ещё не анатомически валидировано. Тонкие линии FHS сохранены в альтернативном режиме для сравнения. Ноги добавим отдельно.</div>
 <p><a href="https://zenodo.org/records/18259702" target="_blank" rel="noopener">Исходный архив FHS</a> · <a href="https://github.com/nishbo/ms_arm_and_hand" target="_blank" rel="noopener">Источник AAH (MIT)</a>. Файл ZIP FHS используется только на устройстве; 3D-сетки AAH загружаются непосредственно из открытого авторского репозитория.</p>
 </section>
 </div>
@@ -88,7 +88,13 @@ label{font-size:12px;color:#e5f2ef}
 </div>
 <p id="neckStatus">Подготавливаю исходную геометрию MASI C1–C7. У FHS шейные позвонки находятся в одном жёстком теле и в выбранном экземпляре расположены некорректно.</p>
 <h3>Видимость</h3>
-<label class="check"><input id="ribs" type="checkbox" checked> Рёбра (объёмный показ исходных линий) и грудина</label>
+<h3>Грудная клетка</h3>
+<div class="buttons">
+<button data-rib="masi" class="on">MASI · объёмные рёбра</button>
+<button data-rib="fhs">FHS · осевые линии</button>
+</div>
+<p id="ribsStatus">Загружаю оригинальную объёмную костную поверхность MASI ribcage.vtp. Линии FHS остаются только как сравнение.</p>
+<label class="check"><input id="ribs" type="checkbox" checked> Показывать грудную клетку</label>
 <label class="check"><input id="spine" type="checkbox" checked> Позвоночник</label>
 <label class="check"><input id="shoulders" type="checkbox" checked> Плечи и предплечья</label>
 <label class="check"><input id="head" type="checkbox" checked> Череп и шея</label>
@@ -121,11 +127,11 @@ const c={bone:0xdddcce,spine:0x9ad2c6,rib:0xc7c7b9,arm:0xbdb3dc,hand:0x9de3cf,pe
 const fhsRoot=new THREE.Group(),handRoot=new THREE.Group();scene.add(fhsRoot,handRoot);
 const group={head:new THREE.Group(),spine:new THREE.Group(),ribs:new THREE.Group(),shoulders:new THREE.Group(),pelvis:new THREE.Group(),rigidHands:new THREE.Group()};
 Object.values(group).forEach(g=>fhsRoot.add(g));
-const neckRoot=new THREE.Group(),neckScaffold=new THREE.Group();
-neckRoot.add(neckScaffold);fhsRoot.add(neckRoot);neckRoot.visible=false;
+const neckRoot=new THREE.Group(),neckScaffold=new THREE.Group(),masiRibsGroup=new THREE.Group();
+neckRoot.add(neckScaffold,masiRibsGroup);fhsRoot.add(neckRoot);neckRoot.visible=false;
 const aahGroup={right:new THREE.Group(),left:new THREE.Group()};Object.values(aahGroup).forEach(g=>handRoot.add(g));
 let fhs=null,aah=null,mode="aah",pose="curl",bend=0,view="front",loadedFhs=false,loadedAAH=false,loadAAHStarted=false;
-let neckMode="masi",neckReady=false,neckLoadStarted=false,ribProxies=0,ribSegments=0,neckJointResidualMm=null;
+let neckMode="masi",ribMode="masi",neckReady=false,neckLoadStarted=false,ribProxies=0,ribSegments=0,neckJointResidualMm=null;
 const neckBones=new Map(),handMesh={right:new Map(),left:new Map()},fhsMeshes=[];
 const sourceAAH="https://raw.githubusercontent.com/nishbo/ms_arm_and_hand/main/AAH%20Model/Geometry/";
 const sourceMASI="https://raw.githubusercontent.com/MyoHub/myoconverter/main/models/osim/Neck6D/Geometry/";
@@ -138,7 +144,10 @@ function fit(){
   for(const obj of meshes)b.expandByObject(obj);
  }else{
   for(const g of Object.values(group))if(g.visible)b.expandByObject(g);
-  if(neckRoot.visible)b.expandByObject(neckRoot);
+  if(neckRoot.visible){
+   if(neckScaffold.visible)b.expandByObject(neckScaffold);
+   if(masiRibsGroup.visible)b.expandByObject(masiRibsGroup);
+  }
   if(mode==="aah"&&loadedAAH)for(const g of Object.values(aahGroup))b.expandByObject(g);
  }
  if(b.isEmpty())return;
@@ -292,11 +301,14 @@ async function startNeck(){
   const s=.88875,anchor=V(reg.masiAnchorM);
   neckScaffold.scale.setScalar(s);
   neckScaffold.position.copy(anchor).multiplyScalar(1-s);
+  masiRibsGroup.scale.copy(neckScaffold.scale);
+  masiRibsGroup.position.copy(neckScaffold.position);
   neckScaffold.updateMatrixWorld(true);
+  masiRibsGroup.updateMatrixWorld(true);
   const aligned=anchor.clone().applyMatrix4(neckRoot.matrix);
   neckJointResidualMm=aligned.distanceTo(V(reg.fhsAnchorM))*1000;
   if(neckJointResidualMm>.0001)throw Error("Не совпали суставные точки C7–T1");
-  const ids=[...Array.from({length:7},(_,i)=>"cerv"+(i+1)),"skull"];
+  const ids=[...Array.from({length:7},(_,i)=>"cerv"+(i+1)),"skull","torso"];
   const downloaded=await Promise.all(ids.map(async id=>{
     const frame=masi.bodyFrames[id];
     if(!frame)throw Error("Отсутствует шейный сегмент MASI "+id);
@@ -304,31 +316,36 @@ async function startNeck(){
     if(!res.ok)throw Error("Не удалось получить "+frame.file+" из научной модели (HTTP "+res.status+")");
     return {id,frame,source:await res.text()};
   }));
-  for(const old of [...neckScaffold.children]){
-    neckScaffold.remove(old);
-    old.traverse(obj=>{obj.geometry?.dispose();obj.material?.dispose()});
+  for(const holder of [neckScaffold,masiRibsGroup]){
+    for(const old of [...holder.children]){
+      holder.remove(old);
+      old.traverse(obj=>{obj.geometry?.dispose();obj.material?.dispose()});
+    }
   }
   neckBones.clear();
   for(const {id,frame,source} of downloaded){
     const {geo,edges}=parseVtp(source,frame.file);
     if(edges)throw Error("Шейная кость неожиданно состоит из линий: "+frame.file);
     const bone=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({
-      color:id==="skull"?0xe0ded6:0xeac08a,roughness:.62,side:THREE.DoubleSide
+      color:id==="skull"?0xe0ded6:id==="torso"?0xc6d0c9:0xeac08a,roughness:.62,side:THREE.DoubleSide
     }));
     bone.position.copy(V(frame.position));
     bone.quaternion.setFromRotationMatrix(rows(frame.rotation));
     bone.scale.set(...frame.scale);
     bone.userData={body:id,source:"MASI"};
-    neckScaffold.add(bone);neckBones.set(id,bone);
+    if(id==="torso")masiRibsGroup.add(bone);
+    else{neckScaffold.add(bone);neckBones.set(id,bone)}
   }
   neckReady=true;
   $("#neckStatus").textContent="MASI C1–C7 и череп восстановлены из реальных OpenSim-поз. Масштаб отображения 88,875% от исходной MASI; соединение C7–T1 только диагностическое. Можно сравнить с исходной FHS.";
+  $("#ribsStatus").textContent="Загружена оригинальная объёмная сетка ribcage.vtp из MASI, как на предыдущей странице. Она включает грудную клетку одной поверхностью; её положение относительно FHS позвоночника требует проверки.";
   updateVisibility();fit();
   status("Собрана верхняя часть FHS, 24 видимых ребра, MASI C1–C7 и две подвижные кисти AAH.");
  }catch(e){
   console.error("MASI cervical display:",e);
   $("#neckStatus").textContent="Не удалось восстановить MASI: "+e.message+". Включено исходное отображение FHS с известной ошибкой шеи.";
-  neckMode="fhs";neckReady=false;updateVisibility();fit();
+  $("#ribsStatus").textContent="Не удалось загрузить объёмную грудную клетку MASI: "+e.message+". Временно показаны осевые рёбра FHS.";
+  neckMode="fhs";ribMode="fhs";neckReady=false;updateVisibility();fit();
  }
 }
 
@@ -405,6 +422,11 @@ async function startAAH(){
    ribProxyCount:()=>ribProxies,
    ribSegmentCount:()=>ribSegments,
    neckBones:()=>[...neckBones.keys()],
+   ribMode:()=>ribMode,
+   masiRibCount:()=>masiRibsGroup.children.length,
+   masiRibTriangles:()=>masiRibsGroup.children.reduce((sum,m)=>sum+(m.geometry.getIndex()?.count||0)/3,0),
+   masiRibVisible:()=>masiRibsGroup.visible&&neckRoot.visible,
+   fhsRibsVisible:()=>group.ribs.visible,
    neckSource:()=>neckMode,
    neckReady:()=>neckReady,
    neckJointResidualMm:()=>neckJointResidualMm,
@@ -447,10 +469,14 @@ function updateVisibility(){
  for(const g of Object.values(aahGroup))g.visible=replace;
  const showNeck=$("#head").checked;
  group.head.visible=showNeck&&(!neckReady||neckMode==="fhs");
- neckRoot.visible=showNeck&&neckReady&&neckMode==="masi";
+ neckScaffold.visible=showNeck&&neckReady&&neckMode==="masi";
+ const showRibs=$("#ribs").checked;
+ masiRibsGroup.visible=showRibs&&neckReady&&ribMode==="masi";
+ neckRoot.visible=neckScaffold.visible||masiRibsGroup.visible;
  document.querySelectorAll("[data-neck]").forEach(b=>b.classList.toggle("on",b.dataset.neck===neckMode));
+ document.querySelectorAll("[data-rib]").forEach(b=>b.classList.toggle("on",b.dataset.rib===ribMode));
  group.spine.visible=$("#spine").checked;
- group.ribs.visible=$("#ribs").checked;group.shoulders.visible=$("#shoulders").checked;
+ group.ribs.visible=showRibs&&(!neckReady||ribMode==="fhs");group.shoulders.visible=$("#shoulders").checked;
  group.pelvis.visible=$("#pelvis").checked;
  document.querySelectorAll("[data-hands]").forEach(b=>b.classList.toggle("on",b.dataset.hands===mode));
  $("#wristReport").textContent=replace?
@@ -465,8 +491,10 @@ $("#file").onchange=async()=>{
 };
 document.querySelectorAll("[data-hands]").forEach(b=>b.onclick=()=>{mode=b.dataset.hands;updateVisibility()});
 document.querySelectorAll("[data-neck]").forEach(b=>b.onclick=()=>{
- neckMode=b.dataset.neck;
- updateVisibility();fit();
+ neckMode=b.dataset.neck;updateVisibility();fit();
+});
+document.querySelectorAll("[data-rib]").forEach(b=>b.onclick=()=>{
+ ribMode=b.dataset.rib;updateVisibility();fit();
 });
 document.querySelectorAll("[data-pose]").forEach(b=>b.onclick=()=>{
  if(b.dataset.pose==="open"){bend=0;pose="curl"}
@@ -476,7 +504,7 @@ document.querySelectorAll("[data-pose]").forEach(b=>b.onclick=()=>{
 $("#bend").oninput=e=>{bend=Number(e.target.value)/100;applyHands()};
 document.querySelectorAll("[data-view]").forEach(b=>b.onclick=()=>{view=b.dataset.view;fit()});
 for(const id of ["ribs","spine","shoulders","head","pelvis"])$("#"+id).onchange=()=>{updateVisibility();fit()};
-$("#reset").onclick=()=>{view="front";bend=0;pose="curl";mode="aah";neckMode="masi";applyHands();updateVisibility();fit()};
+$("#reset").onclick=()=>{view="front";bend=0;pose="curl";mode="aah";neckMode="masi";ribMode="masi";applyHands();updateVisibility();fit()};
 new ResizeObserver(()=>{renderer.setSize(stage.clientWidth,stage.clientHeight,false);camera.aspect=stage.clientWidth/Math.max(1,stage.clientHeight);camera.updateProjectionMatrix()}).observe(stage);
 (function loop(){requestAnimationFrame(loop);orbit.update();renderer.render(scene,camera)})();
 async function init(){
