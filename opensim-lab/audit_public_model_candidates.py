@@ -149,9 +149,11 @@ def main():
         obj=basic(path)
         obj["source"]=source
         obj["nativeOpenSim"]=from_native(path)
-        obj["publishedMeshAvailability"]=source_mesh_audit(obj,trees,"aah" if key.startswith("aah") else "rajagopal")
+        obj["publishedMeshAvailability"]=source_mesh_audit(obj,trees["aah" if key.startswith("aah") else "rajagopal"],"aah" if key.startswith("aah") else "rajagopal")
         if key.startswith("aah"):
             obj["fingerAssessment"]=inventory_finger_segments(obj,"right" if "right" in key else "left")
+        if obj["publishedMeshAvailability"]["availableInPublishedSourceRepo"]==0:
+            raise AssertionError("Published mesh source index unexpectedly empty for "+key)
         results[key]=obj
     out={
       "schema":"public-ready-models-audit-v1",
