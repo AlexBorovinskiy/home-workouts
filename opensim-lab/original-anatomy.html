@@ -63,7 +63,8 @@ select{width:100%;background:#0d2a38;border:1px solid #4a6b71;color:var(--ink);b
 <option value="C3">C3</option><option value="C4">C4</option><option value="C5">C5</option>
 <option value="C6">C6</option><option value="C7">C7</option>
 </select>
-<div class="buttons"><button id="cervicalFocus" class="primary">Показать шею отдельно</button><button id="cervicalContext">Показать с черепом</button><button id="cervicalExit">Вернуть весь скелет</button></div>
+<div class="buttons"><button id="cervicalFocus" class="primary">Исходное положение</button><button id="cervicalSpread">Разложить кости для осмотра</button><button id="cervicalContext">Показать с черепом</button><button id="cervicalExit">Вернуть весь скелет</button></div>
+<div class="status warn" id="cervicalFinding">Проверка исходного архива: C1–C7 имеют отдельные поверхности, но расположены практически друг поверх друга. Разделение для осмотра будет искусственным и не изменит настоящие координаты модели.</div>
 <div id="cervicalInfo" class="status">Каждый шейный позвонок получит собственную подсветку. Они остаются неподвижными друг относительно друга: все геометрии прикреплены к head_neck.</div>
 </div>
 <div class="audit-area">
@@ -116,7 +117,7 @@ controls.enableDamping=true;controls.minDistance=.07;controls.maxDistance=6;
 const groups={head:new THREE.Group(),hands:new THREE.Group(),spine:new THREE.Group(),ribs:new THREE.Group(),pelvis:new THREE.Group(),shoulder:new THREE.Group()};
 const cervicalLabels=new THREE.Group();scene.add(cervicalLabels);
 Object.values(groups).forEach(g=>scene.add(g));
-let manifest=null,sourceAudit=null,cervicalAuditData=null,cervicalMode=false,modelLoaded=false,counters={total:0,hands:0,head:0,ribs:0,pelvis:0,triangles:0,lineSegments:0},lastZip=null,currentView='body';
+let manifest=null,sourceAudit=null,cervicalAuditData=null,cervicalMode=false,cervicalExploded=false,modelLoaded=false,counters={total:0,hands:0,head:0,ribs:0,pelvis:0,triangles:0,lineSegments:0},lastZip=null,currentView='body';
 const LOCAL_DB='home-workouts-fhs-data',STORE='archive',CACHE_KEY='fhs-2026-scientific-zip';
 function openCache(){
  return new Promise((resolve,reject)=>{
@@ -303,6 +304,12 @@ $('#attachmentSelect').addEventListener('change',v=>inspectAttachment(v.target.v
 
 const cervicalFiles=Object.fromEntries(Array.from({length:7},(_,i)=>
  ['C'+(i+1),i===6?'rotatedcerv7.vtp':'cerv'+(i+1)+'.vtp']));
+function restoreNeckMeshes(){
+ for(const [i,filename] of Object.values(cervicalFiles).entries()){
+  const bone=groups.head.children.find(m=>m.userData.meshFile===filename);
+  if(bone&&Array.isArray(bone.userData.originalPosition))bone.position.fromArray(bone.userData.originalPosition);
+ }
+}
 function clearCervicalLabels(){
  for(const o of [...cervicalLabels.children]){cervicalLabels.remove(o);o.material.dispose();o.material.map?.dispose()}
 }
@@ -331,28 +338,37 @@ function cervicalSprite(text,point){
  const spr=new THREE.Sprite(mat);spr.position.copy(point);
  spr.scale.set(.045,.018,1);cervicalLabels.add(spr);
 }
-function focusCervical(view='all',withSkull=false){
+function focusCervical(view='all',withSkull=false,exploded=false){
  if(!modelLoaded){$('#cervicalInfo').textContent='Сначала открой исходный ZIP Framingham.';return false}
+ restoreNeckMeshes();
+ cervicalMode=true;cervicalExploded=exploded;
+ // Deliberate forensic separation, never represented as anatomic alignment.
+ // The 3D coordinate data remain unchanged and are restored on exit.
+ if(exploded){
+  Object.values(cervicalFiles).forEach((filename,i)=>{
+   const bone=groups.head.children.find(m=>m.userData.meshFile===filename);
+   if(bone)bone.position.x+=(i-3)*.088;
+  });
+ }
  const {cervical,skull,t1}=cervicalBoneData();
- cervicalMode=true;
  const selected=view==='all'?Object.keys(cervical):[view];
  if(!selected.every(k=>cervical[k]))throw Error('Неизвестный шейный позвонок '+view);
  const selectedNames=new Set(selected.map(k=>cervical[k].file));
  for(const [groupName,group] of Object.entries(groups))group.visible=groupName==='head'||groupName==='spine';
  for(const mesh of groups.head.children){
   const file=mesh.userData.meshFile;
-  mesh.visible=selectedNames.has(file)||(withSkull&&file==='skull.vtp');
+  mesh.visible=selectedNames.has(file)||(withSkull&&!exploded&&file==='skull.vtp');
   mesh.material.color.setHex(selectedNames.has(file)?0xf3c168:0xd8d9c5);
  }
  for(const mesh of groups.spine.children){
-  mesh.visible=mesh.userData.meshFile==='thoracic1_s.vtp';
+  mesh.visible=!exploded&&mesh.userData.meshFile==='thoracic1_s.vtp';
   if(mesh.material.color)mesh.material.color.setHex(0x9bd5d3);
  }
  clearCervicalLabels();
  const bounds=new THREE.Box3();
  for(const id of selected){const data=cervical[id];bounds.expandByObject(data.bone);}
- bounds.expandByObject(t1);
- if(withSkull)bounds.expandByObject(skull);
+ if(!exploded)bounds.expandByObject(t1);
+ if(withSkull&&!exploded)bounds.expandByObject(skull);
  const center=bounds.getCenter(new THREE.Vector3()),size=bounds.getSize(new THREE.Vector3());
  const cvTan=Math.tan(THREE.MathUtils.degToRad(camera.fov/2));
  const aspect=Math.max(camera.aspect,.2);
@@ -361,10 +377,12 @@ function focusCervical(view='all',withSkull=false){
  // Right lateral view exposes the normal craniocaudal stack, unobscured by skull.
  camera.position.copy(center).add(new THREE.Vector3(.05*dist,.12*dist,dist));
  camera.lookAt(center);controls.update();
- for(const id of selected){
-  const p=new THREE.Vector3(...cervical[id].center);
-  p.z+=Math.max(.035,size.z*.7);
-  cervicalSprite(id,p);
+ if(exploded||selected.length===1){
+  for(const id of selected){
+   const p=new THREE.Vector3(...cervical[id].center);
+   p.z+=Math.max(.035,size.z*.7);
+   cervicalSprite(id,p);
+  }
  }
  const limits=selected.map(id=>{
   const d=cervical[id];
@@ -372,17 +390,22 @@ function focusCervical(view='all',withSkull=false){
   return id+': центр '+y+' см (координата OpenSim Y), высота сетки '+height+' см';
  });
  const dataText=cervicalAuditData?
-  '\nПроверка исходного архива: расстояние C1–череп '+
-  cervicalAuditData.C1VsSkullMm.toFixed(2)+' мм; C7–T1 '+
+  '\nИсходные центры C1–C7 занимают по вертикали лишь '+
+  ((Math.max(...Object.values(cervicalAuditData.cervical).map(o=>o.centerM[1]))-
+     Math.min(...Object.values(cervicalAuditData.cervical).map(o=>o.centerM[1])))*1000).toFixed(2)+
+  ' мм: это не корректно выстроенный шейный отдел. Расстояние между ближайшими вершинами C7 и T1 '+
   cervicalAuditData.C7VsT1Mm.toFixed(2)+' мм.':'';
- $('#cervicalInfo').textContent='Показаны оригинальные поверхности: '+
- selected.join(', ')+(withSkull?' + череп':'')+' + T1.\n'+
- limits.join('\n')+dataText+'\nВсе C1–C7 остаются одним жёстким сегментом head_neck.';
- window.__cervicalMode={selected:[...selected],withSkull};
+ $('#cervicalInfo').textContent=(exploded?
+  'ДИАГНОСТИЧЕСКАЯ РАСКЛАДКА: кости искусственно разнесены ПО ГОРИЗОНТАЛИ, это не их правильное положение.\n':
+  'Показаны исходные наложенные друг на друга поверхности.\n')+
+  selected.join(', ')+(withSkull&&!exploded?' + череп':'')+(exploded?'':' + T1')+
+  '.\n'+limits.join('\n')+dataText+'\nНезависимая механика C1–C7 отсутствует.';
+ window.__cervicalMode={selected:[...selected],withSkull:withSkull&&!exploded,exploded};
  return true;
 }
 function exitCervical(){
- cervicalMode=false;
+ cervicalMode=false;cervicalExploded=false;
+ restoreNeckMeshes();
  clearCervicalLabels();
  for(const group of Object.values(groups)){group.visible=true;
   for(const mesh of group.children){
@@ -398,11 +421,12 @@ function exitCervical(){
  fit('body');
  return true;
 }
-$('#cervicalFocus').onclick=()=>focusCervical($('#cervicalSelect').value,false);
-$('#cervicalContext').onclick=()=>focusCervical($('#cervicalSelect').value,true);
+$('#cervicalFocus').onclick=()=>focusCervical($('#cervicalSelect').value,false,false);
+$('#cervicalSpread').onclick=()=>focusCervical($('#cervicalSelect').value,false,true);
+$('#cervicalContext').onclick=()=>focusCervical($('#cervicalSelect').value,true,false);
 $('#cervicalExit').onclick=exitCervical;
 $('#cervicalSelect').onchange=()=>{
- if(cervicalMode)focusCervical($('#cervicalSelect').value,Boolean(window.__cervicalMode?.withSkull));
+ if(cervicalMode)focusCervical($('#cervicalSelect').value,Boolean(window.__cervicalMode?.withSkull),cervicalExploded);
 };
 function resetGroups(){
  clearCervicalLabels();cervicalMode=false;
@@ -446,7 +470,7 @@ async function loadZip(bytes){
      new THREE.MeshStandardMaterial({color,roughness:.65,metalness:.02,side:THREE.DoubleSide});
    const m=asLines?new THREE.LineSegments(geo,material):new THREE.Mesh(geo,material);
    m.position.copy(vec(frame.origin));m.quaternion.copy(quat);m.scale.set(...entry.scaleFactors);
-   m.userData={body,meshFile:entry.file,baseColor:material.color.getHex()};
+   m.userData={body,meshFile:entry.file,baseColor:material.color.getHex(),originalPosition:m.position.toArray()};
    group.add(m);
    counters.total++;counters.triangles+=triangles;counters.lineSegments+=lineSegments;byCategory[category(body)]++;
    if(body==='head_neck')counters.head++;
@@ -460,7 +484,7 @@ async function loadZip(bytes){
     throw Error('Неполный набор исходных поверхностей: '+JSON.stringify(counters));
  modelLoaded=true;emitStats();fit('body');
  if($('#attachmentSelect').value)inspectAttachment($('#attachmentSelect').value);
- if(cervicalMode)focusCervical($('#cervicalSelect').value,false);
+ if(cervicalMode)focusCervical($('#cervicalSelect').value,false,cervicalExploded);
  $('#emptyState').hidden=true;$('#forgetZip').hidden=false;
  status('Загружено '+counters.total+' исходных анатомических сеток OpenSim: 24 ребра представлены '+counters.lineSegments+' исходными линиями, остальные кости — поверхностями. Движение ещё не подтверждено для упражнений.');
  $('#hud').textContent='Подлинная геометрия FHS · '+counters.total+' поверхностей';
@@ -515,6 +539,18 @@ for(const [id,key] of [['toggleHand','hands'],['toggleHead','head'],['toggleSpin
 fetch('./assets/fhs-original-frames.json').then(r=>{if(!r.ok)throw Error('Нет манифеста координат OpenSim');return r.json()})
 .then(m=>{if(m.kind!=='fhs-opensim-body-frames-v1'||!m.bodyFrames.hand_R)throw Error('Ошибочный манифест');
  manifest=m;$('#hud').textContent='Модель OpenSim выбрана · проверяю локальный архив';
+ fetch('./assets/fhs-cervical-audit.json').then(r=>{if(!r.ok)throw Error('Нет отчёта C1–C7');return r.json()})
+  .then(a=>{
+   if(a.kind!=='FHS-native-cervical-VTP-geometry-audit-v1'||
+     a.subjectPath!==m.archiveRelativeOsimPath||Object.keys(a.cervical).length!==7)throw Error('Несовместимый отчёт шеи');
+   cervicalAuditData=a;
+   const centres=Object.values(a.cervical).map(o=>o.centerM[1]);
+   const spreadMm=(Math.max(...centres)-Math.min(...centres))*1000;
+   const order=a.craniocaudalOrderByBoundingBoxCenter.join(' → ');
+   $('#cervicalFinding').textContent='Обнаружена реальная ошибка геометрии: центры семи шейных позвонков находятся в вертикальном диапазоне '+
+    spreadMm.toFixed(2)+' мм, а порядок сверху вниз '+order+'. Это не анатомически правильная шея. '+
+    'Кнопка раскладки разносит кости только для осмотра — исходная модель остаётся без изменений.';
+  }).catch(e=>{$('#cervicalFinding').textContent='Проверка шеи: '+e.message;});
  fetch('./assets/fhs-anatomical-audit.json').then(r=>{if(!r.ok)throw Error('Отчёт отсутствует');return r.json()})
   .then(a=>{
    if(a.schema!=='fhs-anatomical-attachment-audit-v1'||a.sourceModel!==m.archiveRelativeOsimPath||a.ribLinks.length!==24)throw Error('Несовместимая проверка креплений');
