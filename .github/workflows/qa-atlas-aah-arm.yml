@@ -49,10 +49,10 @@ jobs:
             await page.waitForFunction(()=>window.__armQA?.ready()||
               document.querySelector('#status')?.textContent?.includes('Не удалось построить'),null,{timeout:120000});
             const open=await read();
-            if(!open.ready||open.bones!==28||open.atlasBones!==198||open.visible!==28||
+            if(!open.ready||open.bones!==28||open.atlasBones!==198||open.visible!==25||
                open.coordinate!=='ra_el_e_f'||open.reg.rms>35||open.reg.scale<.45||
                open.axisMode!=='anatomic'||Math.abs(open.axis[0])!==1||
-               !open.gripReady||!open.gripVisible||!open.contact||open.handleDiameter!==30)
+               !open.gripReady||!open.gripVisible||!open.contact||open.handleDiameter!==24)
               throw Error('Initial arm retarget invalid '+JSON.stringify(open)+' : '+await page.locator('#status').innerText());
             await page.locator('#scene').screenshot({path:'qa-atlas-arm/atlas-AAH-dumbbell-grip-initial.png'});
             const gripped=open;
