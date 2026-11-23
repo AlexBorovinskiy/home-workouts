@@ -130,7 +130,14 @@ const landmarks=[
 ];
 let atlas=null,original=[],bones=[],rig=new Map(),poseFrames=null,elbowFrames=null,registration=null;
 let elbow=0,finger=0,pose="curl",mode="rig",view="rightarm",ready=false,sourceAtlas=null,axisMode="anatomic";
-const sourceCenters=new Map(),targetCenters=new Map(),sourceRest=new Map();
+const sourceCenters=new Map(),targetCenters=new Map(),sourceRest=new Map(),jointPivots=new Map();
+const jointParents={
+ RA4M1:"RA3T",RA5P1:"RA4M1",RA6D1:"RA5P1",
+ RA5P2:"RA4M2",RA6M2:"RA5P2",RA7D2:"RA6M2",
+ RA5P3:"RA4M3",RA6M3:"RA5P3",RA7D3:"RA6M3",
+ RA5P4:"RA4M4",RA6M4:"RA5P4",RA7D4:"RA6M4",
+ RA5P5:"RA4M5",RA6M5:"RA5P5",RA7D5:"RA6M5"
+};
 const nameOf=x=>x.userData?.name||x.name;
 function status(s){$("#status").textContent=s}
 function vecCenter(mesh){
@@ -241,6 +248,46 @@ function getElbowWorld(){
  const radians=2*Math.acos(THREE.MathUtils.clamp(Math.abs(q.w),0,1));
  return new THREE.Quaternion().setFromAxisAngle(sourceAtlas.flexAxis,radians);
 }
+function boneSurfaceEnd(mesh,axis,towardsChild){
+ const attr=mesh.geometry.getAttribute("position"),pt=new THREE.Vector3();
+ let extreme=towardsChild?-Infinity:Infinity;
+ for(let i=0;i<attr.count;i++){
+  pt.fromBufferAttribute(attr,i).applyMatrix4(mesh.matrixWorld);
+  const d=pt.dot(axis);extreme=towardsChild?Math.max(extreme,d):Math.min(extreme,d);
+ }
+ const sum=new THREE.Vector3();let count=0;
+ for(let i=0;i<attr.count;i++){
+  pt.fromBufferAttribute(attr,i).applyMatrix4(mesh.matrixWorld);
+  if(Math.abs(pt.dot(axis)-extreme)<.0025){sum.add(pt);count++}
+ }
+ if(!count)throw Error("Нет поверхности конца кости");return sum.multiplyScalar(1/count);
+}
+function buildAtlasFingerJoints(){
+ jointPivots.clear();scene.updateMatrixWorld(true);
+ for(const [body,parent] of Object.entries(jointParents)){
+  const c=rig.get(body)?.source,p=rig.get(parent)?.source;
+  if(!c||!p)throw Error("Нет исходной кости пары "+parent+" / "+body);
+  const axis=vecCenter(c).sub(vecCenter(p)).normalize();
+  const a=boneSurfaceEnd(p,axis,true),b=boneSurfaceEnd(c,axis,false);
+  const gap=a.distanceTo(b)*1000;
+  // Diagnostic bone-end estimate; not a validated human joint axis.
+  if(gap>40)throw Error("Суставная поверхность не согласуется "+body+" ("+gap.toFixed(1)+" мм)");
+  jointPivots.set(body,{parent,pivot:a.clone().add(b).multiplyScalar(.5),gapMm:gap});
+ }
+}
+function atlasJointRotation(body,parent,steps){
+ const qRestP=new THREE.Quaternion().setFromRotationMatrix(sourceRest.get(parent)),
+       qRestC=new THREE.Quaternion().setFromRotationMatrix(sourceRest.get(body));
+ const qNowP=new THREE.Quaternion().setFromRotationMatrix(sourceMotion(parent,steps,finger)),
+       qNowC=new THREE.Quaternion().setFromRotationMatrix(sourceMotion(body,steps,finger));
+ // Use the relative OpenSim AAH joint orientation, not independent
+ // world-space bone translations, to preserve the atlas hand topology.
+ const q0=qRestP.invert().multiply(qRestC);
+ const q1=qNowP.invert().multiply(qNowC);
+ const delta=q1.multiply(q0.invert()).normalize();
+ return registration.rot.clone().multiply(delta)
+  .multiply(registration.rot.clone().invert()).normalize();
+}
 function applyPose(){
  if(!ready)return;
  const q=getElbowWorld();
@@ -248,19 +295,22 @@ function applyPose(){
  const E=M4().makeTranslation(pivot.x,pivot.y,pivot.z)
   .multiply(M4().makeRotationFromQuaternion(q))
   .multiply(M4().makeTranslation(-pivot.x,-pivot.y,-pivot.z));
- const steps=poseFrames.right.trajectories[pose];
+ const steps=poseFrames.right.trajectories[pose],memo=new Map();
+ const relativeMotion=body=>{
+  if(memo.has(body))return memo.get(body);
+  const j=jointPivots.get(body);
+  if(!j){const I=M4();memo.set(body,I);return I}
+  const P=j.pivot,Q=atlasJointRotation(body,j.parent,steps);
+  const J=M4().makeTranslation(P.x,P.y,P.z)
+   .multiply(M4().makeRotationFromQuaternion(Q))
+   .multiply(M4().makeTranslation(-P.x,-P.y,-P.z));
+  const transform=relativeMotion(j.parent).clone().multiply(J);
+  memo.set(body,transform);return transform;
+ };
  for(const [body,r] of rig){
-  const start=sourceRest.get(body);
-  let delta=M4();
-  if(start&&steps[0].frames[body]){
-   const now=sourceMotion(body,steps,finger);
-   delta.copy(registration.G).multiply(now).multiply(start.clone().invert()).multiply(registration.inverse);
-  }
-  const M=r.rest.clone();
-  if(body!=="RA1H")M.premultiply(E);
-  // Body-specific finger motion in atlas coordinate, conjugated from source AAH.
-  if(body!=="RA1H")M.multiplyMatrices(E,delta.clone().multiply(r.rest));
-  else M.copy(r.rest);
+  // Apply upstream elbow and finger joint transforms to all downstream
+  // phalanges, anchored to the native atlas surfaces in their rest pose.
+  const M=body==="RA1H"?r.rest.clone():E.clone().multiply(relativeMotion(body)).multiply(r.rest);
   r.mesh.matrix.copy(M);r.mesh.matrixWorldNeedsUpdate=true;
  }
  scene.updateMatrixWorld(true);
@@ -349,6 +399,7 @@ async function init(){
   for(const id of Object.keys(nameMap))sourceRest.set(id,frameM(neutral[id]));
   registration=deriveRegistration();
   sourceAtlas=elbowPivotFromOriginal();
+  buildAtlasFingerJoints();
   $("#boneCount").textContent=rig.size.toString();
   $("#registration").textContent=registration.rms.toFixed(1).replace(".",",")+" мм";
   $("#accuracyText").textContent=
@@ -386,6 +437,9 @@ window.__armQA={
  elbowPivot:()=>sourceAtlas?.p.toArray(),elbowGap:()=>sourceAtlas?.gapMm,
  elbowAngle:()=>elbow,fingerProgress:()=>finger,view:()=>view,mode:()=>mode,axisMode:()=>axisMode,axis:()=>sourceAtlas?.flexAxis.toArray(),
  coordinates:()=>elbowFrames?.coordinate,
+ fingerJointCount:()=>jointPivots.size,
+ fingerJointGapMaxMm:()=>Math.max(...[...jointPivots.values()].map(x=>x.gapMm)),
+ fingerJointGapList:()=>[...jointPivots].map(([id,v])=>({bone:id,gapMm:v.gapMm})),
  boneOrigin:id=>rig.get(id)?.mesh.getWorldPosition(new THREE.Vector3()).toArray(),
  sourceBoneOrigin:id=>rig.get(id)?.source.getWorldPosition(new THREE.Vector3()).toArray(),
  meshWorldPosition:id=>{const r=rig.get(id);scene.updateMatrixWorld(true);return r?vecCenter(r.mesh).toArray():null},
