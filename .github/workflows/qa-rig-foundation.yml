@@ -36,6 +36,9 @@ jobs:
             await page.waitForFunction(()=>window.__foundationQA?.ready()||document.querySelector('#error')?.classList.contains('show'),null,{timeout:90000});
             if(!await page.evaluate(()=>window.__foundationQA?.ready()))throw new Error('Model init failed: '+await page.locator('#error').innerText());
             const stats=await page.evaluate(()=>window.__foundationQA.stats());
+            const landmarks=await page.evaluate(()=>window.__foundationQA.landmarks());
+            console.log('JOINT_LANDMARKS '+JSON.stringify(landmarks));
+            writeFileSync('qa-foundation/landmarks.json',JSON.stringify(landmarks,null,2));
             if(stats.bones<40||stats.skinMeshes<1||stats.fingerJoints<25)throw new Error('Incomplete hand/body rig: '+JSON.stringify(stats));
             const thumbs=await page.evaluate(()=>window.__foundationQA.boneNames().filter(x=>x.startsWith('thumb_')));
             for(const v of ['body','right','left','arm']){
