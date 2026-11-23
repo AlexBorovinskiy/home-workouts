@@ -53,12 +53,12 @@ select{width:100%;background:#0d2a38;border:1px solid #4a6b71;color:var(--ink);b
 <div class="stat"><b id="triangles">—</b><span>треугольников</span></div>
 <div class="stat"><b id="hands">—</b><span>сеток кистей</span></div>
 <div class="stat"><b id="head">—</b><span>сеток головы и шеи</span></div>
-<div class="stat"><b id="ribs">—</b><span>поверхностей рёбер</span></div>
+<div class="stat"><b id="ribs">—</b><span>сеток рёбер (линии VTP)</span></div>
 <div class="stat"><b id="pelvis">—</b><span>поверхностей таза</span></div>
 </div>
 <hr>
 <p class="small">Исходник: <a href="https://zenodo.org/records/18259702" target="_blank" rel="noopener">Framingham Heart Study, OpenSim 4.x</a>. Используется конкретная модель, для которой заранее рассчитаны глобальные преобразования каждого сегмента.</p>
-<p class="small">Геометрия строится из VTK PolyData (.vtp), а не из условных цилиндров. Исходные файлы остаются внутри ZIP на твоём устройстве.</p>
+<p class="small">Геометрия строится из VTK PolyData (.vtp). Рёбра в этом архиве представлены линейными сетками, остальные кости — треугольными поверхностями. Исходные файлы остаются внутри ZIP на твоём устройстве.</p>
 </section>
 <section class="card side">
 <h2>Важное различие</h2>
@@ -85,7 +85,7 @@ const controls=new OrbitControls(camera,canvas);
 controls.enableDamping=true;controls.minDistance=.07;controls.maxDistance=6;
 const groups={head:new THREE.Group(),hands:new THREE.Group(),spine:new THREE.Group(),ribs:new THREE.Group(),pelvis:new THREE.Group(),shoulder:new THREE.Group()};
 Object.values(groups).forEach(g=>scene.add(g));
-let manifest=null,modelLoaded=false,counters={total:0,hands:0,head:0,ribs:0,pelvis:0,triangles:0},lastZip=null,currentView='body';
+let manifest=null,modelLoaded=false,counters={total:0,hands:0,head:0,ribs:0,pelvis:0,triangles:0,lineSegments:0},lastZip=null,currentView='body';
 const fileMap=new Map();
 const sourceUrl='https://zenodo.org/records/18259702/files/FHS_dataset_4.x.zip?download=1';
 function resize(){renderer.setSize(stage.clientWidth,stage.clientHeight,false);camera.aspect=stage.clientWidth/Math.max(1,stage.clientHeight);camera.updateProjectionMatrix();}
@@ -118,6 +118,11 @@ function parseVtp(text,name){
  if([pts,connectivity,offsets].some(a=>a.getAttribute('format')!=='ascii'))throw Error('Не-ASCII VTP: '+name);
  const vertices=parseNumbers(pts);
  const indices=parseNumbers(connectivity),ends=parseNumbers(offsets);
+ const lineArrays=[...piece.querySelectorAll('Lines > DataArray')];
+ const lineConn=lineArrays.find(a=>a.getAttribute('Name')==='connectivity')||lineArrays[0];
+ const lineOffsets=lineArrays.find(a=>a.getAttribute('Name')==='offsets')||lineArrays[1];
+ const lineVertices=lineConn?parseNumbers(lineConn):[];
+ const lineEnds=lineOffsets?parseNumbers(lineOffsets):[];
  if(vertices.length%3!==0)throw Error('Повреждённые координаты '+name);
  const triangles=[];let start=0;
  for(const end of ends){
@@ -126,10 +131,22 @@ function parseVtp(text,name){
   start=end;
  }
  if(triangles.some(i=>!Number.isInteger(i)||i<0||i>=vertices.length/3))throw Error('Вершины вне диапазона '+name);
+ // Ribs are saved as VTP Lines (wire geometry, zero Polys).
+ // Render their actual supplied edges rather than fabricating a tube surface.
+ const segments=[];let cursor=0;
+ for(const end of lineEnds){
+   if(end<cursor||end>lineVertices.length)throw Error('Неверные линии VTP '+name);
+   for(let i=cursor+1;i<end;i++)segments.push(lineVertices[i-1],lineVertices[i]);
+   cursor=end;
+ }
+ if(segments.some(i=>!Number.isInteger(i)||i<0||i>=vertices.length/3))throw Error('Индекс линии вне диапазона '+name);
+ if(!triangles.length&&!segments.length)throw Error('Пустая сетка '+name);
  const geo=new THREE.BufferGeometry();
  geo.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));
- geo.setIndex(triangles);geo.computeVertexNormals();
- return {geo,triangles:triangles.length/3};
+ const asLines=triangles.length===0;
+ geo.setIndex(asLines?segments:triangles);
+ if(!asLines)geo.computeVertexNormals();
+ return {geo,triangles:triangles.length/3,lineSegments:asLines?segments.length/2:0,asLines};
 }
 function fit(view=currentView){
  if(!modelLoaded)return;
@@ -159,7 +176,7 @@ function resetGroups(){
  for(const g of Object.values(groups)){
   for(const m of [...g.children]){g.remove(m);m.geometry.dispose();m.material.dispose()}
  }
- counters={total:0,hands:0,head:0,ribs:0,pelvis:0,triangles:0};
+ counters={total:0,hands:0,head:0,ribs:0,pelvis:0,triangles:0,lineSegments:0};
 }
 function emitStats(){
  for(const [id,value] of [['meshes',counters.total],['hands',counters.hands],['head',counters.head],['ribs',counters.ribs],['pelvis',counters.pelvis],['triangles',counters.triangles]])$('#'+id).textContent=value.toLocaleString('ru-RU');
@@ -187,16 +204,17 @@ async function loadZip(bytes){
    const fullPath=prefix+entry.file;
    const file=zip.file(fullPath);
    if(!file)throw Error('Отсутствует поверхность '+fullPath);
-   const {geo,triangles}=parseVtp(await file.async('string'),entry.file);
+   const {geo,triangles,lineSegments,asLines}=parseVtp(await file.async('string'),entry.file);
    const color=body==='head_neck'?0xd8d9c5:body.startsWith('hand')?0x92d5d4:
      /^rib/.test(body)?0xd8ccbb:body==='pelvis'?0xdcb68e:
      /^(lumbar|sacrum)/.test(body)?0xe5b98c:/^thoracic/.test(body)?0x9ed4c9:0xc1b6e0;
-   const material=new THREE.MeshStandardMaterial({color,roughness:.65,metalness:.02,side:THREE.DoubleSide});
-   const m=new THREE.Mesh(geo,material);
+   const material=asLines?new THREE.LineBasicMaterial({color:0xe8d9c7,transparent:false}):
+     new THREE.MeshStandardMaterial({color,roughness:.65,metalness:.02,side:THREE.DoubleSide});
+   const m=asLines?new THREE.LineSegments(geo,material):new THREE.Mesh(geo,material);
    m.position.copy(vec(frame.origin));m.quaternion.copy(quat);m.scale.set(...entry.scaleFactors);
    m.userData={body,meshFile:entry.file};
    group.add(m);
-   counters.total++;counters.triangles+=triangles;byCategory[category(body)]++;
+   counters.total++;counters.triangles+=triangles;counters.lineSegments+=lineSegments;byCategory[category(body)]++;
    if(body==='head_neck')counters.head++;
    if(body==='hand_R'||body==='hand_L')counters.hands++;
    if(category(body)==='ribs')counters.ribs++;
@@ -207,7 +225,7 @@ async function loadZip(bytes){
  if(counters.head!==9||counters.hands!==54||counters.ribs!==24||counters.pelvis!==2||counters.total!==118)
     throw Error('Неполный набор исходных поверхностей: '+JSON.stringify(counters));
  modelLoaded=true;emitStats();fit('body');
- status('Загружено '+counters.total+' исходных поверхностей OpenSim: 24 ребра, 2 поверхности таза, 54 поверхности кистей, 9 головы и шеи. Геометрия подлинная, её движение ещё не подтверждено для упражнений.');
+ status('Загружено '+counters.total+' исходных анатомических сеток OpenSim: 24 ребра представлены '+counters.lineSegments+' исходными линиями, остальные кости — поверхностями. Движение ещё не подтверждено для упражнений.');
  $('#hud').textContent='Подлинная геометрия FHS · '+counters.total+' поверхностей';
  window.__fhsGeometryQA={ready:()=>true,stats:()=>({...counters,categories:byCategory}),view:fit,box:(key)=>{
   const box=new THREE.Box3().setFromObject(groups[key]);const center=box.getCenter(new THREE.Vector3()),size=box.getSize(new THREE.Vector3());
