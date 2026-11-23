@@ -40,7 +40,7 @@ select{width:100%;background:#0d2a38;border:1px solid #4a6b71;color:var(--ink);b
 <div class="buttons"><button class="primary" id="chooseZip">Выбрать FHS ZIP</button><button id="loadRemote">Открыть архив с Zenodo</button></div>
 <input type="file" id="inputZip" accept=".zip,application/zip">
 <div class="buttons"><button data-view="body" class="on">Верхняя часть тела</button><button data-view="head">Череп и шея</button><button data-view="right">Правая кисть</button><button data-view="left">Левая кисть</button></div>
-<div class="buttons"><button id="toggleHand" class="on">Кости кистей</button><button id="toggleHead" class="on">Голова и шея</button><button id="toggleSpine" class="on">Позвоночник</button><button id="toggleShoulder" class="on">Плечи и руки</button></div>
+<div class="buttons"><button id="toggleHand" class="on">Кости кистей</button><button id="toggleHead" class="on">Голова и шея</button><button id="toggleSpine" class="on">Позвоночник</button><button id="toggleRibs" class="on">Грудная клетка · 24 ребра</button><button id="togglePelvis" class="on">Таз</button><button id="toggleShoulder" class="on">Плечи и руки</button></div>
 <div id="status" class="status">Скачай оригинальный архив Framingham с Zenodo и выбери его на этой странице. Можно попробовать автоматическую загрузку — если сайт блокирует её, выбери сохранённый ZIP вручную.</div>
 </div>
 </section>
@@ -52,6 +52,8 @@ select{width:100%;background:#0d2a38;border:1px solid #4a6b71;color:var(--ink);b
 <div class="stat"><b id="triangles">—</b><span>треугольников</span></div>
 <div class="stat"><b id="hands">—</b><span>сеток кистей</span></div>
 <div class="stat"><b id="head">—</b><span>сеток головы и шеи</span></div>
+<div class="stat"><b id="ribs">—</b><span>поверхностей рёбер</span></div>
+<div class="stat"><b id="pelvis">—</b><span>поверхностей таза</span></div>
 </div>
 <hr>
 <p class="small">Исходник: <a href="https://zenodo.org/records/18259702" target="_blank" rel="noopener">Framingham Heart Study, OpenSim 4.x</a>. Используется конкретная модель, для которой заранее рассчитаны глобальные преобразования каждого сегмента.</p>
@@ -60,7 +62,7 @@ select{width:100%;background:#0d2a38;border:1px solid #4a6b71;color:var(--ink);b
 <section class="card side">
 <h2>Важное различие</h2>
 <div class="tip"><strong>Видимая кость ≠ независимо двигающийся сустав.</strong> В выбранной научной модели череп и семь шейных позвонков прикреплены к одному сегменту <code>head_neck</code>. Аналогично каждая кисть с фалангами — один сегмент без независимой анимации пальцев. Для точных отжиманий и хвата понадобится отдельная проверенная кинематика.</div>
-<p class="small">Без исходного архива можно видеть только наше старое схематичное отображение. Оригинальный ZIP содержит приблизительно 450 поверхностей и 250 индивидуальных моделей; здесь используется совместимая с рассчитанными координатами модель.</p>
+<p class="small">Без исходного архива можно видеть только наше старое схематичное отображение. Оригинальный ZIP содержит сотни поверхностей и 250 индивидуальных моделей; здесь используется одна модель с рассчитанными координатами. Отдельной геометрии ног в этой модели нет.</p>
 </section>
 </aside></div></main>
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -80,9 +82,9 @@ const sun=new THREE.DirectionalLight(0xffe8ce,2.5);sun.position.set(2,4,4);scene
 const fill=new THREE.DirectionalLight(0x8fcbd6,1.3);fill.position.set(-3,1,-2);scene.add(fill);
 const controls=new OrbitControls(camera,canvas);
 controls.enableDamping=true;controls.minDistance=.07;controls.maxDistance=6;
-const groups={head:new THREE.Group(),hands:new THREE.Group(),spine:new THREE.Group(),shoulder:new THREE.Group()};
+const groups={head:new THREE.Group(),hands:new THREE.Group(),spine:new THREE.Group(),ribs:new THREE.Group(),pelvis:new THREE.Group(),shoulder:new THREE.Group()};
 Object.values(groups).forEach(g=>scene.add(g));
-let manifest=null,modelLoaded=false,counters={total:0,hands:0,head:0,triangles:0},lastZip=null,currentView='body';
+let manifest=null,modelLoaded=false,counters={total:0,hands:0,head:0,ribs:0,pelvis:0,triangles:0},lastZip=null,currentView='body';
 const fileMap=new Map();
 const sourceUrl='https://zenodo.org/records/18259702/files/FHS_dataset_4.x.zip?download=1';
 function resize(){renderer.setSize(stage.clientWidth,stage.clientHeight,false);camera.aspect=stage.clientWidth/Math.max(1,stage.clientHeight);camera.updateProjectionMatrix();}
@@ -92,6 +94,8 @@ function status(msg,warn=false){const e=$('#status');e.textContent=msg;e.classNa
 function category(name){
  if(name==='head_neck')return 'head';
  if(name==='hand_R'||name==='hand_L')return 'hands';
+ if(/^rib(?:1[0-2]|[1-9])_[RL]$/.test(name))return 'ribs';
+ if(name==='pelvis')return 'pelvis';
  if(/^(thoracic|lumbar|sacrum)/.test(name))return 'spine';
  if(/^(humerus|radius|ulna|scapula|clavicle|sternum)/.test(name))return 'shoulder';
  return null;
@@ -148,10 +152,10 @@ function resetGroups(){
  for(const g of Object.values(groups)){
   for(const m of [...g.children]){g.remove(m);m.geometry.dispose();m.material.dispose()}
  }
- counters={total:0,hands:0,head:0,triangles:0};
+ counters={total:0,hands:0,head:0,ribs:0,pelvis:0,triangles:0};
 }
 function emitStats(){
- for(const [id,value] of [['meshes',counters.total],['hands',counters.hands],['head',counters.head],['triangles',counters.triangles]])$('#'+id).textContent=value.toLocaleString('ru-RU');
+ for(const [id,value] of [['meshes',counters.total],['hands',counters.hands],['head',counters.head],['ribs',counters.ribs],['pelvis',counters.pelvis],['triangles',counters.triangles]])$('#'+id).textContent=value.toLocaleString('ru-RU');
 }
 async function loadZip(bytes){
  if(!manifest)throw Error('Манифест OpenSim ещё не загружен');
@@ -163,7 +167,7 @@ async function loadZip(bytes){
  // Deterministic, unambiguous paths avoid mixing subjects or coordinate systems.
  const base=chosen.slice(0,chosen.lastIndexOf('/Male/'));
  const prefix=base+'/Geometry/';
- const byCategory={head:0,hands:0,spine:0,shoulder:0};
+ const byCategory={head:0,hands:0,spine:0,ribs:0,pelvis:0,shoulder:0};
  resetGroups();modelLoaded=false;
  const entries=Object.entries(manifest.anatomyMeshes).filter(([body])=>category(body));
  let seen=0;
@@ -178,6 +182,7 @@ async function loadZip(bytes){
    if(!file)throw Error('Отсутствует поверхность '+fullPath);
    const {geo,triangles}=parseVtp(await file.async('string'),entry.file);
    const color=body==='head_neck'?0xd8d9c5:body.startsWith('hand')?0x92d5d4:
+     /^rib/.test(body)?0xd8ccbb:body==='pelvis'?0xdcb68e:
      /^(lumbar|sacrum)/.test(body)?0xe5b98c:/^thoracic/.test(body)?0x9ed4c9:0xc1b6e0;
    const material=new THREE.MeshStandardMaterial({color,roughness:.65,metalness:.02,side:THREE.DoubleSide});
    const m=new THREE.Mesh(geo,material);
@@ -187,12 +192,15 @@ async function loadZip(bytes){
    counters.total++;counters.triangles+=triangles;byCategory[category(body)]++;
    if(body==='head_neck')counters.head++;
    if(body==='hand_R'||body==='hand_L')counters.hands++;
+   if(category(body)==='ribs')counters.ribs++;
+   if(category(body)==='pelvis')counters.pelvis++;
    if(++seen%12===0){status('Читаю поверхности: '+seen+'…');await new Promise(r=>setTimeout(r,0))}
   }
  }
- if(!counters.head||counters.hands<30)throw Error('Недостаточно оригинальных поверхностей');
+ if(counters.head!==9||counters.hands!==54||counters.ribs!==24||counters.pelvis!==2||counters.total!==118)
+    throw Error('Неполный набор исходных поверхностей: '+JSON.stringify(counters));
  modelLoaded=true;emitStats();fit('body');
- status('Загружены исходные сетки OpenSim: '+counters.total+' поверхностей, '+counters.hands+' кистей, '+counters.head+' черепа/шеи. Это оригинальные кости, а не 3D-заменители.');
+ status('Загружено '+counters.total+' исходных поверхностей OpenSim: 24 ребра, 2 поверхности таза, 54 поверхности кистей, 9 головы и шеи. Геометрия подлинная, её движение ещё не подтверждено для упражнений.');
  $('#hud').textContent='Подлинная геометрия FHS · '+counters.total+' поверхностей';
  window.__fhsGeometryQA={ready:()=>true,stats:()=>({...counters,categories:byCategory}),view:fit,box:(key)=>{
   const box=new THREE.Box3().setFromObject(groups[key]);const center=box.getCenter(new THREE.Vector3()),size=box.getSize(new THREE.Vector3());
@@ -208,7 +216,7 @@ $('#loadRemote').onclick=async()=>{
  }catch(e){status('Автозагрузка недоступна ('+e.message+'). Скачай ZIP с Zenodo и выбери его вручную.',true);}
 };
 document.querySelectorAll('[data-view]').forEach(e=>e.onclick=()=>fit(e.dataset.view));
-for(const [id,key] of [['toggleHand','hands'],['toggleHead','head'],['toggleSpine','spine'],['toggleShoulder','shoulder']]){
+for(const [id,key] of [['toggleHand','hands'],['toggleHead','head'],['toggleSpine','spine'],['toggleRibs','ribs'],['togglePelvis','pelvis'],['toggleShoulder','shoulder']]){
  $('#'+id).onclick=()=>{groups[key].visible=!groups[key].visible;$('#'+id).classList.toggle('on',groups[key].visible)};
 }
 (function tick(){requestAnimationFrame(tick);controls.update();renderer.render(scene,camera)})();
