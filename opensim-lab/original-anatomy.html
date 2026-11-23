@@ -12,6 +12,9 @@ h1{font-size:clamp(24px,4vw,36px);letter-spacing:-.04em;margin:23px 0 9px}.lead{
 canvas{display:block;width:100%;height:100%;touch-action:none}
 .hud{position:absolute;top:11px;left:12px;background:#0c2738dd;border:1px solid #4b7880;color:#c6f2e6;padding:8px 12px;border-radius:18px;font-size:11px;max-width:80%}
 .hint{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);background:#092b3bdc;border-radius:19px;padding:7px 12px;font-size:10px;color:#c2d8d9;white-space:nowrap}
+.empty-state{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:82%;text-align:center;background:#0b2939d9;border:1px solid #507580;padding:20px 15px;border-radius:18px;pointer-events:none;font-size:13px;line-height:1.5;color:#d4e6e5}
+.empty-state strong{display:block;font-size:17px;color:#ecfaf6;margin-bottom:8px}
+.empty-state[hidden]{display:none}
 .toolbar{padding:14px;display:grid;gap:10px}.buttons{display:flex;gap:8px;flex-wrap:wrap}
 button,.action{min-height:40px;padding:10px 12px;border-radius:10px;border:1px solid #49717e;background:#235061;color:var(--ink);font:inherit;font-weight:700;cursor:pointer;text-decoration:none}
 button.primary{background:var(--mint);color:#082c34;border-color:var(--mint)}
@@ -35,14 +38,15 @@ select{width:100%;background:#0d2a38;border:1px solid #4a6b71;color:var(--ink);b
 <section class="card">
 <div class="stage" id="stage"><canvas id="sceneCanvas" aria-label="3D-визуализация подлинных костных поверхностей OpenSim"></canvas>
 <div class="hud" id="hud">Ожидаю исходный архив FHS…</div>
+<div class="empty-state" id="emptyState"><strong>Модель ещё не загружена</strong>Выбери архив FHS ниже один раз. После успешной загрузки он сохранится в этом браузере и будет открываться автоматически.</div>
 <div class="hint">Проведи — вращение · два пальца — масштаб</div></div>
 <div class="toolbar">
-<div class="buttons"><button class="primary" id="chooseZip">Выбрать FHS ZIP</button><button id="loadRemote">Открыть архив с Zenodo</button></div>
+<div class="buttons"><button class="primary" id="chooseZip">Выбрать FHS ZIP</button><a class="action" id="getZip" href="https://zenodo.org/records/18259702/files/FHS_dataset_4.x.zip?download=1" target="_blank" rel="noopener">Скачать ZIP с Zenodo</a><button id="forgetZip" hidden>Удалить сохранённый ZIP</button></div>
 <input type="file" id="inputZip" accept=".zip,application/zip">
 <div class="buttons"><button data-view="body" class="on">Верхняя часть тела</button><button data-view="head">Череп и шея</button><button data-view="right">Правая кисть</button><button data-view="left">Левая кисть</button></div>
 <div class="buttons"><button data-view="front">Спереди</button><button data-view="side">Сбоку</button><button data-view="back">Сзади</button></div>
 <div class="buttons"><button id="toggleHand" class="on">Кости кистей</button><button id="toggleHead" class="on">Голова и шея</button><button id="toggleSpine" class="on">Позвоночник</button><button id="toggleRibs" class="on">Грудная клетка · 24 ребра</button><button id="togglePelvis" class="on">Таз</button><button id="toggleShoulder" class="on">Плечи и руки</button></div>
-<div id="status" class="status">Скачай оригинальный архив Framingham с Zenodo и выбери его на этой странице. Можно попробовать автоматическую загрузку — если сайт блокирует её, выбери сохранённый ZIP вручную.</div>
+<div id="status" class="status">Автоматическое скачивание через JavaScript на iPhone может блокироваться Zenodo. Нажми «Скачать ZIP с Zenodo», затем один раз выбери его в «Выбрать FHS ZIP». После этого модель будет восстанавливаться из памяти этого браузера.</div>
 </div>
 </section>
 <aside>
@@ -86,7 +90,29 @@ controls.enableDamping=true;controls.minDistance=.07;controls.maxDistance=6;
 const groups={head:new THREE.Group(),hands:new THREE.Group(),spine:new THREE.Group(),ribs:new THREE.Group(),pelvis:new THREE.Group(),shoulder:new THREE.Group()};
 Object.values(groups).forEach(g=>scene.add(g));
 let manifest=null,modelLoaded=false,counters={total:0,hands:0,head:0,ribs:0,pelvis:0,triangles:0,lineSegments:0},lastZip=null,currentView='body';
+const LOCAL_DB='home-workouts-fhs-data',STORE='archive',CACHE_KEY='fhs-2026-scientific-zip';
+function openCache(){
+ return new Promise((resolve,reject)=>{
+  if(!('indexedDB' in window))return reject(Error('IndexedDB недоступна'));
+  const req=indexedDB.open(LOCAL_DB,1);
+  req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains(STORE))req.result.createObjectStore(STORE)};
+  req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error||Error('Ошибка доступа к памяти'));
+ });
+}
+async function cacheOperation(action,value){
+ const db=await openCache();
+ try{
+  return await new Promise((resolve,reject)=>{
+   const tx=db.transaction(STORE,action==='read'?'readonly':'readwrite');
+   const store=tx.objectStore(STORE);
+   const req=action==='read'?store.get(CACHE_KEY):action==='remove'?store.delete(CACHE_KEY):store.put(value,CACHE_KEY);
+   req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error||Error('Ошибка сохранения'));
+   tx.onerror=()=>reject(tx.error||Error('Ошибка транзакции'));
+  });
+ }finally{db.close()}
+}
 const fileMap=new Map();
+// Original ZIP is downloaded by native browser navigation; fetch() may fail on Zenodo CORS.
 const sourceUrl='https://zenodo.org/records/18259702/files/FHS_dataset_4.x.zip?download=1';
 function resize(){renderer.setSize(stage.clientWidth,stage.clientHeight,false);camera.aspect=stage.clientWidth/Math.max(1,stage.clientHeight);camera.updateProjectionMatrix();}
 new ResizeObserver(resize).observe(stage);resize();
@@ -225,6 +251,7 @@ async function loadZip(bytes){
  if(counters.head!==9||counters.hands!==54||counters.ribs!==24||counters.pelvis!==2||counters.total!==118)
     throw Error('Неполный набор исходных поверхностей: '+JSON.stringify(counters));
  modelLoaded=true;emitStats();fit('body');
+ $('#emptyState').hidden=true;$('#forgetZip').hidden=false;
  status('Загружено '+counters.total+' исходных анатомических сеток OpenSim: 24 ребра представлены '+counters.lineSegments+' исходными линиями, остальные кости — поверхностями. Движение ещё не подтверждено для упражнений.');
  $('#hud').textContent='Подлинная геометрия FHS · '+counters.total+' поверхностей';
  window.__fhsGeometryQA={ready:()=>true,stats:()=>({...counters,categories:byCategory}),view:fit,box:(key)=>{
@@ -233,13 +260,40 @@ async function loadZip(bytes){
  },meshNames:()=>Object.values(groups).flatMap(g=>g.children.map(x=>x.userData.meshFile))};
 }
 $('#chooseZip').onclick=()=>$('#inputZip').click();
-$('#inputZip').onchange=async()=>{const file=$('#inputZip').files[0];if(!file)return;try{await loadZip(await file.arrayBuffer())}catch(e){console.error(e);status('Ошибка: '+e.message,true)}};
-$('#loadRemote').onclick=async()=>{
- try{status('Получаю исходный ZIP с Zenodo…');const response=await fetch(sourceUrl);
-  if(!response.ok)throw Error('HTTP '+response.status);
-  await loadZip(await response.arrayBuffer());
- }catch(e){status('Автозагрузка недоступна ('+e.message+'). Скачай ZIP с Zenodo и выбери его вручную.',true);}
+$('#inputZip').onchange=async()=>{
+ const file=$('#inputZip').files[0];if(!file)return;
+ try{
+  await loadZip(await file.arrayBuffer());
+  try{
+   await cacheOperation('save',{blob:file,modelPath:manifest.archiveRelativeOsimPath,savedAt:new Date().toISOString()});
+   status('Модель успешно открыта и сохранена в памяти этого браузера. При следующем открытии она загрузится сама. '+counters.total+' анатомических сеток, включая 24 ребра.');
+  }catch(storageError){
+   status('Модель загружена, но iOS не разрешила её сохранить: '+storageError.message+'. При следующем открытии выбери ZIP ещё раз.',true);
+  }
+ }catch(e){console.error(e);status('Ошибка чтения архива: '+e.message,true)}
 };
+$('#forgetZip').onclick=async()=>{
+ try{
+  await cacheOperation('remove');$('#forgetZip').hidden=true;
+  status('Сохранённая копия ZIP удалена из браузера. Текущая модель останется видимой до обновления страницы.');
+ }catch(e){status('Не удалось удалить ZIP: '+e.message,true)}
+};
+async function restoreFromDevice(){
+ if(!manifest)return;
+ try{
+  const cached=await cacheOperation('read');
+  if(!cached||!cached.blob)return;
+  if(cached.modelPath!==manifest.archiveRelativeOsimPath){
+   status('Сохранён архив другой версии модели. Выбери исходный FHS ZIP заново.',true);return;
+  }
+  status('Восстанавливаю сохранённую модель с этого устройства…');
+  await loadZip(await cached.blob.arrayBuffer());
+  status('Модель восстановлена из памяти браузера без скачивания с Zenodo. '+counters.total+' анатомических сеток.');
+ }catch(e){
+  console.error('Cache restore:',e);
+  status('Сохранённую модель не удалось восстановить: '+e.message+'. Выбери FHS ZIP снова.',true);
+ }
+}
 document.querySelectorAll('[data-view]').forEach(e=>e.onclick=()=>fit(e.dataset.view));
 for(const [id,key] of [['toggleHand','hands'],['toggleHead','head'],['toggleSpine','spine'],['toggleRibs','ribs'],['togglePelvis','pelvis'],['toggleShoulder','shoulder']]){
  $('#'+id).onclick=()=>{groups[key].visible=!groups[key].visible;$('#'+id).classList.toggle('on',groups[key].visible)};
@@ -247,7 +301,8 @@ for(const [id,key] of [['toggleHand','hands'],['toggleHead','head'],['toggleSpin
 (function tick(){requestAnimationFrame(tick);controls.update();renderer.render(scene,camera)})();
 fetch('./assets/fhs-original-frames.json').then(r=>{if(!r.ok)throw Error('Нет манифеста координат OpenSim');return r.json()})
 .then(m=>{if(m.kind!=='fhs-opensim-body-frames-v1'||!m.bodyFrames.hand_R)throw Error('Ошибочный манифест');
- manifest=m;$('#hud').textContent='Модель OpenSim выбрана · ZIP ещё не открыт';
+ manifest=m;$('#hud').textContent='Модель OpenSim выбрана · проверяю локальный архив';
  window.__fhsGeometryQA={ready:()=>false,manifest:()=>manifest,parser:parseVtp};
+ restoreFromDevice();
 }).catch(e=>{status('Ошибка подготовки: '+e.message,true)});
 </script></body></html>
