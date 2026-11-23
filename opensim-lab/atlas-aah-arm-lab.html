@@ -52,7 +52,7 @@ a{color:var(--accent)}
 <section class="card panel">
 <h2>Что проверяем</h2>
 <div class="warning"><b>Это пробное перенесение кинематики, не готовая биомеханическая модель.</b> Суставы AAH и атлас имеют разную геометрию и положения. Здесь их совмещение вычислено по центрам одноимённых костей запястья и пясти; положение локтевого центра оценено по поверхностям плечевой и локтевой костей. Точность суставных поверхностей, сухожилия, мышцы, столкновения и усилия не проверены. Комбинация жестов — визуальная интерполяция отдельных OpenSim-траекторий.</div>
-<p>Исходники: <a href="https://github.com/Charleeh/ecorche" target="_blank" rel="noopener">Écorché / BodyParts3D / Z-Anatomy</a> (CC BY-SA 4.0), <a href="https://github.com/nishbo/ms_arm_and_hand" target="_blank" rel="noopener">AAH OpenSim</a> (MIT). В анатомическом источнике отсутствуют две отдельные сетки запястья — трёхгранная и трапециевидная кости; для этого опыта они <b>не создаются искусственно</b>.</p>
+<p>Исходники: <a href="https://github.com/Charleeh/ecorche" target="_blank" rel="noopener">Écorché / BodyParts3D / Z-Anatomy</a> (CC BY-SA 4.0), <a href="https://github.com/nishbo/ms_arm_and_hand" target="_blank" rel="noopener">AAH OpenSim</a> (MIT). В анатомическом источнике отсутствуют две отдельные сетки запястья — трёхгранная и трапециевидная кости; для этого опыта они <b>не создаются искусственно</b>. <a href="./assets/ECORCHE-SOURCE-NOTICE.md">Лицензия и происхождение локальной копии исходных костей</a>.</p>
 </section>
 </div>
 <aside>
@@ -122,7 +122,16 @@ renderer.setClearColor(0x092739,0);renderer.setPixelRatio(Math.min(devicePixelRa
 scene.add(new THREE.HemisphereLight(0xeafaf4,0x37566b,2.35));
 const lamp=new THREE.DirectionalLight(0xffefd9,2.15);lamp.position.set(3,4,4);scene.add(lamp);
 const controls=new OrbitControls(camera,canvas);controls.enableDamping=true;controls.minDistance=.09;controls.maxDistance=8;
-const atlasSrc="https://raw.githubusercontent.com/Charleeh/ecorche/320805e06aee51e2e6f6b22533eb2a59d43f2d4d/model/ecorche.meshopt.glb";
+const atlasSrc="./assets/ecorche-source-320805.meshopt.glb";
+const atlasBackupSrc="https://raw.githubusercontent.com/Charleeh/ecorche/320805e06aee51e2e6f6b22533eb2a59d43f2d4d/model/ecorche.meshopt.glb";
+async function loadAtlasWithFallback(){
+ const loader=new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+ try{return await loader.loadAsync(atlasSrc)}
+ catch(error){
+  console.warn("Локальный Écorché недоступен, резервный источник",error);
+  return await loader.loadAsync(atlasBackupSrc);
+ }
+}
 const sourceVTP="https://raw.githubusercontent.com/nishbo/ms_arm_and_hand/main/AAH%20Model/Geometry/";
 const nameMap={
  RA1H:"Right humerus",RA2U:"Right ulna",RA2R:"Right radius",
@@ -650,7 +659,7 @@ function getJSON(url){return fetch(url).then(r=>{if(!r.ok)throw Error("HTTP "+r.
 async function init(){
  try{
   const [gltf,fingers,elbows]=await Promise.all([
-    new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(atlasSrc),
+    loadAtlasWithFallback(),
     getJSON("./assets/aah-hand-poses.json"),
     getJSON("./assets/aah-elbow-source-poses.json")
   ]);
