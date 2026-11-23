@@ -5,6 +5,7 @@ on:
       - 'opensim-lab/export_original_mesh_frames.py'
       - 'opensim-lab/audit_anatomy_connections.py'
       - 'opensim-lab/original-anatomy.html'
+      - 'opensim-lab/assets/fhs-anatomical-audit.json'
       - 'opensim-lab/assets/fhs-original-frames.json'
       - '.github/workflows/qa-fhs-mesh-frames.yml'
   workflow_dispatch:
@@ -165,6 +166,21 @@ jobs:
             await page.waitForTimeout(200);
             await page.locator('#sceneCanvas').screenshot({path:'qa-fhs-original/hand.png'});
             console.log('FHS_HAND_IMAGE '+(await page.locator('#sceneCanvas').screenshot({type:'jpeg',quality:50})).toString('base64'));
+
+            // Verify source-backed joints instead of invented bone offsets.
+            await page.waitForFunction(()=>Boolean(window.__fhsGeometryQA?.sourceAudit()),null,{timeout:30000});
+            await page.locator('#attachmentSelect').selectOption('rib6_R');
+            const ribLinkText=await page.locator('#attachmentInfo').innerText();
+            if(!ribLinkText.includes('Ребро 6 справа → T6')||!ribLinkText.includes('мм'))
+              throw Error('Incorrect rib association: '+ribLinkText);
+            await page.locator('#sceneCanvas').screenshot({path:'qa-fhs-original/rib6-T6-audit.png'});
+            await page.locator('#attachmentSelect').selectOption('shoulder_R');
+            const shoulderText=await page.locator('#attachmentInfo').innerText();
+            if(!shoulderText.includes('лопатка')||!shoulderText.includes('WeldJoint')||!shoulderText.includes('заменить'))
+              throw Error('Missing shoulder limitation: '+shoulderText);
+            await page.locator('#sceneCanvas').screenshot({path:'qa-fhs-original/shoulder-topology-audit.png'});
+            console.log('FHS_ATTACHMENT_VIEWER_QA '+JSON.stringify({rib:ribLinkText,shoulder:shoulderText}));
+            await page.locator('#attachmentSelect').selectOption('');
 
             // A reload must restore the original scientific archive from IndexedDB
             // without asking the user to re-download or re-select the ZIP.
