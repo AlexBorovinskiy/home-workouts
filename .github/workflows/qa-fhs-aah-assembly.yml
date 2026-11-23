@@ -49,7 +49,10 @@ jobs:
               mode:q.mode(),pose:q.pose(),bend:q.bend(),neck:q.neckBones(),
               neckSource:q.neckSource(),neckVisible:q.isNeckVisible(),
               jointResidualMm:q.neckJointResidualMm(),ribProxies:q.ribProxyCount(),
-              ribSegments:q.ribSegmentCount(),centers:q.neckCenters()};
+              ribSegments:q.ribSegmentCount(),centers:q.neckCenters(),
+              ribMode:q.ribMode(),masiRibCount:q.masiRibCount(),
+              masiRibTriangles:q.masiRibTriangles(),masiRibVisible:q.masiRibVisible(),
+              fhsRibsVisible:q.fhsRibsVisible()};
           });
           const d=(a,b)=>Math.sqrt(a.reduce((s,v,i)=>s+(v-b[i])**2,0))*1000;
           try{
@@ -63,6 +66,8 @@ jobs:
             const open=await read();
             if(open.fhs!==118||open.aah!==54||open.left!==27||open.right!==27||
               open.neck.length!==8||open.ribProxies!==24||open.ribSegments<24||
+              open.ribMode!=='masi'||open.masiRibCount!==1||
+              open.masiRibTriangles<1000||!open.masiRibVisible||open.fhsRibsVisible||
               open.neckSource!=='masi'||!open.neckVisible||open.jointResidualMm>.0001)
               throw Error('Incomplete FHS/AAH/MASI anatomy '+JSON.stringify(open));
             const yc=open.centers.map(c=>c[1]);
@@ -78,8 +83,19 @@ jobs:
             await page.locator('#canvas').screenshot({path:'qa-assembly/upper-body-hands-open.png'});
             await page.locator('[data-view="back"]').click();
             await page.locator('#canvas').screenshot({path:'qa-assembly/neck-and-ribcage-back.png'});
+            await page.locator('[data-rib="fhs"]').click();
+            const legacy=await read();
+            if(legacy.ribMode!=='fhs'||legacy.masiRibVisible||!legacy.fhsRibsVisible)
+              throw Error('Legacy FHS rib axes cannot be selected '+JSON.stringify(legacy));
+            await page.locator('#canvas').screenshot({path:'qa-assembly/fhs-line-rib-comparison.png'});
+            await page.locator('[data-rib="masi"]').click();
+            const restored=await read();
+            if(!restored.masiRibVisible||restored.fhsRibsVisible)
+              throw Error('MASI rib surfaces not restored '+JSON.stringify(restored));
             await page.locator('#ribs').uncheck();
+            if((await read()).masiRibVisible)throw Error('Rib toggle failed to hide MASI mesh');
             await page.locator('#ribs').check();
+            if(!(await read()).masiRibVisible)throw Error('Rib toggle failed to show MASI mesh');
             await page.locator('[data-view="front"]').click();
             await page.locator('[data-pose="curl"]').click();
             const curled=await read();
@@ -103,6 +119,7 @@ jobs:
             console.log('FHS_AAH_ASSEMBLY_MOBILE_QA_SUCCESS',JSON.stringify({
               fhs:open.fhs,aah:open.aah,neckBones:open.neck.length,
               ribProxies:open.ribProxies,ribSegments:open.ribSegments,
+              masiRibTriangles:open.masiRibTriangles,
               rawWristAnchorMismatchMm:Math.max(
               d(open.rightAnchor,open.rightTarget),d(open.leftAnchor,open.leftTarget)),
               rightIndexMovementMm:rightShift,leftIndexMovementMm:leftShift}));
