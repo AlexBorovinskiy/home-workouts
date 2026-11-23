@@ -30,6 +30,10 @@ button.on{background:var(--mint);color:#0d3340;border-color:var(--mint)}
 .stat{background:#092d3b;border-radius:10px;text-align:center;padding:10px 5px}
 .stat strong{font-size:19px;display:block;color:#eaf7ed}.stat small{color:var(--muted);font-size:10px}
 .status{font-size:12px;color:#d7e9e7;line-height:1.65;border:1px solid #496d78;border-radius:11px;padding:10px;margin:9px 0}
+.boneSizes{width:100%;border-collapse:collapse;font-size:11px;font-variant-numeric:tabular-nums}
+.boneSizes th,.boneSizes td{padding:7px 4px;text-align:right;border-bottom:1px solid #3e6170}
+.boneSizes th:first-child,.boneSizes td:first-child{text-align:left}
+.boneSizes th{color:var(--muted);font-weight:650}
 #zip{display:none}
 #zipMessage{font-size:12px;line-height:1.6;color:var(--muted)}
 a{color:var(--mint)}
@@ -70,6 +74,8 @@ a{color:var(--mint)}
 <div class="stat"><strong>17</strong><small>позвонков FHS</small></div>
 </div>
 <p style="font-size:11px">Расстояние между вершинами вычислено для выбранного положения; это <b>не</b> измеренная суставная щель и не анатомическая валидация. Границы костных сеток перекрываются по вертикали, поэтому столкновения поверхностей пока не исключены.</p>
+<h3>Проверка размеров костей</h3>
+<div id="sizeAudit" class="status">Пока нет FHS ZIP. После его загрузки рассчитаем точные размеры по вершинам каждой исходной костной сетки, а не по приблизительным рамкам Three.js.</div>
 </section>
 <section class="card panel">
 <h2>Управление моделью</h2>
@@ -242,6 +248,8 @@ async function loadMasi(){
   registration:()=>reg,
   partIds:()=>[...fhsParts.keys()],
   bounds:id=>{const m=fhsParts.get(id)||allParts.get(id);const b=new THREE.Box3().setFromObject(m);return {center:b.getCenter(new THREE.Vector3()).toArray(),size:b.getSize(new THREE.Vector3()).toArray()}},
+  tightBounds:id=>tightBounds(id),
+  sizes:()=>getBoneSizes(),
   minVertexMm:()=>measureVertices(),
   view:v=>{direction=v;show();fit()},
   focus:v=>{focus=v;show();fit()}
@@ -280,7 +288,31 @@ async function loadFhsZip(data){
  $("#hud").textContent="MASI C1–C7 + 17 отдельных FHS T1–L5 · диагностический стык";
  setStatus("Оригинальные 17 костей FHS загружены. Минимальная дистанция между вершинами C7 и T1: "+actual.toFixed(2)+" мм (научная диагностическая метрика, не размер суставной щели).");
  $("#zipMessage").textContent="Данные FHS получены из исходного архива. Сетка T1 выделена светло-зелёным. Файлы не загружались на сервер приложения.";
+ renderSizes();
  focus="junction";show();fit();
+}
+function tightBounds(id){
+ const m=fhsParts.get(id)||allParts.get(id);
+ if(!m)throw Error("Нет загруженной кости "+id);
+ m.updateWorldMatrix(true,false);
+ const p=m.geometry.getAttribute("position"),v=new THREE.Vector3(),box=new THREE.Box3();
+ box.makeEmpty();
+ for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i).applyMatrix4(m.matrixWorld);box.expandByPoint(v)}
+ const size=box.getSize(new THREE.Vector3()),center=box.getCenter(new THREE.Vector3());
+ return {sizeMm:size.toArray().map(x=>x*1000),centerM:center.toArray(),vertices:p.count};
+}
+function getBoneSizes(){
+ const available=["cerv3","cerv5","cerv6","cerv7","thoracic1","thoracic2","thoracic3"].filter(id=>allParts.has(id)||fhsParts.has(id));
+ return Object.fromEntries(available.map(id=>[id,tightBounds(id)]));
+}
+function renderSizes(){
+ if(!fhsReady)return;
+ const data=getBoneSizes(),c7=data.cerv7.sizeMm,t1=data.thoracic1.sizeMm;
+ const list=[["cerv3","C3 · MASI"],["cerv5","C5 · MASI"],["cerv6","C6 · MASI"],["cerv7","C7 · MASI"],["thoracic1","T1 · FHS"],["thoracic2","T2 · FHS"],["thoracic3","T3 · FHS"]];
+ const rows=list.map(([id,name])=>"<tr><td>"+name+"</td>"+data[id].sizeMm.map(x=>"<td>"+x.toFixed(1)+"</td>").join("")+"</tr>").join("");
+ const ratio=(c7[0]/t1[0]).toFixed(2),heightRatio=(c7[1]/t1[1]).toFixed(2);
+ $("#sizeAudit").innerHTML="<table class='boneSizes'><thead><tr><th>Позвонок</th><th>X, мм</th><th>Y, мм</th><th>Z, мм</th></tr></thead><tbody>"+rows+"</tbody></table>"+
+ "<p>По осям сцены C7 крупнее T1 в "+ratio+" раза (X) и "+heightRatio+" раза (Y). Это <b>реальные габариты поверхностей после поворота</b>, а не размеры самих тел позвонков. MASI и FHS имеют разные исходные антропометрические масштабы; точность слияния по суставным точкам не проверяет соответствие размеров. Автоматически уменьшать кости нельзя: нарушатся расстояния между суставами.</p>";
 }
 function measureVertices(){
  if(!fhsReady)return null;
