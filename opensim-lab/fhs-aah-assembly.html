@@ -138,7 +138,7 @@ const aahGroup={right:new THREE.Group(),left:new THREE.Group()};Object.values(aa
 let fhs=null,aah=null,mode="aah",pose="curl",bend=0,view="front",loadedFhs=false,loadedAAH=false,loadAAHStarted=false;
 let neckMode="masi",ribMode="masi",neckReady=false,neckLoadStarted=false,ribProxies=0,ribSegments=0,neckJointResidualMm=null;
 let legData=null,legsReady=false,legLoadStarted=false,legPelvisResidualMm=null;
-const neckBones=new Map(),handMesh={right:new Map(),left:new Map()},legMeshes=new Map(),fhsMeshes=[];
+const neckBones=new Map(),handMesh={right:new Map(),left:new Map()},legMeshes=new Map(),legBodies=new Map(),fhsMeshes=[];
 const sourceAAH="https://raw.githubusercontent.com/nishbo/ms_arm_and_hand/main/AAH%20Model/Geometry/";
 const sourceMASI="https://raw.githubusercontent.com/MyoHub/myoconverter/main/models/osim/Neck6D/Geometry/";
 const sourceRajagopal="https://raw.githubusercontent.com/opensim-org/opensim-models/master/Geometry/";
@@ -363,6 +363,88 @@ async function startNeck(){
  }
 }
 
+// Complete the skeleton using the ORIGINAL Rajagopal 2023 lower-limb bodies.
+ // These are registered to FHS by pelvis body origin and axes. The scale is
+ // a reversible VISUAL trial from FHS pelvis mesh; not a validated hip fit.
+async function startLegs(){
+ if(!loadedFhs||legLoadStarted)return;
+ legLoadStarted=true;
+ try{
+  legData=await getJSON("./assets/rajagopal-lower-limbs.json");
+  if(legData.schema!=="rajagopal-lower-limbs-native-4.6-v1"||
+     legData.source.model!=="RajagopalLaiUhlrich2023"||
+     legData.geometryCounts.bodyCount!==12||
+     legData.geometryCounts.meshCount!==14||
+     legData.visualInitialization.anatomicallyValidated!==false)
+    throw Error("Неверный исходный научный экспорт ног");
+  const pFHS=fhs.bodyFrames.pelvis,pRaj=legData.sourcePelvisFrame;
+  const scale=legData.visualInitialization.uniformScale;
+  const scaleFHS=fhs.anatomyMeshes.pelvis[0].scaleFactors[0];
+  if(Math.abs(scale-scaleFHS)>1e-7)throw Error("Несогласованный визуальный масштаб таза");
+  const qF=new THREE.Quaternion().setFromRotationMatrix(basis(pFHS.basisColumns));
+  const qR=new THREE.Quaternion().setFromRotationMatrix(rows(pRaj.rotation));
+  const turn=qF.clone().multiply(qR.invert());
+  legsRoot.quaternion.copy(turn);
+  legsRoot.scale.setScalar(scale);
+  legsRoot.position.copy(V(pFHS.origin)).sub(V(pRaj.positionM).applyQuaternion(turn).multiplyScalar(scale));
+  legsRoot.updateMatrixWorld(true);
+  const sourcePelvisMapped=V(pRaj.positionM).applyMatrix4(legsRoot.matrixWorld);
+  legPelvisResidualMm=sourcePelvisMapped.distanceTo(V(pFHS.origin))*1000;
+  if(legPelvisResidualMm>.0001)throw Error("Ошибка регистрации тазовых систем координат");
+  const descriptions=Object.entries(legData.bodyMeshes).flatMap(([body,meshes])=>meshes.map(desc=>({body,...desc})));
+  if(descriptions.length!==14)throw Error("Некорректный набор костей ног");
+  let i=0,done=0;
+  const originals=new Array(descriptions.length);
+  await Promise.all(Array.from({length:4},async()=>{
+   while(i<descriptions.length){
+    const which=i++,desc=descriptions[which];
+    const req=await fetch(sourceRajagopal+encodeURIComponent(desc.file));
+    if(!req.ok)throw Error("Нет VTP "+desc.file+" (HTTP "+req.status+")");
+    const {geo,edges}=parseVtp(await req.text(),desc.file);
+    if(edges)throw Error("Сетка ноги не имеет полигонов: "+desc.file);
+    originals[which]={desc,geo};
+    done++;
+    $("#legsStatus").textContent="Загружаю оригинальные кости Rajagopal: "+done+" из 14…";
+   }
+  }));
+  for(const old of [...legsRoot.children]){
+   legsRoot.remove(old);old.geometry?.dispose();old.material?.dispose();
+  }
+  legMeshes.clear();legBodies.clear();
+  for(const {desc,geo} of originals){
+   const frame=legData.bodyFrames[desc.body];
+   if(!frame)throw Error("Отсутствует исходная поза OpenSim "+desc.body);
+   const side=desc.body.endsWith("_r")?"right":"left";
+   const color=/femur/.test(desc.body)?0xe2d3bc:
+     /tibia/.test(desc.body)?0xd7cbb9:
+     /patella/.test(desc.body)?0xf0d3a6:
+     /talus|calcn/.test(desc.body)?0xccd3bd:0xddc7aa;
+   const m=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({
+     color,roughness:.69,metalness:.01,side:THREE.DoubleSide
+   }));
+   m.position.copy(V(frame.positionM));
+   m.quaternion.setFromRotationMatrix(rows(frame.rotation));
+   m.scale.set(...desc.scale);
+   m.userData={source:"Rajagopal2023",body:desc.body,file:desc.file,side};
+   legsRoot.add(m);
+   legMeshes.set(desc.file,m);
+   if(!legBodies.has(desc.body))legBodies.set(desc.body,m);
+  }
+  if(legMeshes.size!==14||legBodies.size!==12)
+   throw Error("Ожидалось 14 сеток на 12 сегментах ног");
+  legsReady=true;updateVisibility();fit();
+  $("#countLegs").textContent=String(legMeshes.size);
+  $("#legsStatus").textContent="Обе ноги из исходной Rajagopal 2023: бедренные кости, надколенники, большеберцовые и малоберцовые кости, предплюсна и передний отдел стоп. Соединены с FHS по рамке таза, не по проверенным суставным поверхностям.";
+  $("#hud").textContent="FHS + MASI + AAH + Rajagopal · костный скелет целиком · исследовательская сборка";
+  status("Костная модель от черепа до стоп загружена: 118 FHS + 54 AAH + MASI шея/рёбра + 14 Rajagopal. Места стыков ещё предстоит проверить.");
+ }catch(e){
+  console.error("Rajagopal lower limbs:",e);
+  $("#legsStatus").textContent="Не удалось загрузить ноги Rajagopal: "+e.message;
+  status("Верхняя часть скелета готова, но загрузка ног не завершена: "+e.message);
+  legsReady=false;updateVisibility();
+ }
+}
+
 async function cacheRead(){
  if(!("indexedDB" in window))return null;
  return new Promise((resolve,reject)=>{
@@ -453,9 +535,9 @@ async function startAAH(){
     legSource:()=>legData?.source?.model,
     legPelvisMismatchMm:()=>legPelvisResidualMm,
     legBoneNames:()=>[...legMeshes.keys()],
-    legPosition:id=>legMeshes.get(id)?.getWorldPosition(new THREE.Vector3()).toArray(),
+    legPosition:id=>legBodies.get(id)?.getWorldPosition(new THREE.Vector3()).toArray(),
     legHipWorld:side=>V(legData.jointWorldPoints["hip_"+side].parentPoint).applyMatrix4(legsRoot.matrixWorld).toArray(),
-    legFootWorld:side=>legMeshes.get("calcn_"+side)?.getWorldPosition(new THREE.Vector3()).toArray(),
+    legFootWorld:side=>legBodies.get("calcn_"+side)?.getWorldPosition(new THREE.Vector3()).toArray(),
     legBoundingBox:()=>{const b=new THREE.Box3().setFromObject(legsRoot);return {min:b.min.toArray(),max:b.max.toArray()}},
    sideCount:side=>aahGroup[side].children.length,
    mode:()=>mode,pose:()=>pose,bend:()=>bend,
