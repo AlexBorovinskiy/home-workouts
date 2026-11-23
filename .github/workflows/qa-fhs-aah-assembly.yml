@@ -57,7 +57,9 @@ jobs:
               legSource:q.legSource(),legPelvisMismatch:q.legPelvisMismatchMm(),
               legBones:q.legBoneNames(),legBBox:q.legBoundingBox(),
               hipR:q.legHipWorld('r'),hipL:q.legHipWorld('l'),
-              footR:q.legFootWorld('r'),footL:q.legFootWorld('l')};
+              footR:q.legFootWorld('r'),footL:q.legFootWorld('l'),
+              auditReady:q.postureAuditReady(),auditHeight:q.postureAuditHeight(),
+              markers:q.postureLandmarkCount(),markerVisible:q.postureMarkerVisible()};
           });
           const d=(a,b)=>Math.sqrt(a.reduce((s,v,i)=>s+(v-b[i])**2,0))*1000;
           try{
@@ -68,7 +70,10 @@ jobs:
               document.querySelector('#status')?.textContent?.includes('не удалось присоединить'),null,{timeout:180000});
             if(!(await page.evaluate(()=>window.__assemblyQA?.ready())))
               throw Error('Assembly loading failed: '+await page.locator('#status').innerText());
+            await page.waitForFunction(()=>window.__assemblyQA?.postureAuditReady(),null,{timeout:25000});
             const open=await read();
+            if(!open.auditReady||Math.abs(open.auditHeight-1499.471)>.1||open.markers<8)
+              throw Error('Source posture report or 3D reference markers not loaded '+JSON.stringify(open));
             if(open.fhs!==118||open.aah!==54||open.left!==27||open.right!==27||
               open.neck.length!==9||open.ribProxies!==24||open.ribSegments<24||
               open.ribMode!=='masi'||open.masiRibCount!==1||
@@ -96,6 +101,11 @@ jobs:
             await page.locator('#canvas').screenshot({path:'qa-assembly/full-body-front-open.png'});
             await page.locator('[data-view="profile"]').click();
             await page.locator('#canvas').screenshot({path:'qa-assembly/full-body-profile.png'});
+            await page.locator('#showLandmarks').check();
+            if(!(await read()).markerVisible)throw Error('Posture landmark layer cannot be enabled');
+            await page.locator('#canvas').screenshot({path:'qa-assembly/full-body-profile-diagnostic-landmarks.png'});
+            await page.locator('#showLandmarks').uncheck();
+            if((await read()).markerVisible)throw Error('Posture landmark layer cannot be disabled');
             await page.locator('[data-view="legs"]').click();
             await page.locator('#canvas').screenshot({path:'qa-assembly/legs-feet-detail.png'});
             await page.locator('#legs').uncheck();
@@ -144,6 +154,7 @@ jobs:
               ribProxies:open.ribProxies,ribSegments:open.ribSegments,
               masiRibTriangles:open.masiRibTriangles,
               rajagopalLegMeshes:open.legCount,
+              postureHeightMm:open.auditHeight,landmark3DObjects:open.markers,
               legRDropM:legDropR,legLDropM:legDropL,
               rawWristAnchorMismatchMm:Math.max(
               d(open.rightAnchor,open.rightTarget),d(open.leftAnchor,open.leftTarget)),
