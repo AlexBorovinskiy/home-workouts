@@ -26,6 +26,11 @@ input[type=file]{display:none}label{font-weight:750;font-size:12px;color:var(--m
 .stat b{font-size:24px;display:block;font-variant-numeric:tabular-nums}.stat span{color:var(--muted);font-size:10px}
 hr{border:0;border-top:1px solid #355968;margin:17px 0}a{color:var(--mint)}
 .tip{border:1px solid #786149;background:#403229;border-radius:10px;padding:12px;color:#f8d9b5;font-size:12px;line-height:1.65}
+.audit-area{border:1px solid #547982;background:#0b2b39;border-radius:12px;padding:13px;display:grid;gap:9px}
+.audit-area .status{margin:0}
+.audit-area select{font-size:13px}
+.audit-head{font-size:12px;letter-spacing:.08em;font-weight:800;text-transform:uppercase;color:var(--mint)}
+
 select{width:100%;background:#0d2a38;border:1px solid #4a6b71;color:var(--ink);border-radius:10px;padding:10px}
 @media(max-width:820px){.layout{grid-template-columns:1fr}.stage{height:57vh;min-height:405px}.side{padding:15px}}
 </style></head>
@@ -46,6 +51,12 @@ select{width:100%;background:#0d2a38;border:1px solid #4a6b71;color:var(--ink);b
 <div class="buttons"><button data-view="body" class="on">Верхняя часть тела</button><button data-view="head">Череп и шея</button><button data-view="right">Правая кисть</button><button data-view="left">Левая кисть</button></div>
 <div class="buttons"><button data-view="front">Спереди</button><button data-view="side">Сбоку</button><button data-view="back">Сзади</button></div>
 <div class="buttons"><button id="toggleHand" class="on">Кости кистей</button><button id="toggleHead" class="on">Голова и шея</button><button id="toggleSpine" class="on">Позвоночник</button><button id="toggleRibs" class="on">Грудная клетка · 24 ребра</button><button id="togglePelvis" class="on">Таз</button><button id="toggleShoulder" class="on">Плечи и руки</button></div>
+<div class="audit-area">
+<div class="audit-head">Проверка креплений по исходному OpenSim</div>
+<label for="attachmentSelect">Выбрать ребро или плечевой пояс</label>
+<select id="attachmentSelect"><option value="">Все кости · без выделения</option><option value="shoulder_R">Правый плечевой пояс</option><option value="shoulder_L">Левый плечевой пояс</option></select>
+<div id="attachmentInfo" class="status">Источник содержит отдельные соединения рёбер с позвонками. Выбери ребро, чтобы проверить уровень T1–T12; или плечо, чтобы увидеть цепочку суставов.</div>
+</div>
 <div id="status" class="status">Автоматическое скачивание через JavaScript на iPhone может блокироваться Zenodo. Нажми «Скачать ZIP с Zenodo», затем один раз выбери его в «Выбрать FHS ZIP». После этого модель будет восстанавливаться из памяти этого браузера.</div>
 </div>
 </section>
@@ -66,7 +77,7 @@ select{width:100%;background:#0d2a38;border:1px solid #4a6b71;color:var(--ink);b
 </section>
 <section class="card side">
 <h2>Важное различие</h2>
-<div class="tip"><strong>Видимая кость ≠ независимо двигающийся сустав.</strong> В выбранной научной модели череп и семь шейных позвонков прикреплены к одному сегменту <code>head_neck</code>. Аналогично каждая кисть с фалангами — один сегмент без независимой анимации пальцев. Для точных отжиманий и хвата понадобится отдельная проверенная кинематика.</div>
+<div class="tip"><strong>Ограничение исходной модели:</strong> лопатки жёстко соединены с ключицами (WeldJoint), поэтому нельзя использовать этот риг для достоверного движения лопаток при отжиманиях. <strong>Видимая кость ≠ независимо двигающийся сустав.</strong> В выбранной научной модели череп и семь шейных позвонков прикреплены к одному сегменту <code>head_neck</code>. Аналогично каждая кисть с фалангами — один сегмент без независимой анимации пальцев. Для точных отжиманий и хвата понадобится отдельная проверенная кинематика.</div>
 <p class="small">Без исходного архива можно видеть только наше старое схематичное отображение. Оригинальный ZIP содержит сотни поверхностей и 250 индивидуальных моделей; здесь используется одна модель с рассчитанными координатами. Отдельной геометрии ног в этой модели нет.</p>
 </section>
 </aside></div></main>
@@ -89,7 +100,7 @@ const controls=new OrbitControls(camera,canvas);
 controls.enableDamping=true;controls.minDistance=.07;controls.maxDistance=6;
 const groups={head:new THREE.Group(),hands:new THREE.Group(),spine:new THREE.Group(),ribs:new THREE.Group(),pelvis:new THREE.Group(),shoulder:new THREE.Group()};
 Object.values(groups).forEach(g=>scene.add(g));
-let manifest=null,modelLoaded=false,counters={total:0,hands:0,head:0,ribs:0,pelvis:0,triangles:0,lineSegments:0},lastZip=null,currentView='body';
+let manifest=null,sourceAudit=null,modelLoaded=false,counters={total:0,hands:0,head:0,ribs:0,pelvis:0,triangles:0,lineSegments:0},lastZip=null,currentView='body';
 const LOCAL_DB='home-workouts-fhs-data',STORE='archive',CACHE_KEY='fhs-2026-scientific-zip';
 function openCache(){
  return new Promise((resolve,reject)=>{
@@ -198,6 +209,81 @@ function fit(view=currentView){
  camera.lookAt(center);controls.update();
  document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('on',b.dataset.view===view));
 }
+
+function inspectAttachment(choice){
+ if(!modelLoaded||!sourceAudit){
+  $('#attachmentInfo').textContent='Нет загруженной научной модели или сведений о соединениях.';
+  return false;
+ }
+ const highlight=[];
+ let explanation='Выбери ребро или плечевой пояс, чтобы увидеть соединения из исходного файла OpenSim.';
+ if(choice.startsWith('rib')){
+  const found=sourceAudit.ribLinks.find(v=>v.child===choice);
+  const info=sourceAudit.ribs.find(v=>v.rib===choice);
+  if(!found||!info)throw Error('Отсутствует проверенная связь '+choice);
+  highlight.push(choice,found.parent);
+  const m=choice.match(/^rib(\d+)_([RL])$/);
+  const side=m[2]==='R'?'справа':'слева';
+  const mm=info.nearestDistanceMm[found.parent];
+  const candidates=Object.entries(info.nearestDistanceMm).filter(([v])=>v!==found.parent);
+  const near=candidates.length?' Также измерены расстояния до соседних позвонков; близость к соседнему уровню сама по себе не означает ошибку.':'';
+  explanation='Ребро '+m[1]+' '+side+' → '+found.parent.replace('thoracic','T')+
+   ' (источник: '+found.joint+'). Минимальное расстояние между исходными точками поверхностей: '+mm.toFixed(2)+' мм.'+near;
+ }else if(choice==='shoulder_R'||choice==='shoulder_L'){
+  const side=choice.endsWith('_R')?'R':'L',label=side==='R'?'правой':'левой';
+  highlight.push('sternum','clavicle_'+side,'scapula_'+side,'humerus_'+side,'rib1_R');
+  const joints=sourceAudit.shoulderLinks.filter(j=>
+    [side==='R'?'sterR_clavR_jnt':'sterL_clavL_jnt',
+     side==='R'?'clavR_scapR_jnt':'clavL_scapL_jnt',
+     'shoulder_'+side].includes(j.name));
+  if(joints.length!==3)throw Error('Неполная цепочка плечевых суставов');
+  const welded=joints.find(x=>x.name.includes('_scap')&&x.type==='WeldJoint');
+  explanation='Связь '+label+' руки: грудина → ключица → лопатка → плечевая кость. '+
+    'По исходным суставам: '+joints.map(x=>x.name+' ('+x.type+')').join(', ')+
+    '. '+(welded?'Лопатка жёстко соединена с ключицей. Для корректных отжиманий этот участок рига требуется заменить.':'');
+ }
+ // Keep source anatomy in its exact native position. Color only — NEVER shift it.
+ const active=new Set(highlight);
+ for(const group of Object.values(groups))for(const obj of group.children){
+  const base=obj.userData.baseColor;
+  if(typeof base!=='number')continue;
+  obj.material.color.setHex(active.has(obj.userData.body)?0xf7cf73:base);
+  if(obj.material.emissive){
+    obj.material.emissive.setHex(active.has(obj.userData.body)?0x634a20:0x000000);
+    obj.material.emissiveIntensity=active.has(obj.userData.body)?.30:0;
+  }
+ }
+ for(const body of active){
+  const key=category(body);
+  if(!key)continue;
+  groups[key].visible=true;
+  const control=Object.entries({toggleHand:'hands',toggleHead:'head',toggleSpine:'spine',
+    toggleRibs:'ribs',togglePelvis:'pelvis',toggleShoulder:'shoulder'}).find(([id,c])=>c===key);
+  if(control)$('#'+control[0]).classList.add('on');
+ }
+ $('#attachmentInfo').textContent=explanation;
+ if(highlight.length){
+  const bbox=new THREE.Box3();let count=0;
+  for(const group of Object.values(groups))for(const obj of group.children){
+   if(active.has(obj.userData.body)){bbox.expandByObject(obj);count++;}
+  }
+  if(count&&!bbox.isEmpty()){
+   const center=bbox.getCenter(new THREE.Vector3()),size=bbox.getSize(new THREE.Vector3());
+   const v=Math.tan(THREE.MathUtils.degToRad(camera.fov/2));
+   const distance=1.55*Math.max(size.y/(2*v),size.z/(2*v*Math.max(.3,camera.aspect)),size.x/(2*v),.12);
+   controls.target.copy(center);camera.position.copy(center).add(new THREE.Vector3(distance,.1*distance,.12*distance));
+   camera.lookAt(center);controls.update();
+  }
+ }
+ return true;
+}
+for(const side of ['R','L'])for(let i=1;i<=12;i++){
+ const opt=document.createElement('option');
+ opt.value='rib'+i+'_'+side;
+ opt.textContent='Ребро '+i+' · '+(side==='R'?'справа':'слева');
+ $('#attachmentSelect').append(opt);
+}
+$('#attachmentSelect').addEventListener('change',v=>inspectAttachment(v.target.value));
 function resetGroups(){
  for(const g of Object.values(groups)){
   for(const m of [...g.children]){g.remove(m);m.geometry.dispose();m.material.dispose()}
@@ -238,7 +324,7 @@ async function loadZip(bytes){
      new THREE.MeshStandardMaterial({color,roughness:.65,metalness:.02,side:THREE.DoubleSide});
    const m=asLines?new THREE.LineSegments(geo,material):new THREE.Mesh(geo,material);
    m.position.copy(vec(frame.origin));m.quaternion.copy(quat);m.scale.set(...entry.scaleFactors);
-   m.userData={body,meshFile:entry.file};
+   m.userData={body,meshFile:entry.file,baseColor:material.color.getHex()};
    group.add(m);
    counters.total++;counters.triangles+=triangles;counters.lineSegments+=lineSegments;byCategory[category(body)]++;
    if(body==='head_neck')counters.head++;
@@ -251,13 +337,15 @@ async function loadZip(bytes){
  if(counters.head!==9||counters.hands!==54||counters.ribs!==24||counters.pelvis!==2||counters.total!==118)
     throw Error('Неполный набор исходных поверхностей: '+JSON.stringify(counters));
  modelLoaded=true;emitStats();fit('body');
+ if($('#attachmentSelect').value)inspectAttachment($('#attachmentSelect').value);
  $('#emptyState').hidden=true;$('#forgetZip').hidden=false;
  status('Загружено '+counters.total+' исходных анатомических сеток OpenSim: 24 ребра представлены '+counters.lineSegments+' исходными линиями, остальные кости — поверхностями. Движение ещё не подтверждено для упражнений.');
  $('#hud').textContent='Подлинная геометрия FHS · '+counters.total+' поверхностей';
  window.__fhsGeometryQA={ready:()=>true,stats:()=>({...counters,categories:byCategory}),view:fit,box:(key)=>{
   const box=new THREE.Box3().setFromObject(groups[key]);const center=box.getCenter(new THREE.Vector3()),size=box.getSize(new THREE.Vector3());
   return {center:center.toArray(),size:size.toArray()};
- },meshNames:()=>Object.values(groups).flatMap(g=>g.children.map(x=>x.userData.meshFile))};
+ },meshNames:()=>Object.values(groups).flatMap(g=>g.children.map(x=>x.userData.meshFile)),
+  inspect:inspectAttachment,sourceAudit:()=>sourceAudit};
 }
 $('#chooseZip').onclick=()=>$('#inputZip').click();
 $('#inputZip').onchange=async()=>{
@@ -302,6 +390,11 @@ for(const [id,key] of [['toggleHand','hands'],['toggleHead','head'],['toggleSpin
 fetch('./assets/fhs-original-frames.json').then(r=>{if(!r.ok)throw Error('Нет манифеста координат OpenSim');return r.json()})
 .then(m=>{if(m.kind!=='fhs-opensim-body-frames-v1'||!m.bodyFrames.hand_R)throw Error('Ошибочный манифест');
  manifest=m;$('#hud').textContent='Модель OpenSim выбрана · проверяю локальный архив';
+ fetch('./assets/fhs-anatomical-audit.json').then(r=>{if(!r.ok)throw Error('Отчёт отсутствует');return r.json()})
+  .then(a=>{
+   if(a.schema!=='fhs-anatomical-attachment-audit-v1'||a.sourceModel!==m.archiveRelativeOsimPath||a.ribLinks.length!==24)throw Error('Несовместимая проверка креплений');
+   sourceAudit=a;if(modelLoaded&&$('#attachmentSelect').value)inspectAttachment($('#attachmentSelect').value);
+  }).catch(e=>{$('#attachmentInfo').textContent='Не удалось загрузить проверку связей: '+e.message});
  window.__fhsGeometryQA={ready:()=>false,manifest:()=>manifest,parser:parseVtp};
  restoreFromDevice();
 }).catch(e=>{status('Ошибка подготовки: '+e.message,true)});
