@@ -211,12 +211,53 @@ jobs:
             if(!autoAngle.gripPlan||!Number.isFinite(autoAngle.gripPlan.thetaDeg)||
                !Number.isFinite(autoAngle.gripPlan.phiDeg))
               throw Error('Automatic handle-angle re-optimization failed');
+            // Verify one wrist/plane solver across push-up and side plank.
+            await page.locator('#gripNow').click();
+            const originalGrip=await read();
+            const supportRead=()=>page.evaluate(()=>{
+              const q=window.__armQA;
+              return {task:q.handTask(),extension:q.wristExtension(),
+               floorVisible:q.supportVisible(),floor:q.supportMetrics(),
+               thumb:q.meshWorldPosition('RA6D1'),wrist:q.meshWorldPosition('RA3L'),
+               tip:q.meshWorldPosition('RA7D2'),gripVisible:q.gripVisible()};
+            });
+            await page.locator('[data-hand-task="pushup"]').click();
+            const pushup=await supportRead();
+            await page.locator('#scene').screenshot({path:'qa-atlas-arm/support-pushup.png'});
+            if(pushup.task!=='pushup'||pushup.extension!==72||
+               !pushup.floorVisible||pushup.gripVisible||
+               !pushup.floor||pushup.floor.nearbyZones.length<1||
+               Object.values(pushup.floor.gapsMm).some(x=>!Number.isFinite(x)||x<0))
+              throw Error('Push-up support not valid '+JSON.stringify(pushup));
+            await page.locator('[data-hand-task="side-plank"]').click();
+            const sidePlank=await supportRead();
+            await page.locator('#scene').screenshot({path:'qa-atlas-arm/support-side-plank.png'});
+            if(sidePlank.task!=='side-plank'||sidePlank.extension!==68||
+               !sidePlank.floorVisible||sidePlank.gripVisible||
+               !sidePlank.floor||sidePlank.floor.nearbyZones.length<1||
+               d(pushup.tip,sidePlank.tip)<.005)
+              throw Error('Side plank support not distinct '+JSON.stringify(sidePlank));
+            await page.locator('#wristExtension').fill('80');
+            const extended=await supportRead();
+            await page.locator('#scene').screenshot({path:'qa-atlas-arm/support-wrist-80.png'});
+            if(extended.extension!==80||d(sidePlank.tip,extended.tip)<.004||
+               !extended.floorVisible)
+              throw Error('Wrist control not applied '+JSON.stringify(extended));
+            await page.locator('[data-hand-task="grip"]').click();
+            await page.locator('#gripNow').click();
+            const restoredGrip=await read();
+            if(!restoredGrip.gripVisible||
+               d(originalGrip.handleCenter,restoredGrip.handleCenter)>.001||
+               d(originalGrip.index,restoredGrip.index)>.001)
+              throw Error('Original dumbbell grip not preserved after support '+
+                JSON.stringify({originalGrip,restoredGrip}));
             if(errors.length)throw Error('Uncaught browser exceptions '+JSON.stringify(errors));
             writeFileSync('qa-atlas-arm/report.json',JSON.stringify({
               open,released,straight,curled,flex,reset:back,grip:gripped.gripPlan,
               manualAngle:manualAngle.gripPlan,autoAngle:autoAngle.gripPlan,
               thumbOpposed,thumbAAH,thumbZero,thumbRestored,
               refinedDigits,originalDigits,restoredDigits,zeroFingers,fullFingers,digitShifts,
+              originalGrip,pushup,sidePlank,extended,restoredGrip,
               fingerMovedM:fingerMoved,wristMovedM:wristMoved,
               lateralShiftM:lateralShift,forwardShiftM:forwardShift,
               humerusMovedM:humerusMoved,errors},null,2));
