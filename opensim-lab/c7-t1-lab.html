@@ -74,6 +74,13 @@ a{color:var(--mint)}
 <div class="stat"><strong>17</strong><small>позвонков FHS</small></div>
 </div>
 <p style="font-size:11px">Расстояние между вершинами вычислено для выбранного положения; это <b>не</b> измеренная суставная щель и не анатомическая валидация. Границы костных сеток перекрываются по вертикали, поэтому столкновения поверхностей пока не исключены.</p>
+<h3>Проверка масштаба шеи (визуальный эксперимент)</h3>
+<p style="font-size:12px">По оригинальным VTP все семь шейных костей и череп имеют одинаковые координаты вершин в MASI и FHS. Но FHS уменьшает каждую из этих сеток до 88,875%. Пробное уменьшение всей шеи на экране производится относительно суставной точки C7–T1; оно <b>не меняет научную модель OpenSim</b>.</p>
+<div class="buttons" id="scaleButtons">
+<button data-neck-scale="1" class="on">MASI · 100%</button>
+<button data-neck-scale="0.88875">Пробный FHS · 88,875%</button>
+</div>
+<div id="scaleStatus" class="status">Исходная шея MASI — 100%. Геометрия пока не откалибрована относительно FHS.</div>
 <h3>Проверка размеров костей</h3>
 <div id="sizeAudit" class="status">Пока нет FHS ZIP. После его загрузки рассчитаем точные размеры по вершинам каждой исходной костной сетки, а не по приблизительным рамкам Three.js.</div>
 </section>
@@ -125,7 +132,7 @@ const layers={neck:true,fhs:true,chest:true,shoulder:false,reference:false,marke
 const catParts={neck:new THREE.Group(),chest:new THREE.Group(),shoulder:new THREE.Group(),reference:new THREE.Group(),fhs:new THREE.Group(),markers:new THREE.Group()};
 Object.values(catParts).forEach(g=>scene.add(g));
 const fhsRoot=catParts.fhs;
-let manifests=null,focus="junction",direction="back",masiReady=false,fhsReady=false,allParts=new Map(),fhsParts=new Map();
+let manifests=null,focus="junction",direction="back",masiReady=false,fhsReady=false,allParts=new Map(),fhsParts=new Map(),neckVisualScale=1;
 const nameFHS=i=>i<=12?"thoracic"+i:"lumbar"+(i-12);
 const fhsLevels=Array.from({length:17},(_,i)=>nameFHS(i+1));
 function setStatus(s){$("#status").textContent=s}
@@ -183,6 +190,7 @@ function show(){
  document.querySelectorAll("[data-layer]").forEach(i=>i.checked=layers[i.dataset.layer]);
  document.querySelectorAll("[data-focus]").forEach(b=>b.classList.toggle("on",b.dataset.focus===focus));
  document.querySelectorAll("[data-view]").forEach(b=>b.classList.toggle("on",b.dataset.view===direction));
+ document.querySelectorAll("[data-neck-scale]").forEach(b=>b.classList.toggle("on",Math.abs(Number(b.dataset.neckScale)-neckVisualScale)<1e-6));
 }
 function fit(){
  if(!masiReady)return;
@@ -250,6 +258,8 @@ async function loadMasi(){
   bounds:id=>{const m=fhsParts.get(id)||allParts.get(id);const b=new THREE.Box3().setFromObject(m);return {center:b.getCenter(new THREE.Vector3()).toArray(),size:b.getSize(new THREE.Vector3()).toArray()}},
   tightBounds:id=>tightBounds(id),
   sizes:()=>getBoneSizes(),
+  scale:()=>neckVisualScale,
+  setScale:s=>setNeckScale(s),
   minVertexMm:()=>measureVertices(),
   view:v=>{direction=v;show();fit()},
   focus:v=>{focus=v;show();fit()}
@@ -290,6 +300,29 @@ async function loadFhsZip(data){
  $("#zipMessage").textContent="Данные FHS получены из исходного архива. Сетка T1 выделена светло-зелёным. Файлы не загружались на сервер приложения.";
  renderSizes();
  focus="junction";show();fit();
+}
+// Visualization-only uniform scaling about the shared C7-T1 anchor.
+ // This does NOT recalculate OpenSim kinematics, joint frames, mass or muscle forces.
+function setNeckScale(scale){
+ const s=Number(scale);
+ if(!Number.isFinite(s)||(Math.abs(s-1)>1e-6&&Math.abs(s-.88875)>1e-6))
+   throw Error("Допускаются только исходный 100% и диагностический 88,875% масштабы");
+ if(!masiReady)throw Error("Модель MASI ещё не готова");
+ const anchor=V(manifests.reg.masiAnchorM);
+ neckVisualScale=s;
+ catParts.neck.scale.setScalar(s);
+ catParts.neck.position.copy(anchor).multiplyScalar(1-s);
+ catParts.neck.updateMatrixWorld(true);
+ let suffix="Оригинальные координаты суставов, инерционные параметры и мышцы OpenSim не изменялись.";
+ if(fhsReady){
+  const value=measureVertices();
+  suffix="Ближайшие вершины C7–T1: "+value.toFixed(2)+" мм. Это не размер суставной щели и не проверка столкновений. "+
+  "Суставные координаты и параметры мышц не пересчитывались.";
+  renderSizes();
+ }
+ $("#scaleStatus").textContent=s===1?"Исходная шея MASI · 100%. "+suffix:
+    "Пробное масштабирование шеи и черепа · 88,875%, вокруг C7–T1. "+suffix;
+ show();fit();
 }
 function tightBounds(id){
  const m=fhsParts.get(id)||allParts.get(id);
@@ -376,10 +409,11 @@ $("#zip").onchange=async()=>{
  }catch(e){console.error(e);setStatus("Ошибка FHS: "+e.message)}
  finally{$("#loading").hidden=true}
 };
+document.querySelectorAll("[data-neck-scale]").forEach(b=>b.onclick=()=>setNeckScale(Number(b.dataset.neckScale)));
 document.querySelectorAll("[data-focus]").forEach(b=>b.onclick=()=>{focus=b.dataset.focus;show();fit()});
 document.querySelectorAll("[data-view]").forEach(b=>b.onclick=()=>{direction=b.dataset.view;show();fit()});
 document.querySelectorAll("[data-layer]").forEach(c=>c.onchange=()=>{layers[c.dataset.layer]=c.checked;show();fit()});
-$("#reset").onclick=()=>{focus="junction";direction="back";Object.assign(layers,{neck:true,fhs:true,chest:true,shoulder:false,reference:false,markers:true});show();fit()};
+$("#reset").onclick=()=>{focus="junction";direction="back";Object.assign(layers,{neck:true,fhs:true,chest:true,shoulder:false,reference:false,markers:true});setNeckScale(1)};
 (function loop(){requestAnimationFrame(loop);orbit.update();renderer.render(scene,camera)})();
 loadMasi().catch(e=>{$("#loading").hidden=false;$("#loading").textContent="Ошибка загрузки: "+e.message;setStatus("Ошибка MASI: "+e.message);console.error(e)});
 </script></body></html>
