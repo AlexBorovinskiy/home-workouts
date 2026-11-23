@@ -73,6 +73,7 @@ a{color:var(--accent)}
 <button id="gripNow" class="on">Схватить гантель</button>
 <button id="releaseGrip">Разжать пальцы</button>
 <button id="hideDumbbell">Убрать гантель</button>
+<button id="autoGrip">Автоподбор положения</button>
 </div>
 <label style="margin-top:10px">Диаметр рукоятки <strong id="handleDiameterValue">24 мм</strong></label>
 <input id="handleDiameter" type="range" min="24" max="36" step="2" value="24" disabled aria-label="Диаметр рукоятки">
@@ -446,36 +447,42 @@ function collectContactClouds(frame){
   // surfaces (for the thumb both available phalanges).
   const contactParts=digit==="thumb"?parts:parts.slice(1);
   clouds[digit]=contactParts.flatMap(id=>contactCloud(id,frame));
+  // Bases must not be used to claim contact, but cannot penetrate metal.
+  clouds["collision_"+digit]=parts.flatMap(id=>contactCloud(id,frame));
 }
  clouds.palm=["RA4M2","RA4M3","RA4M4","RA4M5"].flatMap(id=>contactCloud(id,frame));
  return clouds;
 }
 function fitScore(clouds,y,z,radius){
- const dist=p=>{
+ const distance=p=>{
   const dx=Math.max(0,Math.abs(p[0])-.073);
   return Math.hypot(p[1]-y,p[2]-z,dx);
  };
+ const clearance=points=>{
+  let closest=Infinity;
+  for(const p of points)closest=Math.min(closest,distance(p));
+  return closest-radius;
+ };
  let cost=0,penetrations=0,near=0;
- const gap={},contact={};
- for(const digit of Object.keys(contactDigits).concat("palm")){
-  let shortest=Infinity;
-  for(const p of clouds[digit])shortest=Math.min(shortest,dist(p));
-  const free=shortest-radius;
-  gap[digit]=free;
-  if(digit==="palm"){
-   // Anchor the handle near the real metacarpal surfaces, separated
-   // by soft tissue. Previously distance was not penalized at all.
-   cost+=42*Math.pow(free-.008,2);
-   if(free<.002)cost+=210*Math.pow(.002-free,2);
-   continue;
-  }
-  if(free<.004){cost+=350*Math.pow(.004-free,2);penetrations++}
-  else if(free<.017){cost+=2.2*Math.pow(free-.006,2);near++}
-  else cost+=2.2*Math.pow(free-.010,2);
-  contact[digit]=free>=.004&&free<=.024;
+ const gap={},collisionGap={},contact={};
+ gap.palm=clearance(clouds.palm);
+ cost+=34*Math.pow(gap.palm-.007,2);
+ if(gap.palm<.002){penetrations++;cost+=550*Math.pow(.002-gap.palm,2)}
+ for(const digit of Object.keys(contactDigits)){
+  gap[digit]=clearance(clouds[digit]);
+  collisionGap[digit]=clearance(clouds["collision_"+digit]);
+  const free=gap[digit],whole=collisionGap[digit];
+  // Contact at distal fingers is not valid if the handle penetrates
+  // the proximal or other phalanges of the same digit.
+  if(whole<.002){penetrations++;cost+=900*Math.pow(.002-whole,2)}
+  cost+=14*Math.pow(free-.007,2);
+  if(free>.024)cost+=48*Math.pow(free-.024,2);
+  if(free<.003)cost+=200*Math.pow(.003-free,2);
+  contact[digit]=free>=.003&&free<=.024&&whole>=.002;
+  if(contact[digit])near++;
  }
- cost+=6*(z-.018)**2+7*(y-.014)**2;
- return {cost,penetrations,near,gap,contact};
+ cost+=1.5*Math.pow(y-.008,2)+1.5*Math.pow(z-.012,2);
+ return {cost,penetrations,near,gap,collisionGap,contact};
 }
 function planDumbbellGrip(){
  // All scene meshes at the atlas neutral elbow: source OpenSim AAH cylinder
@@ -515,7 +522,9 @@ function planDumbbellGrip(){
  const R=M4().makeBasis(frame.x,frame.y,frame.z);
  R.setPosition(frame.origin);
  gripFrame=frame;
- gripPlan={y:best.y,z:best.z,score:best.score,palmGapMm:best.score.gap.palm*1000,origin:frame.origin.toArray(),
+ gripPlan={y:best.y,z:best.z,score:best.score,palmGapMm:best.score.gap.palm*1000,
+          status:best.score.penetrations===0&&best.score.near>=3?"geometry-pass":"needs-retarget",
+          origin:frame.origin.toArray(),
            x:frame.x.toArray(),normal:frame.z.toArray()};
  gripBase=R.multiply(M4().makeTranslation(0,best.y,best.z));
  elbow=prior.elbow;pose=prior.pose;finger=prior.finger;
@@ -589,11 +598,19 @@ function updateContactReport(){
  const fmt=n=>Math.round(n*1000)+" мм";
  const parts=Object.keys(contactDigits).map(d=>label(d)+": "+fmt(stats.gap[d]));
  const palmInfo="ладонь → металл: "+fmt(stats.gap.palm)+"; ";
+ const validFit=stats.penetrations===0&&valid.length>=3&&stats.gap.palm>=.002&&stats.gap.palm<=.018;
+ $("#contactReport").classList.toggle("warning",!validFit&&finger>.5);
+ const verdict=validFit?"Предварительная проверка геометрии пройдена. ":
+  "ГЕОМЕТРИЯ ХВАТА НЕ СОГЛАСОВАНА: нужно корректировать движения пальцев, а не только двигать гантель. ";
+ const boneCollisions=Object.entries(stats.collisionGap).filter(([,g])=>g<.002)
+  .map(([digit,g])=>label(digit)+" "+fmt(g));
  $("#contactReport").textContent=
-  "Средние/концевые фаланги → металл (выборка вершин): "+(valid.length)+"/5 пальцев с костным зазором 4–24 мм; "+
+  verdict+"Средние/концевые фаланги → металл (выборка вершин): "+valid.length+
+  "/5 пальцев с костным зазором 3–24 мм; "+
   palmInfo+"минимальный зазор "+fmt(worst)+". "+
   ($("#showContact").checked?parts.join(" · ")+". ":"")+
   "Большой палец: пробная оппозиция "+(thumbFit?.angleDegrees||0).toFixed(0)+"°. "+
+  (boneCollisions.length?"Потенциальные столкновения: "+boneCollisions.join(", ")+". ":"")+
   "Мягкие ткани не моделируются — фактический контакт не подтверждён.";
 }
 function updateGripButtons(){
@@ -882,6 +899,13 @@ $("#handleDiameter").oninput=e=>{
  if(!ready)return;handleDiameterMm=Number(e.target.value);
  $("#handleDiameterValue").textContent=handleDiameterMm+" мм";
  updateDumbbellRadius();planDumbbellGrip();calculateThumbOpposition();applyPose();fit();
+};
+$("#autoGrip").onclick=()=>{
+ if(!ready)return;
+ handleOffsetMm=0;handleDepthMm=0;
+ $("#handleOffset").value="0";$("#handleDepth").value="0";
+ $("#handleOffsetValue").textContent="0 мм";$("#handleDepthValue").textContent="0 мм";
+ planDumbbellGrip();calculateThumbOpposition();applyPose();fit();
 };
 $("#handleDepth").oninput=e=>{
  if(!ready)return;handleDepthMm=Number(e.target.value);
