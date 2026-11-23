@@ -146,6 +146,9 @@ function updateVisibility(){
 }
 function fit(){
  if(!loaded)return;
+ // Refresh parent transforms before computing Box3 from child bones.
+ // Otherwise side-by-side group offsets are absent from camera framing.
+ scene.updateMatrixWorld(true);
  const box=new THREE.Box3();
  for(const id of ["110","989"])for(const mesh of models[id].parts)if(mesh.visible)box.expandByObject(mesh);
  if(box.isEmpty())return;
@@ -242,7 +245,19 @@ window.__fhsPostureComparisonQA={
  layout:()=>layout,view:()=>view,
  landmarks:()=>sourceMetrics?.currentModel,
  currentPercentile:()=>sourceMetrics?.sourceSpinalFrameDistributions?.thoracicSagittalChordAngleFromVerticalDeg?.currentPercentileRank,
- bbox:()=>{const b=new THREE.Box3();Object.values(models).forEach(m=>m.parts.forEach(o=>{if(o.visible)b.expandByObject(o)}));return {min:b.min.toArray(),max:b.max.toArray()}},
+ bbox:()=>{scene.updateMatrixWorld(true);const b=new THREE.Box3();Object.values(models).forEach(m=>m.parts.forEach(o=>{if(o.visible)b.expandByObject(o)}));return {min:b.min.toArray(),max:b.max.toArray()}},
+ framing:()=>{scene.updateMatrixWorld(true);camera.updateMatrixWorld(true);
+   const b=new THREE.Box3();Object.values(models).forEach(m=>m.parts.forEach(o=>{if(o.visible)b.expandByObject(o)}));
+   const {min,max}=b;
+   const corners=[];
+   for(const x of [min.x,max.x])for(const y of [min.y,max.y])for(const z of [min.z,max.z]){
+    const p=new THREE.Vector3(x,y,z).project(camera);
+    corners.push([p.x,p.y,p.z]);
+   }
+   return {maxAbsX:Math.max(...corners.map(c=>Math.abs(c[0]))),
+     maxAbsY:Math.max(...corners.map(c=>Math.abs(c[1]))),
+     cameraTarget:orbit.target.toArray()};
+ },
 };
 async function init(){
  try{
