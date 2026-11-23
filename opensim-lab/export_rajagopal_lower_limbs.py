@@ -87,7 +87,7 @@ def main():
     mesh=extract_osim_meshes(a.rajagopal_osim)
     jointset=model.getJointSet()
     found={}
-    for name in ["hip_r","hip_l","knee_r","knee_l","ankle_r","ankle_l","subtalar_r","subtalar_l","mtp_r","mtp_l"]:
+    for name in ["hip_r","hip_l","walker_knee_r","walker_knee_l","patellofemoral_r","patellofemoral_l","ankle_r","ankle_l","subtalar_r","subtalar_l","mtp_r","mtp_l"]:
         if not jointset.contains(name):
             raise ValueError("Missing Rajagopal leg joint "+name)
         joint=jointset.get(name)
