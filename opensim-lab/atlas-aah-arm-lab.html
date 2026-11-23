@@ -186,6 +186,7 @@ let dumbbell=null,gripBase=null,gripFrame=null,gripPlan=null,gripVisible=false,g
 let handleDiameterMm=24,handleOffsetMm=0,handleDepthMm=0,contactResult=null,thumbCorrection=null,thumbFit=null;
 const sourceCenters=new Map(),targetCenters=new Map(),sourceRest=new Map(),jointPivots=new Map();
 let muscleMode="bones",muscleOverlays=[],muscleSkin=null;
+let gripDigitProgress=null,gripPlanning=false;
 const contactDigits={
  index:["RA5P2","RA6M2","RA7D2"],
  middle:["RA5P3","RA6M3","RA7D3"],
@@ -326,11 +327,17 @@ function buildAtlasFingerJoints(){
   jointPivots.set(body,{parent,pivot:a.clone().add(b).multiplyScalar(.5),gapMm:gap});
  }
 }
-function atlasJointRotation(body,parent,steps){
+// Give each digit its own OpenSim phase; no invented finger-joint rotations.
+function digitForBone(id){
+ if(/^RA4M1$|^RA[56][PD]1$/.test(id))return "thumb";
+ const m=id.match(/^RA[567][PMD]([2-5])$/);
+ return m?({2:"index",3:"middle",4:"ring",5:"little"})[m[1]]:null;
+}
+function atlasJointRotation(body,parent,steps,u=finger){
  const qRestP=new THREE.Quaternion().setFromRotationMatrix(sourceRest.get(parent)),
        qRestC=new THREE.Quaternion().setFromRotationMatrix(sourceRest.get(body));
- const qNowP=new THREE.Quaternion().setFromRotationMatrix(sourceMotion(parent,steps,finger)),
-       qNowC=new THREE.Quaternion().setFromRotationMatrix(sourceMotion(body,steps,finger));
+ const qNowP=new THREE.Quaternion().setFromRotationMatrix(sourceMotion(parent,steps,u)),
+       qNowC=new THREE.Quaternion().setFromRotationMatrix(sourceMotion(body,steps,u));
  // Use the relative OpenSim AAH joint orientation, not independent
  // world-space bone translations, to preserve the atlas hand topology.
  const q0=qRestP.invert().multiply(qRestC);
@@ -351,7 +358,10 @@ function applyPose(){
   if(memo.has(body))return memo.get(body);
   const j=jointPivots.get(body);
   if(!j){const I=M4();memo.set(body,I);return I}
-  const P=j.pivot,Q=atlasJointRotation(body,j.parent,steps);
+  const digit=digitForBone(body);
+  const progress=(!gripPlanning&&gripVisible&&pose==="cylinder"&&gripDigitProgress&&digit)
+   ?THREE.MathUtils.clamp(gripDigitProgress[digit]*finger,0,1):finger;
+  const P=j.pivot,Q=atlasJointRotation(body,j.parent,steps,progress);
   const J=M4().makeTranslation(P.x,P.y,P.z)
    .multiply(M4().makeRotationFromQuaternion(Q))
    .multiply(M4().makeTranslation(-P.x,-P.y,-P.z));
@@ -377,9 +387,9 @@ function applyPose(){
  setDumbbellPose(E);
  updateMusclePose();
  scene.updateMatrixWorld(true);
- if(gripReady){updateGripButtons();updateContactReport()}
- $("#elbowValue").textContent=elbow+"°";
- $("#fingerValue").textContent=Math.round(finger*100)+"%";
+ if(gripReady&&!gripPlanning){updateGripButtons();updateContactReport()}
+ if(!gripPlanning){$("#elbowValue").textContent=elbow+"°";
+  $("#fingerValue").textContent=Math.round(finger*100)+"%";}
 }
 // Dumbbell is an independently drawn prop, not a fake bone. It is placed
 // across the actual atlas palm and attached to the elbow/forearm transform.
@@ -424,9 +434,10 @@ function currentPalmFrame(){
  const y=m3.clone().sub(wrist).normalize();
  x.addScaledVector(y,-x.dot(y)).normalize();
  const z=x.clone().cross(y).normalize();
- const knuckles=["RA5P2","RA5P3","RA5P4","RA5P5"].map(id=>vecCenter(rig.get(id).mesh));
+ // MCP pivots are fixed in metacarpal coordinates while fingers move.
+ const knuckles=["RA5P2","RA5P3","RA5P4","RA5P5"].map(id=>jointPivots.get(id).pivot);
  const origin=knuckles.reduce((a,b)=>a.add(b),new THREE.Vector3()).multiplyScalar(.25)
-  .addScaledVector(y,-.012);
+  .addScaledVector(y,-.011);
  return {x,y,z,origin};
 }
 function contactCloud(id,frame){
@@ -484,52 +495,87 @@ function fitScore(clouds,y,z,radius){
  cost+=1.5*Math.pow(y-.008,2)+1.5*Math.pow(z-.012,2);
  return {cost,penetrations,near,gap,collisionGap,contact};
 }
+// Discrete pose-space IK: choose an independent measured AAH flexion
+// phase for each digit while the handle is anchored to the MCP plane.
 function planDumbbellGrip(){
- // All scene meshes at the atlas neutral elbow: source OpenSim AAH cylinder
- // sample is a starting pose, then we search ONLY the prop position.
- const prior={finger,pose,elbow};
- elbow=0;pose="cylinder";finger=1;applyPose();
- const frame=currentPalmFrame();
- const openTip=vecCenter(rig.get("RA7D3").mesh);
- finger=0;applyPose();
- const restTip=vecCenter(rig.get("RA7D3").mesh);
- if(openTip.clone().sub(restTip).dot(frame.z)<0)frame.z.negate();
- // Ensure the x/y/z frame remains a true orthogonal right-handed basis.
- if(frame.x.clone().cross(frame.y).dot(frame.z)<0)frame.x.negate();
- finger=1;applyPose();
- const clouds=collectContactClouds(frame);
- const radius=handleDiameterMm/2000;
- let best=null;
- // The axis must lie DISTAL to the MCP bases, inside the digit arcs,
- // not across the palm near the wrist. Source units are metres.
- for(let yy=-.009;yy<=.033;yy+=.003){
-  for(let zz=.003;zz<=.051;zz+=.003){
-   const score=fitScore(clouds,yy,zz,radius);
-   if(!best||score.cost<best.score.cost)best={y:yy,z:zz,score};
+ const prior={finger,pose,elbow,gripDigitProgress,gripPlanning,thumbCorrection};
+ let completed=false;
+ gripPlanning=true;gripDigitProgress=null;thumbCorrection=null;
+ elbow=0;pose="cylinder";finger=0;
+ try{
+  applyPose();
+  const frame=currentPalmFrame();
+  const openTip=vecCenter(rig.get("RA7D3").mesh);
+  finger=1;applyPose();
+  const curledTip=vecCenter(rig.get("RA7D3").mesh);
+  if(curledTip.clone().sub(openTip).dot(frame.z)<0)frame.z.negate();
+  if(frame.x.clone().cross(frame.y).dot(frame.z)<0)frame.x.negate();
+  const samples=[];
+  for(let step=0;step<=10;step++){
+   finger=step/10;applyPose();scene.updateMatrixWorld(true);
+   samples.push({u:step/10,clouds:collectContactClouds(frame)});
   }
- }
- if(!best)throw Error("Не найдено положение рукоятки между пальцами");
- // Refine the best actual geometry sample to 1 mm, preserving the same
- // soft-tissue-gap constraints across the five digits.
- const coarse={y:best.y,z:best.z};
- for(let yy=coarse.y-.004;yy<=coarse.y+.004001;yy+=.001){
-  for(let zz=coarse.z-.004;zz<=coarse.z+.004001;zz+=.001){
-   if(yy<-.014||yy>.037||zz<.001||zz>.056)continue;
-   const score=fitScore(clouds,yy,zz,radius);
-   if(score.cost<best.score.cost)best={y:yy,z:zz,score};
+  const radius=handleDiameterMm/2000;
+  const cloudMin=(pts,y,z)=>{
+   let nearest=Infinity;
+   for(const p of pts){
+    const dx=Math.max(0,Math.abs(p[0])-.073);
+    const d=Math.hypot(p[1]-y,p[2]-z,dx);
+    if(d<nearest)nearest=d;
+   }
+   return nearest-radius;
+  };
+  const palm=samples[0].clouds.palm;
+  let best=null;
+  for(let yy=-.010;yy<=.034001;yy+=.003){
+   for(let zz=.002;zz<=.050001;zz+=.003){
+    const palmGap=cloudMin(palm,yy,zz);
+    let cost=44*Math.pow(palmGap-.007,2)+
+      (palmGap<.002?650*Math.pow(.002-palmGap,2):0);
+    const phases={},gaps={},collisions={};
+    let contacts=0,penetrations=palmGap<.002?1:0;
+    for(const digit of Object.keys(contactDigits)){
+     let choice=null;
+     for(const sample of samples){
+      const d=cloudMin(sample.clouds[digit],yy,zz);
+      const collision=cloudMin(sample.clouds["collision_"+digit],yy,zz);
+      const penalty=22*Math.pow(d-.006,2)+
+       (d>.024?130*Math.pow(d-.024,2):0)+
+       (d<.003?240*Math.pow(.003-d,2):0)+
+       (collision<.002?1200*Math.pow(.002-collision,2):0)+
+       .00001*Math.pow(sample.u-.8,2);
+      if(!choice||penalty<choice.penalty)
+       choice={u:sample.u,gap:d,collision,penalty};
+     }
+     phases[digit]=choice.u;gaps[digit]=choice.gap;
+     collisions[digit]=choice.collision;cost+=choice.penalty;
+     if(choice.collision<.002)penetrations++;
+     if(choice.gap>=.003&&choice.gap<=.024&&choice.collision>=.002)contacts++;
+    }
+    cost+=.00004*Math.pow(5-contacts,2);
+    if(!best||cost<best.cost)
+     best={y:yy,z:zz,cost,phases,gaps,collisions,palmGap,contacts,penetrations};
+   }
   }
+  if(!best)throw Error("Не удалось согласовать рукоять и кисть");
+  const R=M4().makeBasis(frame.x,frame.y,frame.z);
+  R.setPosition(frame.origin);
+  gripFrame=frame;
+  gripBase=R.multiply(M4().makeTranslation(0,best.y,best.z));
+  gripDigitProgress=best.phases;
+  gripPlan={y:best.y,z:best.z,origin:frame.origin.toArray(),
+   x:frame.x.toArray(),normal:frame.z.toArray(),palmGapMm:best.palmGap*1000,
+   status:best.penetrations===0&&best.contacts>=3?"geometry-pass":"needs-retarget",
+   sampledDigits:{...best.phases},contactCount:best.contacts,
+   collisionCount:best.penetrations,
+   score:{cost:best.cost,gap:best.gaps,collisionGap:best.collisions}};
+  completed=true;return gripPlan;
+ }finally{
+  elbow=prior.elbow;pose=prior.pose;finger=prior.finger;
+  gripPlanning=prior.gripPlanning;
+  if(!completed){gripDigitProgress=prior.gripDigitProgress;thumbCorrection=prior.thumbCorrection}
+  applyPose();
  }
- const R=M4().makeBasis(frame.x,frame.y,frame.z);
- R.setPosition(frame.origin);
- gripFrame=frame;
- gripPlan={y:best.y,z:best.z,score:best.score,palmGapMm:best.score.gap.palm*1000,
-          status:best.score.penetrations===0&&best.score.near>=3?"geometry-pass":"needs-retarget",
-          origin:frame.origin.toArray(),
-           x:frame.x.toArray(),normal:frame.z.toArray()};
- gripBase=R.multiply(M4().makeTranslation(0,best.y,best.z));
- elbow=prior.elbow;pose=prior.pose;finger=prior.finger;
- applyPose();
- return gripPlan;
 }
 function calculateThumbOpposition(){
  // Move the distal thumb phalanx toward the bar by an anatomical
@@ -934,6 +980,7 @@ window.__armQA={
  sourceWorldCenter:id=>{const r=rig.get(id);scene.updateMatrixWorld(true);return r?vecCenter(r.source).toArray():null},
  visible:()=>[...rig.values()].filter(r=>r.mesh.visible).length,
  gripReady:()=>gripReady,gripVisible:()=>gripVisible,gripPlan:()=>gripPlan,
+ digitProgress:()=>gripDigitProgress,
  muscleCount:()=>muscleOverlays.length,muscleMode:()=>muscleMode,muscleNames:()=>muscleOverlays.map(x=>x.name),
  muscleSkinBones:()=>muscleSkin?.bones.length??0,
  muscleSkinVertices:()=>muscleSkin?.vertexCount??0,
