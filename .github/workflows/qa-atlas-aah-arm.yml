@@ -36,7 +36,8 @@ jobs:
               elbow:q.elbowAngle(),finger:q.fingerProgress(),gap:q.elbowGap(),pivot:q.elbowPivot(),
               wrist:q.meshWorldPosition('RA3L'),index:q.meshWorldPosition('RA7D2'),
               radius:q.meshWorldPosition('RA2R'),humerus:q.meshWorldPosition('RA1H'),
-              view:q.view(),mode:q.mode(),visible:q.visible(),coordinate:q.coordinates()};
+              view:q.view(),mode:q.mode(),axisMode:q.axisMode(),axis:q.axis(),
+              visible:q.visible(),coordinate:q.coordinates()};
           });
           const d=(a,b)=>Math.sqrt(a.reduce((s,v,i)=>s+(v-b[i])**2,0));
           try{
@@ -45,7 +46,8 @@ jobs:
               document.querySelector('#status')?.textContent?.includes('Не удалось построить'),null,{timeout:120000});
             const open=await read();
             if(!open.ready||open.bones!==28||open.atlasBones!==198||open.visible!==28||
-               open.coordinate!=='ra_el_e_f'||open.reg.rms>35||open.reg.scale<.45)
+               open.coordinate!=='ra_el_e_f'||open.reg.rms>35||open.reg.scale<.45||
+               open.axisMode!=='anatomic'||Math.abs(open.axis[0])!==1)
               throw Error('Initial arm retarget invalid '+JSON.stringify(open)+' : '+await page.locator('#status').innerText());
             await page.locator('#scene').screenshot({path:'qa-atlas-arm/right-arm-atlas-original-bones-AAH-neutral.png'});
             await page.locator('#finger').fill('100');
@@ -54,15 +56,31 @@ jobs:
             if(curled.finger!==1||fingerMoved<.012||fingerMoved>.16)
               throw Error('AAH finger motion not physically visible: '+JSON.stringify({fingerMoved,curled}));
             await page.locator('#scene').screenshot({path:'qa-atlas-arm/right-arm-AAH-finger-curl.png'});
+            await page.locator('[data-view="hand"]').click();
+            await page.locator('#scene').screenshot({path:'qa-atlas-arm/hand-closeup-AAH-finger-curl.png'});
+            await page.locator('#finger').fill('0');
+            await page.locator('#scene').screenshot({path:'qa-atlas-arm/hand-closeup-AAH-open.png'});
+            await page.locator('#finger').fill('100');
+            await page.locator('[data-view="rightarm"]').click();
             await page.locator('#elbow').fill('90');
             const flex=await read();
             const wristMoved=d(curled.wrist,flex.wrist);
             const humerusMoved=d(curled.humerus,flex.humerus);
-            if(flex.elbow!==90||wristMoved<.12||wristMoved>.72||humerusMoved>.001)
-              throw Error('AAH native elbow motion detached humerus: '+JSON.stringify({wristMoved,humerusMoved,flex}));
+            const lateralShift=Math.abs(flex.wrist[0]-curled.wrist[0]);
+            const forwardShift=flex.wrist[2]-curled.wrist[2];
+            if(flex.elbow!==90||wristMoved<.12||wristMoved>.72||humerusMoved>.001||
+              lateralShift>.09||forwardShift<.10)
+              throw Error('Atlas elbow hinge does not produce sagittal motion: '+JSON.stringify({wristMoved,humerusMoved,lateralShift,forwardShift,flex}));
+            await page.locator('[data-view="side"]').click();
+            await page.locator('#scene').screenshot({path:'qa-atlas-arm/full-skeleton-elbow-flexion-side-profile.png'});
+            await page.locator('[data-view="rightarm"]').click();
             await page.locator('#scene').screenshot({path:'qa-atlas-arm/right-arm-AAH-elbow-90-fingers-curled.png'});
             await page.locator('[data-pose="cylinder"]').click();
             await page.locator('#scene').screenshot({path:'qa-atlas-arm/right-arm-AAH-trial-cylinder-pose.png'});
+            await page.locator('[data-axis="raw"]').click();
+            if((await read()).axisMode!=='raw')throw Error('Raw AAH source-axis comparison unavailable');
+            await page.locator('#scene').screenshot({path:'qa-atlas-arm/raw-AAH-axis-comparison-sideways.png'});
+            await page.locator('[data-axis="anatomic"]').click();
             await page.locator('[data-mode="source"]').click();
             if((await read()).mode!=='source'||(await read()).visible!==0)
               throw Error('Cannot compare undisturbed original atlas hand');
@@ -77,11 +95,13 @@ jobs:
             if(errors.length)throw Error('Uncaught browser exceptions '+JSON.stringify(errors));
             writeFileSync('qa-atlas-arm/report.json',JSON.stringify({
               open,curled,flex,reset:back,fingerMovedM:fingerMoved,wristMovedM:wristMoved,
+              lateralShiftM:lateralShift,forwardShiftM:forwardShift,
               humerusMovedM:humerusMoved,errors},null,2));
             console.log('ATLAS_AAH_REAL_ARM_MOBILE_QA_SUCCESS',JSON.stringify({
               atlasBones:open.atlasBones,retargetedBones:open.bones,
               registrationRmsMm:open.reg.rms,sourceElbowCoordinate:open.coordinate,
-              wristMovementMm:wristMoved*1000,fingerMovementMm:fingerMoved*1000}));
+              wristMovementMm:wristMoved*1000,fingerMovementMm:fingerMoved*1000,
+              forwardShiftMm:forwardShift*1000,lateralShiftMm:lateralShift*1000}));
           }catch(e){
             console.error(e);
             await page.screenshot({path:'qa-atlas-arm/failed.png',fullPage:true}).catch(()=>{});
