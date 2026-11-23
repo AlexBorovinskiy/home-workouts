@@ -52,7 +52,12 @@ jobs:
               ribSegments:q.ribSegmentCount(),centers:q.neckCenters(),
               ribMode:q.ribMode(),masiRibCount:q.masiRibCount(),
               masiRibTriangles:q.masiRibTriangles(),masiRibVisible:q.masiRibVisible(),
-              fhsRibsVisible:q.fhsRibsVisible()};
+              fhsRibsVisible:q.fhsRibsVisible(),
+              legsReady:q.legsReady(),legCount:q.legCount(),legVisible:q.legVisible(),
+              legSource:q.legSource(),legPelvisMismatch:q.legPelvisMismatchMm(),
+              legBones:q.legBoneNames(),legBBox:q.legBoundingBox(),
+              hipR:q.legHipWorld('r'),hipL:q.legHipWorld('l'),
+              footR:q.legFootWorld('r'),footL:q.legFootWorld('l')};
           });
           const d=(a,b)=>Math.sqrt(a.reduce((s,v,i)=>s+(v-b[i])**2,0))*1000;
           try{
@@ -67,9 +72,16 @@ jobs:
             if(open.fhs!==118||open.aah!==54||open.left!==27||open.right!==27||
               open.neck.length!==8||open.ribProxies!==24||open.ribSegments<24||
               open.ribMode!=='masi'||open.masiRibCount!==1||
+              !open.legsReady||open.legCount!==14||!open.legVisible||
+              open.legSource!=='RajagopalLaiUhlrich2023'||
+              open.legPelvisMismatch>.0001||open.legBones.length!==14||
               open.masiRibTriangles<1000||!open.masiRibVisible||open.fhsRibsVisible||
               open.neckSource!=='masi'||!open.neckVisible||open.jointResidualMm>.0001)
               throw Error('Incomplete FHS/AAH/MASI anatomy '+JSON.stringify(open));
+            const legDropR=open.hipR[1]-open.footR[1],legDropL=open.hipL[1]-open.footL[1];
+            if(legDropR<.55||legDropR>1.2||legDropL<.55||legDropL>1.2||
+               Math.abs(legDropR-legDropL)>.02||open.legBBox.min[1]>open.footR[1]+.15)
+              throw Error('Implausible or mismatched leg positions '+JSON.stringify({legDropR,legDropL,box:open.legBBox}));
             const yc=open.centers.map(c=>c[1]);
             if((Math.max(...yc)-Math.min(...yc))<.075)
               throw Error('Neck vertebrae still stacked in one place '+JSON.stringify(yc));
@@ -80,6 +92,16 @@ jobs:
             if(!(await read()).neckVisible)throw Error('Cannot restore separated MASI C1-C7');
             if(d(open.rightAnchor,open.rightTarget)>.002||d(open.leftAnchor,open.leftTarget)>.002)
               throw Error('FHS/AAH wrist anchors do not align '+JSON.stringify(open));
+            await page.locator('#canvas').screenshot({path:'qa-assembly/full-body-front-open.png'});
+            await page.locator('[data-view="profile"]').click();
+            await page.locator('#canvas').screenshot({path:'qa-assembly/full-body-profile.png'});
+            await page.locator('[data-view="legs"]').click();
+            await page.locator('#canvas').screenshot({path:'qa-assembly/legs-feet-detail.png'});
+            await page.locator('#legs').uncheck();
+            if((await read()).legVisible)throw Error('Legs cannot be hidden');
+            await page.locator('#legs').check();
+            if(!(await read()).legVisible)throw Error('Legs cannot be restored');
+            await page.locator('[data-view="front"]').click();
             await page.locator('#canvas').screenshot({path:'qa-assembly/upper-body-hands-open.png'});
             await page.locator('[data-view="back"]').click();
             await page.locator('#canvas').screenshot({path:'qa-assembly/neck-and-ribcage-back.png'});
@@ -120,6 +142,8 @@ jobs:
               fhs:open.fhs,aah:open.aah,neckBones:open.neck.length,
               ribProxies:open.ribProxies,ribSegments:open.ribSegments,
               masiRibTriangles:open.masiRibTriangles,
+              rajagopalLegMeshes:open.legCount,
+              legRDropM:legDropR,legLDropM:legDropL,
               rawWristAnchorMismatchMm:Math.max(
               d(open.rightAnchor,open.rightTarget),d(open.leftAnchor,open.leftTarget)),
               rightIndexMovementMm:rightShift,leftIndexMovementMm:leftShift}));
