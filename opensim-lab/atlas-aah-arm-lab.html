@@ -438,10 +438,10 @@ function fitScore(clouds,y,z,radius){
    cost+=8*Math.pow(Math.max(0,.006-free),2);
    continue;
   }
-  if(free<.003){cost+=18*Math.pow(.003-free,2);penetrations++}
+  if(free<.004){cost+=350*Math.pow(.004-free,2);penetrations++}
   else if(free<.017){cost+=2.2*Math.pow(free-.006,2);near++}
   else cost+=2.2*Math.pow(free-.010,2);
-  contact[digit]=free>=.002&&free<=.024;
+  contact[digit]=free>=.004&&free<=.024;
  }
  cost+=.014*(z-.032)**2+.007*(y-.005)**2;
  return {cost,penetrations,near,gap,contact};
@@ -548,7 +548,7 @@ function updateContactReport(){
  const fmt=n=>Math.round(n*1000)+" мм";
  const parts=Object.keys(contactDigits).map(d=>label(d)+": "+fmt(stats.gap[d]));
  $("#contactReport").textContent=
-  "Средние/концевые фаланги → металл (выборка вершин): "+(valid.length)+"/5 пальцев в пределах 2–24 мм; "+
+  "Средние/концевые фаланги → металл (выборка вершин): "+(valid.length)+"/5 пальцев с костным зазором 4–24 мм; "+
   "минимальный зазор "+fmt(worst)+". "+
   ($("#showContact").checked?parts.join(" · ")+". ":"")+
   "Большой палец: пробная оппозиция "+(thumbFit?.angleDegrees||0).toFixed(0)+"°. "+
@@ -574,7 +574,10 @@ function fit(){
  // close-up with transparent ribs, pelvis or a tall humerus.
  const close=view==="hand";
  const mapped=new Set([...rig.values()].map(r=>r.source));
- for(const b of bones)if(!mapped.has(b))b.visible=!close;
+ // Hide all unrelated native atlas geometry in close-up, including
+ // cartilage and ribs which were not listed as named bone meshes.
+ for(const b of original)if(!mapped.has(b))
+  b.visible=!close&&b.userData?.layer==="skeleton"&&b.userData?.tissue==="bone";
  for(const [body,r] of rig){
   const isArm=body==="RA1H"||body==="RA2U"||body==="RA2R";
   r.mesh.visible=mode==="rig"&&(!close||!isArm);
