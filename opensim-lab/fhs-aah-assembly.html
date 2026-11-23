@@ -280,6 +280,7 @@ async function startAAH(){
   }
   if(count!==54)throw Error("Некорректное число костей AAH: "+count);
   $("#countAAH").textContent=String(count);
+  $("#hud").textContent="FHS 118 поверхностей · AAH 54 подвижных кости · OpenSim 4.6";
   loadedAAH=true;
   status("FHS + AAH загружены: 118 FHS-сеток, 54 подвижных поверхности кистей. Относительное положение запястий проверено по полулунной кости.");
   applyHands();updateVisibility();fit();
