@@ -107,6 +107,17 @@ a{color:var(--accent)}
 </aside>
 </div>
 </main>
+<script>
+// Display module-import and early WebGL errors instead of an endless loading banner.
+window.addEventListener("error",event=>{
+ const label=document.getElementById("status");
+ if(label&&/Читаю анатомическую|Загружаю|Подключаю/.test(label.textContent)){
+  label.textContent="Ошибка запуска 3D: "+(event.message||"не загрузился необходимый ресурс")+
+    ". Обновите страницу; если ошибка останется, отправьте этот текст.";
+  document.getElementById("hud").textContent="Ошибка инициализации 3D";
+ }
+},true);
+</script>
 <script type="module">
 // Original Three.js 0.186.1 (MIT), locally bundled for deterministic
 // mobile loading. Source model Écorché remains untouched (CC BY-SA 4.0).
@@ -131,7 +142,16 @@ async function loadAtlasWithFallback(){
   return await loader.loadAsync(atlasBackupSrc);
  }
 }
-const sourceVTP="https://raw.githubusercontent.com/nishbo/ms_arm_and_hand/main/AAH%20Model/Geometry/";
+// Exact bounding-box centers of original AAH/OpenSim VTP meshes, in metres.
+// Generated from the ASCII Points arrays of nishbo/ms_arm_and_hand, AAH Model/Geometry.
+// These are source geometry measurements, not estimated positions or joint pivots.
+const AAH_VTP_BBOX_CENTERS={
+ RA3L:[-0.0002645,-0.000692,0.000663], // lunate.vtp
+ RA4M2:[-0.0007215,-0.001420,-0.0004465], // 2mc.vtp
+ RA4M3:[0.000370,0.000716,-0.002027], // 3mc.vtp
+ RA4M5:[0.0011735,0.0003755,-0.0007575], // 5mc.vtp
+ RA2R:[0.0183705,-0.1202975,0.0135365] // radius.vtp
+};
 const nameMap={
  RA1H:"Right humerus",RA2U:"Right ulna",RA2R:"Right radius",
  RA3L:"Right lunate",RA3S:"Right scaphoid",RA3P:"Right pisiform",
@@ -174,17 +194,6 @@ function vecCenter(mesh){
  mesh.geometry.computeBoundingBox();
  const center=mesh.geometry.boundingBox.getCenter(new THREE.Vector3());
  return center.applyMatrix4(mesh.matrixWorld);
-}
-function parseVtpCenter(xmlStr,file){
- const doc=new DOMParser().parseFromString(xmlStr,"application/xml");
- if(doc.querySelector("parsererror"))throw Error("Невалидный VTP "+file);
- const points=doc.querySelector("VTKFile > PolyData > Piece > Points > DataArray");
- if(!points||points.getAttribute("format")!=="ascii")throw Error("AAH не ASCII VTP "+file);
- const vals=(points.textContent||"").trim().split(/\s+/).map(Number);
- if(!vals.length||vals.length%3!==0||vals.some(x=>!Number.isFinite(x)))throw Error("Неизвестные координаты VTP "+file);
- const mn=new THREE.Vector3(Infinity,Infinity,Infinity),mx=new THREE.Vector3(-Infinity,-Infinity,-Infinity);
- for(let i=0;i<vals.length;i+=3){const v=new THREE.Vector3(vals[i],vals[i+1],vals[i+2]);mn.min(v);mx.max(v)}
- return mn.add(mx).multiplyScalar(.5);
 }
 function basisFromCenters(C){
  const wrist=C.get("RA3L");
@@ -672,10 +681,9 @@ async function init(){
   status("Сопоставляю полулунную и пястные кости двух источников…");
   const neutral=fingers.right.trajectories.curl[0].frames;
   for(const [body,file] of landmarks){
-   const req=await fetch(sourceVTP+encodeURIComponent(file));
-   if(!req.ok)throw Error("Не удалось получить оригинальную кость AAH "+file);
-   const center=parseVtpCenter(await req.text(),file);
-   sourceCenters.set(body,center.applyMatrix4(frameM(neutral[body])));
+   const localCenter=AAH_VTP_BBOX_CENTERS[body];
+   if(!localCenter||!neutral[body])throw Error("Не хватает проверенных ориентиров OpenSim для "+body+" / "+file);
+   sourceCenters.set(body,V(localCenter).applyMatrix4(frameM(neutral[body])));
   }
   for(const id of Object.keys(nameMap))sourceRest.set(id,frameM(neutral[id]));
   registration=deriveRegistration();
