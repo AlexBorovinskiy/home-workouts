@@ -199,7 +199,21 @@ async function load(){
  $('#status').textContent='Загружены кожа, обе кисти и суставы пальцев';
  loaded=true;view('body');pose('neutral');
  window.__foundationQA={ready:()=>loaded,stats:()=>stats,view,pose,showRig,showSkin,
-    boneNames:()=>Object.keys(bones),skinVisible:()=>skins.every(m=>m.visible),rigVisible:()=>helper.visible};
+    boneNames:()=>Object.keys(bones),skinVisible:()=>skins.every(m=>m.visible),rigVisible:()=>helper.visible,
+    landmarks:()=>{
+     model.updateMatrixWorld(true);
+     const names=['pelvis','spine_01','spine_02','spine_03','neck','head',
+      'clavicle_l','clavicle_r','upperarm_l','upperarm_r','lowerarm_l','lowerarm_r',
+      'hand_l','hand_r','thigh_l','thigh_r','shin_l','shin_r','foot_l','foot_r'];
+     return Object.fromEntries(names.filter(n=>bones[n]).map(n=>[n,{
+      position:bones[n].getWorldPosition(new THREE.Vector3()).toArray(),
+      quaternion:bones[n].getWorldQuaternion(new THREE.Quaternion()).toArray(),
+      parent:bones[n].parent?.name||null
+     }]));
+    },
+    bonePose:(name)=>bones[name]?{
+     position:bones[name].getWorldPosition(new THREE.Vector3()).toArray(),
+     quaternion:bones[name].getWorldQuaternion(new THREE.Quaternion()).toArray()}:null};
 }
 for(const el of document.querySelectorAll('[data-view]'))el.addEventListener('click',()=>view(el.dataset.view));
 $('#neutral').addEventListener('click',()=>pose('neutral'));
