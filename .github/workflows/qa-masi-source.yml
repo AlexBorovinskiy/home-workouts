@@ -4,6 +4,7 @@ on:
     paths:
       - 'opensim-lab/inspect_masi_source.py'
       - 'opensim-lab/verify_masi_opensim.py'
+      - 'opensim-lab/convert_masi_legacy.py'
       - '.github/workflows/qa-masi-source.yml'
   workflow_dispatch:
 permissions:
@@ -29,6 +30,10 @@ jobs:
           curl -fL --retry 3 --max-time 100 'https://ndownloader.figshare.com/files/6929198' -o /tmp/masi-v2-authors.osim
           test -s /tmp/masi-v2-authors.osim
           python opensim-lab/verify_masi_opensim.py --model /tmp/masi-v2-authors.osim --output qa-masi-source/masi-native-audit.json
+      - name: Test name-only OpenSim 3.2 migration with all source biomechanical parameters unchanged
+        run: |
+          python opensim-lab/convert_masi_legacy.py --source /tmp/masi-v2-authors.osim --output /tmp/masi-name-migrated.osim
+          python opensim-lab/verify_masi_opensim.py --model /tmp/masi-name-migrated.osim --output qa-masi-source/masi-migrated-native-audit.json
       - name: Verify source and provenance
         run: |
           python - <<'PY'
