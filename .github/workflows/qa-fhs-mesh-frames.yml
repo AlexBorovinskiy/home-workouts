@@ -132,6 +132,19 @@ jobs:
             await page.waitForTimeout(200);
             await page.locator('#sceneCanvas').screenshot({path:'qa-fhs-original/hand.png'});
             console.log('FHS_HAND_IMAGE '+(await page.locator('#sceneCanvas').screenshot({type:'jpeg',quality:50})).toString('base64'));
+
+            // A reload must restore the original scientific archive from IndexedDB
+            // without asking the user to re-download or re-select the ZIP.
+            await page.reload({waitUntil:'domcontentloaded'});
+            await page.waitForFunction(()=>window.__fhsGeometryQA?.ready()||document.querySelector('#status')?.textContent?.includes('не удалось восстановить'),null,{timeout:160000});
+            if(!await page.evaluate(()=>Boolean(window.__fhsGeometryQA?.ready())))
+              throw Error('IndexedDB restore failed: '+await page.locator('#status').innerText());
+            const afterReload=await page.evaluate(()=>window.__fhsGeometryQA.stats());
+            if(afterReload.total!==118||afterReload.ribs!==24||afterReload.lineSegments<30000)throw Error('Cache restore incomplete: '+JSON.stringify(afterReload));
+            const directLink=await page.locator('#getZip').getAttribute('href');
+            if(!directLink.includes('zenodo.org/records/18259702/files/'))throw Error('Native download URL missing');
+            console.log('FHS_CACHE_RELOAD_QA '+JSON.stringify({restored:true,total:afterReload.total,ribs:afterReload.ribs,lines:afterReload.lineSegments,directLink}));
+            await page.locator('#sceneCanvas').screenshot({path:'qa-fhs-original/reloaded.png'});
             writeFileSync('qa-fhs-original/browser-audit.json',JSON.stringify({report,errors},null,2));
           } catch(err){
             await page.screenshot({path:'qa-fhs-original/failed.png',fullPage:true}).catch(()=>{});
