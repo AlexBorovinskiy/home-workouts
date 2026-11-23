@@ -431,7 +431,7 @@ async function startAAH(){
    neckReady:()=>neckReady,
    neckJointResidualMm:()=>neckJointResidualMm,
    neckCenters:()=>[...neckBones.values()].map(m=>m.getWorldPosition(new THREE.Vector3()).toArray()),
-   isNeckVisible:()=>neckRoot.visible,
+   isNeckVisible:()=>neckRoot.visible&&neckScaffold.visible,
    aahCount:()=>count,
    sideCount:side=>aahGroup[side].children.length,
    mode:()=>mode,pose:()=>pose,bend:()=>bend,
