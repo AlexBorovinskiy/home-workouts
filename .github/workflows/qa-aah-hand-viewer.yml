@@ -1,0 +1,94 @@
+name: QA AAH OpenSim articulated hands mobile web viewer
+on:
+  push:
+    paths:
+      - 'opensim-lab/aah-hand.html'
+      - 'opensim-lab/assets/aah-hand-poses.json'
+      - '.github/workflows/qa-aah-hand-viewer.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install mobile Chrome test framework
+        run: npm install --prefix /tmp/qa-aah --no-audit --no-fund playwright-core@1.56.1
+      - name: Validate model source, finger movement and 3D rendering
+        run: |
+          mkdir -p qa-aah-mobile
+          python3 -m http.server 8768 --bind 127.0.0.1 >/tmp/aah-web.log 2>&1 &
+          node --input-type=module <<'NODE'
+          import {chromium} from '/tmp/qa-aah/node_modules/playwright-core/index.mjs';
+          import {writeFileSync} from 'node:fs';
+          const browser=await chromium.launch({channel:'chrome',headless:true,
+            args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+          const page=await browser.newPage({viewport:{width:430,height:932},deviceScaleFactor:1,isMobile:true,hasTouch:true});
+          const errors=[];
+          page.on('pageerror',e=>errors.push(e.message));
+          const snap=async file=>await page.locator('#scene').screenshot({path:'qa-aah-mobile/'+file});
+          const q=()=>page.evaluate(()=>{
+            const a=window.__aahQA;
+            const prefix=a.side()==='right'?'RA':'LA';
+            return {ready:a.ready(),side:a.side(),count:a.count(),progress:a.progress(),
+                    pose:a.pose(),indexTip:a.world(prefix+'7D2'),
+                    thumbTip:a.world(prefix+'6D1'),palm:a.world(prefix+'4M3'),bounds:a.bbox(),handle:a.handle()};
+          });
+          try{
+            await page.goto('http://127.0.0.1:8768/opensim-lab/aah-hand.html',{waitUntil:'domcontentloaded'});
+            await page.waitForFunction(()=>window.__aahQA?.ready()||document.querySelector('#loading')?.textContent?.includes('Не удалось открыть'),null,{timeout:130000});
+            if(!(await page.evaluate(()=>window.__aahQA.ready())))throw Error(await page.locator('#loading').innerText());
+            const opened=await q();
+            if(opened.count<25||opened.count>31||opened.side!=='right'||opened.progress!==0)
+              throw Error('Right hand skeletal inventory wrong: '+JSON.stringify(opened));
+            if(opened.bounds.some(v=>v<.02||v>.5))throw Error('Hand scale invalid: '+JSON.stringify(opened.bounds));
+            await snap('right-open.png');
+            await page.locator('[data-pose="curl"]').click();
+            const fist=await q();
+            const diff=(x,y)=>Math.sqrt(x.reduce((s,v,i)=>s+(v-y[i])**2,0))*1000;
+            const indexShift=diff(opened.indexTip,fist.indexTip),thumbShift=diff(opened.thumbTip,fist.thumbTip);
+            if(fist.pose!=='curl'||fist.progress!==1||indexShift<40||indexShift>120||thumbShift<5)
+              throw Error('OpenSim finger curl not shown: '+JSON.stringify({fist,indexShift,thumbShift}));
+            await snap('right-fingers-flexed.png');
+            await page.locator('[data-pose="cylinder"]').click();
+            const handle=await q();
+            if(!handle.handle||handle.pose!=='cylinder'||handle.progress!==1)
+              throw Error('Reference handle or grip pose missing: '+JSON.stringify(handle));
+            await snap('right-cylinder-reference.png');
+            await page.locator('#progress').fill('50');
+            const mid=await q();
+            if(mid.progress!==.5)throw Error('50% pose interpolation broken: '+JSON.stringify(mid));
+            await page.locator('[data-side="left"]').click();
+            await page.waitForFunction(()=>window.__aahQA?.ready()&&window.__aahQA.side()==='left',null,{timeout:130000});
+            const left=await q();
+            if(left.count!==opened.count||left.pose!=='cylinder'||left.progress!==.5)
+              throw Error('Left hand failed: '+JSON.stringify(left));
+            await snap('left-cylinder-half.png');
+            await page.locator('[data-pose="open"]').click();
+            const leftOpen=await q();
+            await page.locator('[data-pose="curl"]').click();
+            const leftCurl=await q();
+            const leftShift=diff(leftOpen.indexTip,leftCurl.indexTip);
+            if(leftShift<40||leftShift>120)throw Error('Left hand finger motion invalid: '+leftShift);
+            await snap('left-fingers-flexed.png');
+            if(errors.length)throw Error('JS errors '+JSON.stringify(errors));
+            const report={right:{opened,fist,indexShift,thumbShift,handle,mid},left:{left,leftShift},errors};
+            writeFileSync('qa-aah-mobile/report.json',JSON.stringify(report,null,2));
+            console.log('AAH_HAND_MOBILE_QA_OK '+JSON.stringify({
+              meshCount:opened.count,rightIndexShiftMm:indexShift,leftIndexShiftMm:leftShift,steps:13,issues:errors.length}));
+          }catch(e){
+            await page.screenshot({path:'qa-aah-mobile/failed.png',fullPage:true}).catch(()=>{});
+            console.error(e);throw e;
+          }finally{await browser.close()}
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: aah-kinematic-hand-mobile-screenshots
+          path: qa-aah-mobile/
+          retention-days: 14
