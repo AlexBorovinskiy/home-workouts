@@ -29,7 +29,13 @@ jobs:
           const browser=await chromium.launch({channel:'chrome',headless:true,
             args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
           const page=await browser.newPage({viewport:{width:430,height:932},deviceScaleFactor:1,isMobile:true,hasTouch:true});
-          const errors=[];page.on('pageerror',e=>errors.push(e.message));
+          const errors=[];
+          page.on('pageerror',e=>{errors.push(e.message);console.error('MOBILE_PAGEERROR',e.message)});
+          page.on('console',msg=>{if(msg.type()==='error'||msg.type()==='warning')
+            console.log('MOBILE_CONSOLE',msg.type(),msg.text().slice(0,700))});
+          page.on('requestfailed',req=>console.log('MOBILE_REQUEST_FAILED',req.url(),req.failure()?.errorText));
+          page.on('response',resp=>{if(resp.status()>=400)
+            console.log('MOBILE_BAD_RESPONSE',resp.status(),resp.url())});
           const read=()=>page.evaluate(()=>{
             const q=window.__armQA;
             return {ready:q.ready(),bones:q.boneCount(),atlasBones:q.sourceCount(),reg:q.registration(),
@@ -47,7 +53,7 @@ jobs:
           try{
             await page.goto('http://127.0.0.1:8797/opensim-lab/atlas-aah-arm-lab.html',{waitUntil:'domcontentloaded'});
             await page.waitForFunction(()=>window.__armQA?.ready()||
-              document.querySelector('#status')?.textContent?.includes('Не удалось построить'),null,{timeout:120000});
+              document.querySelector('#status')?.textContent?.includes('Не удалось построить'),null,{timeout:35000});
             const open=await read();
             if(!open.ready||open.bones!==28||open.atlasBones!==198||open.visible!==27||
                open.coordinate!=='ra_el_e_f'||open.reg.rms>35||open.reg.scale<.45||
