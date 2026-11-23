@@ -1,0 +1,353 @@
+<!doctype html><html lang="ru"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#092735"><link rel="icon" href="data:,">
+<title>OpenSim · диагностика соединения C7–T1</title>
+<style>
+:root{color-scheme:dark;--ink:#ebf8f4;--muted:#a8c9cf;--mint:#9ce3d2;--line:#446b77;--pane:#143744}
+*{box-sizing:border-box}body{font:14px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:linear-gradient(160deg,#174352,#0a2433 42%);color:var(--ink);margin:0}
+main{max-width:1160px;margin:0 auto;padding:14px 12px 45px}
+header{display:flex;align-items:center;justify-content:space-between;gap:8px;color:var(--mint);font-size:11px;letter-spacing:.1em;font-weight:750}
+header a{color:var(--ink);letter-spacing:0;text-decoration:none;border:1px solid var(--line);border-radius:11px;padding:9px 11px}
+h1{font-size:clamp(23px,4.8vw,37px);letter-spacing:-.04em;margin:23px 0 8px}
+.lead{color:var(--muted);line-height:1.65;max-width:780px;margin:0 0 14px}
+.layout{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(278px,.8fr);gap:12px}
+.card{background:var(--pane);border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:12px}
+.stage{position:relative;height:min(73vh,700px);min-height:460px;background:radial-gradient(ellipse at 50% 50%,#2b5965 0%,#0b2635 80%);touch-action:none}
+canvas{width:100%;height:100%;display:block;touch-action:none}
+.hud{position:absolute;top:10px;left:9px;max-width:92%;border:1px solid #5a868b;border-radius:9px;background:#0a2a38e9;padding:9px 12px;line-height:1.5;font-size:11px}
+.loading{position:absolute;top:48%;left:50%;transform:translate(-50%,-50%);border-radius:12px;border:1px solid #527985;background:#0b2939eb;padding:16px;max-width:80%;text-align:center;line-height:1.6}
+.loading[hidden]{display:none}.help{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);white-space:nowrap;background:#0b2b38ce;color:#c9e8e4;border-radius:30px;padding:7px 12px;font-size:11px;pointer-events:none}
+.panel{padding:14px}h2{font-size:17px;margin:0 0 10px}
+h3{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:12px 0 7px}
+p{line-height:1.65;color:var(--muted)}
+button,.action{background:#255465;border:1px solid #5d8690;color:var(--ink);font:inherit;font-weight:700;padding:10px 11px;border-radius:9px;cursor:pointer;min-height:42px;text-decoration:none;display:inline-flex;align-items:center}
+button.on{background:var(--mint);color:#0d3340;border-color:var(--mint)}
+.buttons{display:flex;gap:7px;flex-wrap:wrap}
+.layer{display:flex;gap:10px;align-items:center;color:#e0ece9;padding:7px 0;font-size:13px}
+.layer input{width:18px;height:18px;accent-color:#9ce3d2}
+.explain{background:#423b30;border:1px solid #7e674b;border-radius:11px;color:#f2dfbe;font-size:12px;padding:11px;line-height:1.62}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:9px 0}
+.stat{background:#092d3b;border-radius:10px;text-align:center;padding:10px 5px}
+.stat strong{font-size:19px;display:block;color:#eaf7ed}.stat small{color:var(--muted);font-size:10px}
+.status{font-size:12px;color:#d7e9e7;line-height:1.65;border:1px solid #496d78;border-radius:11px;padding:10px;margin:9px 0}
+#zip{display:none}
+#zipMessage{font-size:12px;line-height:1.6;color:var(--muted)}
+a{color:var(--mint)}
+@media(max-width:760px){.layout{grid-template-columns:1fr}.stage{height:60vh;min-height:430px}}
+</style></head><body><main>
+<header><span>HOME WORKOUTS · RESEARCH / OPENSIM</span><a href="./upper-body.html">Предыдущая модель</a></header>
+<h1>Соединение C7–T1: MASI + FHS</h1>
+<p class="lead">Исследовательское сравнение: шея C1–C7 из MASI и 17 отдельных грудных и поясничных позвонков из Framingham. Совмещён один суставной ориентир. <b>Это не готовая смешанная биомеханическая модель.</b></p>
+<div class="layout">
+<div>
+<section class="card"><div class="stage" id="stage">
+<canvas id="canvas" aria-label="Трёхмерная диагностическая сборка шеи MASI с позвоночником FHS"></canvas>
+<div class="hud" id="hud">Проверка перехода C7–T1 · две научные модели</div>
+<div class="loading" id="loading">Загружаю оригинальную геометрию MASI…</div>
+<div class="help">Проведи пальцем — вращение · двумя — масштаб</div>
+</div></section>
+<section class="card panel">
+<h2>Как получено совмещение</h2>
+<p class="explain">Совмещены исходные суставные точки <b>MASI auxt1jnt</b> и <b>FHS T1_head_neck</b>. Ориентация FHS T1 первоначально согласована с ориентацией сегмента spine MASI. Не применялось растяжение костей. Эти ориентиры не доказывают совпадение реальных анатомических осей.</p>
+<p>Оригинальные FHS-кости берутся <b>только из выбранного пользователем ZIP</b> и не копируются в публичный репозиторий. Для модели MASI используются открытые VTP-файлы Neck6D. Это проверка геометрии, не симуляция упражнения.</p>
+<a href="https://zenodo.org/records/18259702" target="_blank" rel="noopener">Исходные данные FHS (Zenodo)</a>
+</section>
+</div>
+<aside>
+<section class="card panel">
+<h2>Исходные кости FHS</h2>
+<p id="zipMessage">Если ты уже открывал FHS в этой же браузерной среде, попробую восстановить архив автоматически. В противном случае выбери его один раз.</p>
+<div class="buttons">
+<button id="chooseZip">Выбрать архив FHS ZIP</button>
+<a class="action" href="https://zenodo.org/records/18259702/files/FHS_dataset_4.x.zip?download=1" target="_blank" rel="noopener">Скачать ZIP</a>
+</div>
+<input id="zip" type="file" accept=".zip,application/zip">
+<div id="status" class="status">Пока загружается только MASI. Размещение FHS станет доступно из исходного ZIP.</div>
+<h3>Измерения OpenSim</h3>
+<div class="stats">
+<div class="stat"><strong>0 мм</strong><small>погрешность совмещения суставных точек</small></div>
+<div class="stat"><strong>2,41 мм</strong><small>минимум между вершинами C7 и T1</small></div>
+<div class="stat"><strong>17</strong><small>позвонков FHS</small></div>
+</div>
+<p style="font-size:11px">Расстояние между вершинами вычислено для выбранного положения; это <b>не</b> измеренная суставная щель и не анатомическая валидация.</p>
+</section>
+<section class="card panel">
+<h2>Управление моделью</h2>
+<h3>Увеличение</h3>
+<div class="buttons">
+<button data-focus="junction" class="on">C7–T1 крупно</button>
+<button data-focus="upper">Вся верхняя часть</button>
+<button data-focus="spine">Весь позвоночник</button>
+</div>
+<h3>Ракурс</h3>
+<div class="buttons">
+<button data-view="back" class="on">Сзади</button><button data-view="front">Спереди</button>
+<button data-view="side">Сбоку</button><button data-view="oblique">Под углом</button>
+</div>
+<h3>Слои</h3>
+<label class="layer"><input type="checkbox" data-layer="neck" checked> MASI · C1–C7 + череп (жёлтый)</label>
+<label class="layer"><input type="checkbox" data-layer="fhs" checked> FHS · T1–L5 (голубой)</label>
+<label class="layer"><input type="checkbox" data-layer="chest" checked> MASI · грудная клетка (полупрозрачная)</label>
+<label class="layer"><input type="checkbox" data-layer="shoulder"> MASI · ключицы и лопатки</label>
+<label class="layer"><input type="checkbox" data-layer="reference"> MASI · старая цельная сетка позвоночника</label>
+<label class="layer"><input type="checkbox" data-layer="markers" checked> Отметки суставного ориентира и T1</label>
+<div class="buttons" style="margin-top:10px"><button id="reset">Сбросить вид</button></div>
+</section>
+<section class="card panel">
+<h2>Что проверяем</h2>
+<p style="font-size:12px">Пространственный переход C7–T1, положение T2–T12 относительно грудной клетки MASI и изменение осей при переходе между научными моделями. Перед анимацией понадобится повторно проверить суставные центры, кинематику, мышечные крепления и размеры по всем отделам.</p>
+</section>
+</aside></div></main>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from "three";
+import {OrbitControls} from "three/addons/controls/OrbitControls.js";
+const $=x=>document.querySelector(x);
+const stage=$("#stage"),renderer=new THREE.WebGLRenderer({canvas:$("#canvas"),antialias:true,alpha:true,preserveDrawingBuffer:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.55));renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.setClearColor(0x0b2635,0);
+const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(35,1,.004,30);
+scene.add(new THREE.HemisphereLight(0xe3f9f4,0x4d717c,2.4));
+const sun=new THREE.DirectionalLight(0xffeee1,2.3);sun.position.set(3,4,3);scene.add(sun);
+const fill=new THREE.DirectionalLight(0x95ceeb,1.0);fill.position.set(-3,1,-3);scene.add(fill);
+const orbit=new OrbitControls(camera,renderer.domElement);orbit.enableDamping=true;orbit.minDistance=.025;orbit.maxDistance=8;
+function resize(){const w=Math.max(1,stage.clientWidth),h=Math.max(1,stage.clientHeight);renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}
+new ResizeObserver(resize).observe(stage);resize();
+const V=x=>new THREE.Vector3(...x);
+const MASI_SOURCE="https://raw.githubusercontent.com/MyoHub/myoconverter/main/models/osim/Neck6D/Geometry/";
+const layers={neck:true,fhs:true,chest:true,shoulder:false,reference:false,markers:true};
+const catParts={neck:new THREE.Group(),chest:new THREE.Group(),shoulder:new THREE.Group(),reference:new THREE.Group(),fhs:new THREE.Group(),markers:new THREE.Group()};
+Object.values(catParts).forEach(g=>scene.add(g));
+const fhsRoot=catParts.fhs;
+let manifests=null,focus="junction",direction="back",masiReady=false,fhsReady=false,allParts=new Map(),fhsParts=new Map();
+const nameFHS=i=>i<=12?"thoracic"+i:"lumbar"+(i-12);
+const fhsLevels=Array.from({length:17},(_,i)=>nameFHS(i+1));
+function setStatus(s){$("#status").textContent=s}
+function array(node){let x=node?.textContent?.trim();return x?x.split(/\s+/).map(Number):[]}
+function parseVtp(text,name){
+ const doc=new DOMParser().parseFromString(text,"application/xml");
+ if(doc.querySelector("parsererror"))throw Error("Не удалось разобрать VTP "+name);
+ const piece=doc.querySelector("VTKFile > PolyData > Piece");
+ if(!piece)throw Error("Нет PolyData "+name);
+ const verts=array(piece.querySelector("Points > DataArray"));
+ const nodes=[...piece.querySelectorAll("Polys > DataArray")];
+ const conn=array(nodes.find(x=>x.getAttribute("Name")==="connectivity")||nodes[0]);
+ const stops=array(nodes.find(x=>x.getAttribute("Name")==="offsets")||nodes[1]);
+ if(!verts.length||verts.length%3||!conn.length||!stops.length||verts.some(x=>!Number.isFinite(x)))throw Error("Нет геометрии "+name);
+ let start=0,idx=[];
+ for(const end of stops){
+  if(!Number.isInteger(end)||end<=start||end>conn.length)throw Error("Повреждены полигоны "+name);
+  for(let i=start+1;i<end-1;i++)idx.push(conn[start],conn[i],conn[i+1]);
+  start=end;
+ }
+ if(!idx.length||idx.some(n=>!Number.isInteger(n)||n<0||n>=verts.length/3))throw Error("Повреждены индексы "+name);
+ const g=new THREE.BufferGeometry();g.setAttribute("position",new THREE.Float32BufferAttribute(verts,3));g.setIndex(idx);g.computeVertexNormals();return g;
+}
+function nativeMat(rows){
+ return new THREE.Matrix4().set(
+ rows[0][0],rows[0][1],rows[0][2],0,
+ rows[1][0],rows[1][1],rows[1][2],0,
+ rows[2][0],rows[2][1],rows[2][2],0,
+ 0,0,0,1);
+}
+function addMasi(id,b,group,color,opacity=1){
+ const native=new THREE.Group();
+ native.position.copy(V(b.position));
+ native.quaternion.setFromRotationMatrix(nativeMat(b.rotation));
+ const mat=new THREE.MeshStandardMaterial({color,side:THREE.DoubleSide,roughness:.59,transparent:opacity<1,opacity,depthWrite:opacity>=1});
+ const mesh=new THREE.Mesh(b.geometry,mat);
+ const local=b.localTransform||[0,0,0,0,0,0];
+ mesh.position.set(local[0],local[1],local[2]);mesh.rotation.set(local[3],local[4],local[5],"XYZ");
+ mesh.scale.set(...b.scale);native.add(mesh);group.add(native);allParts.set(id,mesh);
+}
+function makeMarker(position,color,radius=.004){
+ const m=new THREE.Mesh(new THREE.SphereGeometry(radius,16,12),new THREE.MeshBasicMaterial({color,depthTest:false}));
+ m.position.copy(V(position));catParts.markers.add(m);return m;
+}
+function label(text,pos,color){
+ const cv=document.createElement("canvas");cv.width=256;cv.height=64;const cx=cv.getContext("2d");
+ cx.clearRect(0,0,256,64);cx.fillStyle="#0b303de0";cx.roundRect(0,0,256,64,12);cx.fill();
+ cx.strokeStyle="#85b9c0";cx.lineWidth=2;cx.stroke();
+ cx.font="bold 38px sans-serif";cx.fillStyle=color;cx.textAlign="center";cx.textBaseline="middle";cx.fillText(text,128,34);
+ const spr=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv),depthTest:false,transparent:true}));
+ spr.scale.set(.11,.03,1);spr.position.copy(V(pos)).add(new THREE.Vector3(0,.019,.07));catParts.markers.add(spr);
+}
+function show(){
+ for(const [key,g] of Object.entries(catParts))g.visible=layers[key];
+ document.querySelectorAll("[data-layer]").forEach(i=>i.checked=layers[i.dataset.layer]);
+ document.querySelectorAll("[data-focus]").forEach(b=>b.classList.toggle("on",b.dataset.focus===focus));
+ document.querySelectorAll("[data-view]").forEach(b=>b.classList.toggle("on",b.dataset.view===direction));
+}
+function fit(){
+ if(!masiReady)return;
+ const box=new THREE.Box3();
+ if(focus==="junction"){
+  box.expandByObject(allParts.get("cerv7"));if(fhsReady)box.expandByObject(fhsParts.get("thoracic1"));
+  else box.expandByObject(allParts.get("cerv6"));
+ }else if(focus==="spine"&&fhsReady){
+  for(const m of fhsParts.values())box.expandByObject(m);
+  box.expandByObject(allParts.get("cerv7"));
+ }else{
+  for(const id of ["skull","cerv7","torso","lscapula","rscapula"])box.expandByObject(allParts.get(id));
+  if(fhsReady)box.expandByObject(fhsParts.get("thoracic1"));
+ }
+ if(box.isEmpty())return;
+ const mid=box.getCenter(new THREE.Vector3()),size=box.getSize(new THREE.Vector3());
+ const fov=Math.tan(THREE.MathUtils.degToRad(camera.fov/2));
+ const dist=Math.max(focus==="junction"?.14:.31,1.7*Math.max(size.y/(2*fov),size.x/(2*fov*Math.max(.35,camera.aspect)),size.z/(2*fov*Math.max(.35,camera.aspect))));
+ const vec=direction==="front"?new THREE.Vector3(1,.04,.05):
+  direction==="back"?new THREE.Vector3(-1,.05,.04):
+  direction==="side"?new THREE.Vector3(.05,.05,1):new THREE.Vector3(1,.25,1);
+ orbit.target.copy(mid);camera.position.copy(mid).add(vec.normalize().multiplyScalar(dist));camera.lookAt(mid);orbit.update();
+}
+async function sourceJson(path){const r=await fetch(path);if(!r.ok)throw Error("Нет "+path);return r.json()}
+async function loadMasi(){
+ const [neck,upper,reg,fhs]=await Promise.all([
+  sourceJson("./assets/masi-neck-native.json"),
+  sourceJson("./assets/masi-upper-addendum.json"),
+  sourceJson("./assets/c7-t1-registration.json"),
+  sourceJson("./assets/fhs-original-frames.json")]);
+ if(reg.schema!=="c7-t1-masi-fhs-registration-candidate-v1"||
+    reg.anatomicalCompatibilityVerified!==false||
+    fhs.kind!=="fhs-opensim-body-frames-v1"||
+    reg.fhsArchiveRelativeOsimPath!==fhs.archiveRelativeOsimPath)throw Error("Несовместимые научные данные");
+ manifests={neck,upper,reg,fhs};
+ const all={...neck.bodyFrames,...upper.bodyFrames};
+ const wanted=[...Array.from({length:7},(_,i)=>"cerv"+(i+1)),"skull","torso","lclavicle","rclavicle","lscapula","rscapula","spine"];
+ const loaded=await Promise.all(wanted.map(async id=>{
+  const frame=all[id],r=await fetch(MASI_SOURCE+frame.file);
+  if(!r.ok)throw Error("Недоступна MASI поверхность "+frame.file+" (HTTP "+r.status+")");
+  return {id,geometry:parseVtp(await r.text(),frame.file),frame};
+ }));
+ for(const {id,geometry,frame} of loaded){
+  const cat=id.startsWith("cerv")||id==="skull"?"neck":id==="torso"?"chest":id==="spine"?"reference":"shoulder";
+  let color=cat==="neck"?(id==="skull"?0xdddcd0:0xf1c683):cat==="chest"?0xced3cc:cat==="shoulder"?0xc7b5de:0x87a6ad;
+  addMasi(id,{...frame,geometry},catParts[cat],color,cat==="chest"?.38:cat==="reference"?.17:cat==="shoulder"?.72:1);
+ }
+ const rot=manifests.reg.rotationMatrix,t=manifests.reg.translationM;
+ fhsRoot.matrixAutoUpdate=false;
+ fhsRoot.matrix.copy(nativeMat(rot));fhsRoot.matrix.setPosition(V(t));
+ fhsRoot.updateMatrixWorld(true);
+ const worldFHS=V(reg.fhsAnchorM).applyMatrix4(fhsRoot.matrix);
+ const joinErr=worldFHS.distanceTo(V(reg.masiAnchorM))*1000;
+ if(joinErr>.0001)throw Error("Разные исходные суставные координаты (погрешность "+joinErr+" мм)");
+ makeMarker(reg.masiAnchorM,0xf5ffdd,.005);
+ label("C7–T1",reg.masiAnchorM,"#f1eac1");
+ masiReady=true;show();fit();$("#loading").hidden=true;
+ $("#hud").textContent="MASI C1–C7 · исходные координаты OpenSim · подготовлена регистрация FHS";
+ window.__c7t1QA={
+  masiReady:()=>masiReady,
+  fhsReady:()=>fhsReady,
+  anchorErrorMm:()=>joinErr,
+  registration:()=>reg,
+  partIds:()=>[...fhsParts.keys()],
+  bounds:id=>{const m=fhsParts.get(id)||allParts.get(id);const b=new THREE.Box3().setFromObject(m);return {center:b.getCenter(new THREE.Vector3()).toArray(),size:b.getSize(new THREE.Vector3()).toArray()}},
+  minVertexMm:()=>measureVertices(),
+  view:v=>{direction=v;show();fit()},
+  focus:v=>{focus=v;show();fit()}
+ };
+ setStatus("MASI загружена. Для изображения T1–L5 нужна оригинальная геометрия из архива FHS.");
+ await tryRestore();
+}
+async function loadFhsZip(data){
+ if(!masiReady)throw Error("MASI ещё не готова");
+ if(!window.JSZip)throw Error("Библиотека чтения ZIP недоступна");
+ const zip=await JSZip.loadAsync(data);
+ const fm=manifests.fhs,chosen=fm.archiveRelativeOsimPath;
+ if(!zip.file(chosen))throw Error("Нужного научного образца нет в ZIP: "+chosen);
+ const prefix=chosen.slice(0,chosen.lastIndexOf("/Male/"))+"/Geometry/";
+ const geom=[];
+ for(const id of fhsLevels){
+  const attached=fm.anatomyMeshes[id],native=fm.bodyFrames[id];
+  if(!native||!attached||attached.length!==1||attached[0].socket!=="..")throw Error("Нет исходного сегмента "+id);
+  const def=attached[0],file=zip.file(prefix+def.file);
+  if(!file)throw Error("Нет кости "+def.file+" в архиве");
+  geom.push({id,native,def,mesh:parseVtp(await file.async("string"),def.file)});
+ }
+ for(const old of fhsRoot.children.slice()){fhsRoot.remove(old);old.traverse(obj=>{if(obj.geometry)obj.geometry.dispose();if(obj.material)obj.material.dispose()})}
+ fhsParts.clear();
+ for(const {id,native,def,mesh} of geom){
+  const mat=new THREE.MeshStandardMaterial({color:id==="thoracic1"?0x86f9ea:0x7fc8e1,roughness:.63,side:THREE.DoubleSide});
+  const obj=new THREE.Mesh(mesh,mat);
+  const m=new THREE.Matrix4().makeBasis(...native.basisColumns.map(V));
+  obj.quaternion.setFromRotationMatrix(m);obj.position.copy(V(native.origin));obj.scale.set(...def.scaleFactors);
+  obj.userData.id=id;fhsRoot.add(obj);fhsParts.set(id,obj);
+ }
+ fhsRoot.updateMatrixWorld(true);
+ fhsReady=true;
+ const actual=measureVertices(),expected=manifests.reg.audit.vertexToVertexMinimumMm;
+ if(Math.abs(actual-expected)>.06)throw Error("Геометрия C7–T1 не совпала с расчётом OpenSim: "+actual.toFixed(3)+" против "+expected);
+ $("#hud").textContent="MASI C1–C7 + 17 отдельных FHS T1–L5 · диагностический стык";
+ setStatus("Оригинальные 17 костей FHS загружены. Минимальная дистанция между вершинами C7 и T1: "+actual.toFixed(2)+" мм (научная диагностическая метрика, не размер суставной щели).");
+ $("#zipMessage").textContent="Данные FHS получены из исходного архива. Сетка T1 выделена светло-зелёным. Файлы не загружались на сервер приложения.";
+ focus="junction";show();fit();
+}
+function measureVertices(){
+ if(!fhsReady)return null;
+ const a=allParts.get("cerv7"),b=fhsParts.get("thoracic1");
+ catParts.neck.updateMatrixWorld(true);fhsRoot.updateMatrixWorld(true);
+ const va=a.geometry.getAttribute("position"),vb=b.geometry.getAttribute("position");
+ let nearest=Infinity;const pa=new THREE.Vector3(),pb=new THREE.Vector3();
+ for(let i=0;i<va.count;i++){
+  pa.fromBufferAttribute(va,i).applyMatrix4(a.matrixWorld);
+  for(let j=0;j<vb.count;j++){
+   pb.fromBufferAttribute(vb,j).applyMatrix4(b.matrixWorld);
+   nearest=Math.min(nearest,pa.distanceToSquared(pb));
+  }
+ }
+ return Math.sqrt(nearest)*1000;
+}
+const DB="home-workouts-fhs-data",STORE="archive",KEY="fhs-2026-scientific-zip";
+function cacheRead(){
+ return new Promise((resolve,reject)=>{
+  if(!("indexedDB" in window))return resolve(null);
+  const req=indexedDB.open(DB,1);
+  req.onerror=()=>reject(req.error);
+  req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains(STORE))req.result.createObjectStore(STORE)};
+  req.onsuccess=()=>{
+   const db=req.result,tx=db.transaction(STORE,"readonly"),read=tx.objectStore(STORE).get(KEY);
+   read.onsuccess=()=>{db.close();resolve(read.result||null)};
+   read.onerror=()=>{db.close();reject(read.error)};
+  };
+ });
+}
+function cacheWrite(file){
+ return new Promise((resolve,reject)=>{
+  const req=indexedDB.open(DB,1);
+  req.onerror=()=>reject(req.error);
+  req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains(STORE))req.result.createObjectStore(STORE)};
+  req.onsuccess=()=>{
+   const db=req.result,tx=db.transaction(STORE,"readwrite");
+   tx.objectStore(STORE).put({blob:file,modelPath:manifests.fhs.archiveRelativeOsimPath,savedAt:new Date().toISOString()},KEY);
+   tx.oncomplete=()=>{db.close();resolve()};
+   tx.onerror=()=>{db.close();reject(tx.error)};
+  };
+ });
+}
+async function tryRestore(){
+ try{
+  const cache=await cacheRead();
+  if(!cache?.blob||cache.modelPath!==manifests.fhs.archiveRelativeOsimPath)return;
+  setStatus("Восстанавливаю архив FHS из памяти браузера…");
+  await loadFhsZip(await cache.blob.arrayBuffer());
+ }catch(e){
+  console.warn(e);setStatus("Восстановить старый ZIP не удалось. Выбери FHS ZIP вручную: "+e.message);
+ }
+}
+$("#chooseZip").onclick=()=>$("#zip").click();
+$("#zip").onchange=async()=>{
+ const file=$("#zip").files?.[0];if(!file)return;
+ $("#loading").hidden=false;$("#loading").textContent="Читаю исходный FHS ZIP, собираю T1–L5…";
+ try{
+  await loadFhsZip(await file.arrayBuffer());
+  try{await cacheWrite(file)}catch(e){$("#zipMessage").textContent="ZIP открыт, но браузер не смог сохранить его локально: "+e.message}
+ }catch(e){console.error(e);setStatus("Ошибка FHS: "+e.message)}
+ finally{$("#loading").hidden=true}
+};
+document.querySelectorAll("[data-focus]").forEach(b=>b.onclick=()=>{focus=b.dataset.focus;show();fit()});
+document.querySelectorAll("[data-view]").forEach(b=>b.onclick=()=>{direction=b.dataset.view;show();fit()});
+document.querySelectorAll("[data-layer]").forEach(c=>c.onchange=()=>{layers[c.dataset.layer]=c.checked;show();fit()});
+$("#reset").onclick=()=>{focus="junction";direction="back";Object.assign(layers,{neck:true,fhs:true,chest:true,shoulder:false,reference:false,markers:true});show();fit()};
+(function loop(){requestAnimationFrame(loop);orbit.update();renderer.render(scene,camera)})();
+loadMasi().catch(e=>{$("#loading").hidden=false;$("#loading").textContent="Ошибка загрузки: "+e.message;setStatus("Ошибка MASI: "+e.message);console.error(e)});
+</script></body></html>
