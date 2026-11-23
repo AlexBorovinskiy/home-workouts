@@ -36,12 +36,24 @@ def xml_inventory(path):
           "legacyParentBody":joint.findtext("parent_body"),
           "legacyChildBody":joint.findtext("child_body"),
           "coordinates":[e.get("name") for e in joint.findall("./coordinates/Coordinate")]})
+    cervicalVisuals={}
+    for b in body_items:
+        name=b.get("name")
+        if name in {"cerv1","cerv2","cerv3","cerv4","cerv5","cerv6","cerv7","skull","torso","rscapula","lscapula"}:
+            g=b.find(".//VisibleObject")
+            cervicalVisuals[name]={
+              "visibleObjectScale":g.findtext("scale_factors") if g is not None else None,
+              "geometry":[{"file":x.findtext("geometry_file"),
+                           "transform":x.findtext("transform"),
+                           "scale":x.findtext("scale_factors")}
+                 for x in b.findall(".//DisplayGeometry")]
+            }
     return {"modelName":model.get("name"),"opensimDocumentVersion":root.get("Version"),
       "bodyCountXml":len(body_items),"bodyNames":[b.get("name") for b in body_items],
       "candidateNeckAndLimbBodies":important,
       "jointCountXml":len(joint_objects),"joints":linklist,"xmlElementCounts":elementCounts,
       "forceObjectsXml":len(muscles),"meshCount":len(meshes),
-      "referencedMeshFiles":geom_files,
+      "referencedMeshFiles":geom_files,"cervicalVisualGeometry":cervicalVisuals,
       "sourceFileSizeBytes":pathlib.Path(path).stat().st_size}
 
 def native_test(path):
