@@ -29,7 +29,7 @@ jobs:
           export { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
           export { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
           JAVASCRIPT
-          node ./node_modules/esbuild/bin/esbuild entry.mjs \
+          ./node_modules/.bin/esbuild entry.mjs \
             --bundle --format=esm --target=es2022 --minify \
             --outfile="$GITHUB_WORKSPACE/opensim-lab/vendor/three-anatomy.mjs"
           cp node_modules/three/LICENSE "$GITHUB_WORKSPACE/opensim-lab/vendor/THREE-MIT-LICENSE.txt"
