@@ -1,0 +1,82 @@
+name: QA new independent Ecorche anatomical source skeleton viewer
+on:
+  push:
+    paths:
+      - 'opensim-lab/anatomy-reference.html'
+      - '.github/workflows/qa-anatomy-reference.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  mobile:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install mobile Chromium automation
+        run: npm install --prefix /tmp/atlasqa --no-audit --no-fund playwright-core@1.56.1
+      - name: Check real imported anatomy source names and mobile WebGL
+        run: |
+          mkdir -p qa-anatomy-reference
+          python3 -m http.server 8778 --bind 127.0.0.1 >/tmp/atlasqa-http.log 2>&1 &
+          node --input-type=module <<'NODE'
+          import {chromium} from '/tmp/atlasqa/node_modules/playwright-core/index.mjs';
+          import {writeFileSync} from 'node:fs';
+          const browser=await chromium.launch({channel:'chrome',headless:true,
+            args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+          const page=await browser.newPage({viewport:{width:430,height:932},deviceScaleFactor:1,isMobile:true,hasTouch:true});
+          const errors=[];page.on('pageerror',e=>errors.push(e.message));
+          const read=()=>page.evaluate(()=>{
+            const q=window.__atlasQA;
+            return {ready:q.ready(),bones:q.bones(),muscles:q.muscles(),ribs:q.ribs(),
+              cervical:q.cervical(),finger:q.finger(),toe:q.toe(),layer:q.layer(),
+              view:q.view(),focus:q.focus(),bbox:q.bbox()};
+          });
+          try{
+            await page.goto('http://127.0.0.1:8778/opensim-lab/anatomy-reference.html',{waitUntil:'domcontentloaded'});
+            await page.waitForFunction(()=>window.__atlasQA?.ready()||
+              document.querySelector('#status')?.textContent?.includes('Ошибка проверки источника')||
+              document.querySelector('#status')?.textContent?.includes('Не удалось загрузить опубликованный'),
+              null,{timeout:125000});
+            const a=await read();
+            if(!a.ready||a.bones!==198||a.ribs!==24||a.cervical!==7||a.muscles<340||
+               a.finger<20||a.toe<20||a.layer!=='bones')
+              throw Error('Source anatomy completeness mismatch '+JSON.stringify(a)+' : '+await page.locator('#status').innerText());
+            if(a.bbox.height<1.4||a.bbox.height>2.2||a.bbox.width<.20||a.bbox.width>1.5)
+              throw Error('Suspicious source geometry dimensions '+JSON.stringify(a.bbox));
+            await page.locator('#scene').screenshot({path:'qa-anatomy-reference/full-skeleton-anatomy-front.png'});
+            await page.locator('[data-view="side"]').click();
+            await page.locator('#scene').screenshot({path:'qa-anatomy-reference/full-skeleton-anatomy-side.png'});
+            await page.locator('[data-view="back"]').click();
+            await page.locator('#scene').screenshot({path:'qa-anatomy-reference/full-skeleton-anatomy-back.png'});
+            for(const f of ['spine','chest','pelvis','hand','foot']){
+              await page.locator('[data-focus="'+f+'"]').click();
+              if((await read()).focus!==f)throw Error('Failed region '+f);
+              await page.locator('#scene').screenshot({path:'qa-anatomy-reference/region-'+f+'.png'});
+            }
+            if(!await page.evaluate(()=>window.__atlasQA.chooseName('Atlas')))
+              throw Error('Atlas cervical bone not accessible');
+            await page.locator('[data-focus="all"]').click();
+            await page.locator('[data-view="front"]').click();
+            await page.locator('[data-layer="muscles"]').click();
+            if((await read()).layer!=='muscles')throw Error('Muscle layer toggle failed');
+            await page.locator('#scene').screenshot({path:'qa-anatomy-reference/atlas-with-muscles-reference-only.png'});
+            await page.locator('[data-layer="bones"]').click();
+            if(errors.length)throw Error('Page errors '+JSON.stringify(errors));
+            writeFileSync('qa-anatomy-reference/report.json',JSON.stringify({initial:a,errors},null,2));
+            console.log('ANATOMY_REFERENCE_MOBILE_QA_OK',JSON.stringify(a));
+          }catch(e){
+            console.error(e);
+            await page.screenshot({path:'qa-anatomy-reference/failed.png',fullPage:true}).catch(()=>{});
+            throw e;
+          }finally{await browser.close()}
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: independent-ecorche-anatomy-mobile-verification
+          path: qa-anatomy-reference/
+          retention-days: 14
