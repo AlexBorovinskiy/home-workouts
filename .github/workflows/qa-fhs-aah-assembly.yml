@@ -61,7 +61,8 @@ jobs:
               auditReady:q.postureAuditReady(),auditHeight:q.postureAuditHeight(),
               markers:q.postureLandmarkCount(),markerVisible:q.postureMarkerVisible(),
               heightMode:q.heightMode(),scale:q.displayScaleFactor(),
-              nominalHeightCm:q.nominalHeightCm(),visibleBounds:q.worldVisibleBounds()};
+              nominalHeightCm:q.nominalHeightCm(),nativeDisplayHeightCm:q.nativeDisplayHeightCm(),
+              visibleBounds:q.worldVisibleBounds()};
           });
           const d=(a,b)=>Math.sqrt(a.reduce((s,v,i)=>s+(v-b[i])**2,0))*1000;
           try{
@@ -74,7 +75,9 @@ jobs:
               throw Error('Assembly loading failed: '+await page.locator('#status').innerText());
             await page.waitForFunction(()=>window.__assemblyQA?.postureAuditReady(),null,{timeout:25000});
             const personalized=await read();
-            const expectedFactor=1820/1499.471;
+            const expectedFactor=182/personalized.nativeDisplayHeightCm;
+            if(personalized.nativeDisplayHeightCm<145||personalized.nativeDisplayHeightCm>160)
+              throw Error('Unexpected original visible scientific geometry '+personalized.nativeDisplayHeightCm);
             if(personalized.heightMode!=='182'||Math.abs(personalized.scale-expectedFactor)>1e-6||
                Math.abs(personalized.nominalHeightCm-182)>.001||
                Math.abs(personalized.visibleBounds.min[1])>.012||
@@ -87,7 +90,7 @@ jobs:
             await page.locator('[data-height="source"]').click();
             const open=await read();
             if(open.heightMode!=='source'||Math.abs(open.scale-1)>1e-9||
-               Math.abs(open.nominalHeightCm-149.9471)>.001)
+               Math.abs(open.nominalHeightCm-personalized.nativeDisplayHeightCm)>.001)
                throw Error('Original OpenSim source scale is not recoverable');
             if(!open.auditReady||Math.abs(open.auditHeight-1499.471)>.1||open.markers<8)
               throw Error('Source posture report or 3D reference markers not loaded '+JSON.stringify(open));
