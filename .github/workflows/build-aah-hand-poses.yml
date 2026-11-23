@@ -1,0 +1,78 @@
+name: Build native OpenSim AAH finger animation research data
+on:
+  push:
+    paths:
+      - 'opensim-lab/export_aah_native_hand.py'
+      - '.github/workflows/build-aah-hand-poses.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  export:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install scientific native OpenSim
+        run: python -m pip install 'opensim==4.6'
+      - name: Download original MIT AAH NoMuscles models
+        run: |
+          curl -fL --retry 3 --max-time 90 \
+            'https://raw.githubusercontent.com/nishbo/ms_arm_and_hand/main/AAH%20Model/RightArmAndHand_NoMuscles.osim' \
+            -o /tmp/AAH-Right-NoMuscles.osim
+          curl -fL --retry 3 --max-time 90 \
+            'https://raw.githubusercontent.com/nishbo/ms_arm_and_hand/main/AAH%20Model/LeftArmAndHand_NoMuscles.osim' \
+            -o /tmp/AAH-Left-NoMuscles.osim
+      - name: Export OpenSim assembled bone orientations for both hands, 13 steps each
+        run: |
+          python opensim-lab/export_aah_native_hand.py \
+            --right /tmp/AAH-Right-NoMuscles.osim \
+            --left /tmp/AAH-Left-NoMuscles.osim \
+            --out opensim-lab/assets/aah-hand-poses.json
+      - name: QA bone positions and joint motion from native frames
+        run: |
+          python - <<'PY'
+          import json,math
+          d=json.load(open('opensim-lab/assets/aah-hand-poses.json'))
+          assert d['schema']=='AAH-bilateral-OpenSim-pose-export-v1'
+          for side in ('right','left'):
+            a=d[side]
+            assert a['actualOpenSimAssemblyForEachSample'] is True
+            assert len(a['displayMeshes'])==33
+            assert a['modelCounts']['muscles']==0
+            assert a['sampleCount']==13
+            assert len(a['trajectories']['curl'])==13
+            assert len(a['trajectories']['cylinder'])==13
+            prefix='RA' if side=='right' else 'LA'
+            for label,steps in a['trajectories'].items():
+              first,last=steps[0],steps[-1]
+              assert sorted(first['frames'])==sorted(last['frames'])
+              assert all(math.isfinite(v) for f in last['frames'].values() for v in f['p'])
+              start=first['frames'][prefix+'7D2']['p']
+              end=last['frames'][prefix+'7D2']['p']
+              shift=math.dist(start,end)*1000
+              print('AAH_FINGERTIP_SHIFT',side,label,round(shift,2))
+              assert 4<shift<200,'Index fingertip did not move plausibly: '+str(shift)
+          print('AAH_NATIVE_POSES_VALID')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: opensim-aah-assembled-hand-poses
+          path: opensim-lab/assets/aah-hand-poses.json
+          retention-days: 30
+      - name: Commit only generated pose data back to research project
+        if: success() && github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add opensim-lab/assets/aah-hand-poses.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Add native OpenSim 4.6 AAH bilateral finger pose samples [skip ci]"
+            git push origin HEAD:main
+          fi
