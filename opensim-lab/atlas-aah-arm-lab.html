@@ -74,8 +74,8 @@ a{color:var(--accent)}
 <button id="releaseGrip">Разжать пальцы</button>
 <button id="hideDumbbell">Убрать гантель</button>
 </div>
-<label style="margin-top:10px">Диаметр рукоятки <strong id="handleDiameterValue">30 мм</strong></label>
-<input id="handleDiameter" type="range" min="24" max="36" step="2" value="30" disabled aria-label="Диаметр рукоятки">
+<label style="margin-top:10px">Диаметр рукоятки <strong id="handleDiameterValue">24 мм</strong></label>
+<input id="handleDiameter" type="range" min="24" max="36" step="2" value="24" disabled aria-label="Диаметр рукоятки">
 <label style="margin-top:8px">Смещение относительно ладони <strong id="handleOffsetValue">0 мм</strong></label>
 <input id="handleOffset" type="range" min="-15" max="15" step="1" value="0" disabled aria-label="Смещение рукоятки к ладони">
 <div id="contactReport" class="status" style="margin-top:8px">Измеряю положение пальцев относительно металлической рукоятки…</div>
@@ -144,7 +144,7 @@ const landmarks=[
 let atlas=null,original=[],bones=[],rig=new Map(),poseFrames=null,elbowFrames=null,registration=null;
 let elbow=0,finger=0,pose="curl",mode="rig",view="rightarm",ready=false,sourceAtlas=null,axisMode="anatomic";
 let dumbbell=null,gripBase=null,gripFrame=null,gripPlan=null,gripVisible=false,gripReady=false;
-let handleDiameterMm=30,handleOffsetMm=0,contactResult=null,thumbCorrection=null,thumbFit=null;
+let handleDiameterMm=24,handleOffsetMm=0,contactResult=null,thumbCorrection=null,thumbFit=null;
 const sourceCenters=new Map(),targetCenters=new Map(),sourceRest=new Map(),jointPivots=new Map();
 const contactDigits={
  index:["RA5P2","RA6M2","RA7D2"],
@@ -565,11 +565,21 @@ function appearance(){
  }
  document.querySelectorAll("[data-mode]").forEach(b=>b.classList.toggle("on",b.dataset.mode===mode));
  if(dumbbell)dumbbell.root.visible=gripVisible&&mode==="rig";
- if(ready&&view==="rightarm")fit();
+ if(ready)fit();
  if(gripReady)updateContactReport();
 }
 function fit(){
  if(!ready)return;
+ // Anatomy source remains in memory, but does not obstruct the hand
+ // close-up with transparent ribs, pelvis or a tall humerus.
+ const close=view==="hand";
+ const mapped=new Set([...rig.values()].map(r=>r.source));
+ for(const b of bones)if(!mapped.has(b))b.visible=!close;
+ for(const [body,r] of rig){
+  const isArm=body==="RA1H"||body==="RA2U"||body==="RA2R";
+  r.mesh.visible=mode==="rig"&&(!close||!isArm);
+  r.source.visible=(mode==="source"||$("#ghost").checked)&&(!close||!isArm);
+ }
  scene.updateMatrixWorld(true);
  const selected=[...rig.entries()].filter(([id])=>
    view==="hand"?/^RA[34567]/.test(id):
@@ -580,9 +590,12 @@ function fit(){
  if(box.isEmpty())return;
  const centre=box.getCenter(new THREE.Vector3()),size=box.getSize(new THREE.Vector3());
  const aspect=Math.max(.35,camera.aspect),tan=Math.tan(THREE.MathUtils.degToRad(camera.fov/2));
- const d=1.6*Math.max(size.y/(2*tan),size.x/(2*tan*aspect),size.z/(2*tan*aspect),.12);
+ const d=(view==="hand"?1.24:1.6)*
+  Math.max(size.y/(2*tan),size.x/(2*tan*aspect),size.z/(2*tan*aspect),.12);
  const dir=view==="side"?new THREE.Vector3(1,.06,.03):
-  view==="hand"?new THREE.Vector3(0,.22,1):new THREE.Vector3(0,.06,1);
+  view==="hand"&&gripFrame?gripFrame.z.clone().multiplyScalar(.8)
+    .addScaledVector(gripFrame.x,.55).addScaledVector(gripFrame.y,.15):
+  new THREE.Vector3(0,.06,1);
  controls.target.copy(centre);camera.position.copy(centre).add(dir.normalize().multiplyScalar(d));camera.lookAt(centre);controls.update();
  document.querySelectorAll("[data-view]").forEach(b=>b.classList.toggle("on",b.dataset.view===view));
 }
