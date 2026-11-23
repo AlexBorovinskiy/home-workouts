@@ -198,7 +198,7 @@ const landmarks=[
 let atlas=null,original=[],bones=[],rig=new Map(),poseFrames=null,elbowFrames=null,registration=null;
 let elbow=0,finger=0,pose="curl",mode="rig",view="rightarm",ready=false,sourceAtlas=null,axisMode="anatomic";
 let dumbbell=null,gripBase=null,gripFrame=null,gripPlan=null,gripVisible=false,gripReady=false;
-let handleDiameterMm=24,handleOffsetMm=0,handleDepthMm=0,contactResult=null,thumbCorrection=null,thumbFit=null;
+let handleDiameterMm=24,handleOffsetMm=0,handleDepthMm=0,contactResult=null,thumbCorrection=null,thumbIPCorrection=null,thumbFit=null;
 const sourceCenters=new Map(),targetCenters=new Map(),sourceRest=new Map(),jointPivots=new Map();
 let muscleMode="bones",muscleOverlays=[],muscleSkin=null;
 let gripDigitProgress=null,gripPlanning=false,manualGripAngles=null,gripTesting=false;
@@ -390,6 +390,14 @@ function applyPose(){
     .multiply(M4().makeRotationFromQuaternion(blend))
     .multiply(M4().makeTranslation(-P.x,-P.y,-P.z));
    J.premultiply(K);
+  }
+  if(body==="RA6D1"&&thumbIPCorrection&&gripVisible&&mode==="rig"&&thumbMode==="opposition"){
+   const bend=new THREE.Quaternion().slerpQuaternions(new THREE.Quaternion(),
+    thumbIPCorrection,THREE.MathUtils.clamp(finger*thumbStrength,0,1));
+   const B=M4().makeTranslation(P.x,P.y,P.z)
+    .multiply(M4().makeRotationFromQuaternion(bend))
+    .multiply(M4().makeTranslation(-P.x,-P.y,-P.z));
+   J.premultiply(B);
   }
   const transform=relativeMotion(j.parent).clone().multiply(J);
   memo.set(body,transform);return transform;
@@ -683,7 +691,7 @@ function planDumbbellGrip(){
 // validated anatomical joint angles or a force/tendon simulation.
 function calculateThumbOpposition(){
  const old={finger,elbow,pose,gripVisible,gripTesting,thumbMode,thumbStrength};
- gripTesting=true;thumbCorrection=null;
+ gripTesting=true;thumbCorrection=null;thumbIPCorrection=null;
  gripVisible=true;thumbMode="opposition";thumbStrength=1;
  elbow=0;finger=1;pose="cylinder";
  try{
@@ -777,18 +785,77 @@ function calculateThumbOpposition(){
   }
   if(!best)throw Error("Не удалось найти безопасную конфигурацию большого пальца");
   thumbCorrection=best.q;
+  applyPose();scene.updateMatrixWorld(true);
+  // Bend the IP joint toward the index-side surface of the handle after
+  // setting the CMC swing. A bound of 35° limits this exploratory fit.
+  const ipRestPivot=jointPivots.get("RA6D1")?.pivot;
+  if(!ipRestPivot)throw Error("Не найден ориентир межфалангового сустава");
+  const ipParent=rig.get("RA5P1");
+  const ipParentMotion=ipParent.mesh.matrixWorld.clone()
+   .multiply(ipParent.rest.clone().invert());
+  const ipPivot=ipRestPivot.clone().applyMatrix4(ipParentMotion);
+  const ipParentQ=new THREE.Quaternion().setFromRotationMatrix(ipParentMotion);
+  const ipAxis=new THREE.Vector3().setFromMatrixColumn(dumbbell.root.matrixWorld,0).normalize();
+  const ipOrigin=new THREE.Vector3().setFromMatrixPosition(dumbbell.root.matrixWorld);
+  const radialTo=p=>{
+   const d=p.clone().sub(ipOrigin);
+   return d.addScaledVector(ipAxis,-d.dot(ipAxis));
+  };
+  const ipIndexSide=radialTo(indexMCP).normalize();
+  const ipTip=vecCenter(rig.get("RA6D1").mesh);
+  const ipIndexAx=THREE.MathUtils.clamp(indexMCP.clone().sub(ipOrigin).dot(ipAxis),-.06,.06);
+  const ipTipAx=THREE.MathUtils.clamp(ipTip.clone().sub(ipOrigin).dot(ipAxis),-.06,.06);
+  const ipGoal=ipOrigin.clone()
+   .addScaledVector(ipAxis,.75*ipIndexAx+.25*ipTipAx)
+   .addScaledVector(ipIndexSide,handleDiameterMm/2000+.007);
+  let ipBest=null;
+  const ipFrom=ipTip.clone().sub(ipPivot),ipTo=ipGoal.clone().sub(ipPivot);
+  if(ipFrom.length()>.009&&ipTo.length()>.009){
+   const ipDesiredWorld=new THREE.Quaternion().setFromUnitVectors(
+    ipFrom.normalize(),ipTo.normalize());
+   const ipRawAngle=2*Math.acos(THREE.MathUtils.clamp(Math.abs(ipDesiredWorld.w),0,1));
+   const ipCap=THREE.MathUtils.degToRad(35);
+   const ipBounded=new THREE.Quaternion().slerpQuaternions(
+    new THREE.Quaternion(),ipDesiredWorld,Math.min(1,ipCap/Math.max(ipRawAngle,.000001)));
+   const ipLocal=ipParentQ.clone().invert().multiply(ipBounded).multiply(ipParentQ);
+   for(let step=0;step<=10;step++){
+    const fraction=step/10;
+    thumbIPCorrection=new THREE.Quaternion().slerpQuaternions(
+     new THREE.Quaternion(),ipLocal,fraction);
+    applyPose();
+    const actualTip=vecCenter(rig.get("RA6D1").mesh);
+    const state=sampleClearance();
+    const delta=actualTip.distanceTo(ipGoal);
+    const penalty=36*delta*delta+
+      100*Math.pow(state.gap-.007,2)+
+      2500*Math.pow(Math.max(0,.003-state.collision),2)+
+      .00004*fraction*fraction;
+    if(!ipBest||penalty<ipBest.penalty){
+     ipBest={penalty,rotation:thumbIPCorrection.clone(),
+      tip:actualTip.toArray(),gapMm:state.gap*1000,
+      collisionMm:state.collision*1000,
+      angleDeg:THREE.MathUtils.radToDeg(Math.min(ipRawAngle,ipCap))*fraction,
+      fraction};
+    }
+   }
+   thumbIPCorrection=ipBest.fraction>.001?ipBest.rotation:null;
+  }else thumbIPCorrection=null;
   applyPose();
   thumbFit={angleDegrees:best.cmcDeg,requestedDegrees:best.cmcDeg,
    sourceTip:tip0.toArray(),targetTip:best.goal,actualTip:best.tip,
-   boneClearanceMm:best.collisionMm,safelyAdjusted:best.collisionMm>=3,
+   boneClearanceMm:ipBest?.collisionMm??best.collisionMm,
+   safelyAdjusted:(ipBest?.collisionMm??best.collisionMm)>=3,
    sweepDegrees:best.sweepDeg,baselineGapMm:baseline.gap*1000,
-   fitGapMm:best.gapMm,algorithm:"opposing-side-cmc-sweep"};
+   fitGapMm:ipBest?.gapMm??best.gapMm,
+   ipAngleDegrees:ipBest?.angleDeg??0,ipTarget:ipGoal.toArray(),
+   ipTip:ipBest?.tip??null,algorithm:"opposing-side-cmc-plus-ip"};
   const fmt=n=>n.toFixed(1).replace(".",",");
   $("#thumbReport").textContent="Коррекция основания большого пальца: "+
    fmt(best.cmcDeg)+"°. Огибание относительно основания: "+
-   fmt(best.sweepDeg)+"°. Зазор к металлу: "+fmt(best.gapMm)+
-   " мм (проверка вершин). "+
-   (best.collisionMm<3?"Обнаружено возможное пересечение. ":
+   fmt(best.sweepDeg)+"°. Сгибание концевого сустава: "+
+   fmt(ipBest?.angleDeg??0)+"°. Зазор к металлу: "+
+   fmt(ipBest?.gapMm??best.gapMm)+" мм (проверка вершин). "+
+   ((ipBest?.collisionMm??best.collisionMm)<3?"Обнаружено возможное пересечение. ":
     "Грубых пересечений в выборке не обнаружено. ")+
    "Исходный OpenSim можно сравнить кнопкой выше.";
   return thumbFit;
