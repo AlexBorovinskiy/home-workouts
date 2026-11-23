@@ -1,0 +1,30 @@
+name: Check inline atlas OpenSim grip JavaScript parser
+on:
+  push:
+    paths:
+      - 'opensim-lab/atlas-aah-arm-lab.html'
+      - '.github/workflows/qa-inline-atlas-syntax.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  parser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Extract browser module and validate actual ES syntax
+        run: |
+          python3 - <<'PY'
+          import re
+          s=open('opensim-lab/atlas-aah-arm-lab.html').read()
+          matches=re.findall(r'<script type="module">([\s\S]*?)</script>',s)
+          assert len(matches)==1,len(matches)
+          open('/tmp/atlas-aah-extracted.mjs','w').write(matches[0])
+          print('INLINE_BROWSER_SOURCE_LINES',matches[0].count('\n')+1)
+          PY
+          node --check /tmp/atlas-aah-extracted.mjs
+          echo 'ATLAS_AAH_BROWSER_MODULE_PARSE_OK'
