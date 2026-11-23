@@ -51,6 +51,7 @@ select{background:#092c3c;border:1px solid #658a95;color:var(--ink);padding:8px;
     <section class="card panel">
       <h2>Анатомическая оговорка</h2>
       <div class="warning">Здесь отображается <b>исходная статическая поза</b> MASI. Грудная клетка — одна сетка ribcage, а грудопоясничный отдел — одна сетка tlspine. Это не 24 отдельно управляемых ребра и не 17 позвонков FHS. Визуализация пока не показывает физиологически проверенное упражнение или движение по суставам.</div>
+      <p id="continuity" class="warning" style="margin-top:10px">Проверка непрерывности геометрии C7 — грудопоясничный отдел выполняется после загрузки поверхностей.</p>
       <p class="note">Источники: <a href="https://doi.org/10.6084/m9.figshare.4249808.v2" target="_blank" rel="noopener">MASI, Cazzola et al. (2017)</a> и <a href="https://github.com/MyoHub/myoconverter/tree/main/models/osim/Neck6D/Geometry" target="_blank" rel="noopener">открытая геометрия Neck6D (MIT)</a>. Имена геометрий совпадают с MASI, но тождественность файлов исходным авторским VTP отдельно не доказана.</p>
     </section>
   </div>
@@ -206,6 +207,12 @@ async function load(){
   return {id,frame,geometry:parseVtp(await r.text(),frame.file)};
  }));
  vals.forEach(x=>createPart(x.id,x.frame,x.geometry));loaded=true;
+ const c7Bounds=new THREE.Box3().setFromObject(parts.get("cerv7").holder);
+ const spineBounds=new THREE.Box3().setFromObject(parts.get("spine").holder);
+ const axialGapMm=Math.max(0,c7Bounds.min.y-spineBounds.max.y)*1000;
+ const continuityText="Диагностика исходных поверхностей: вертикальный промежуток от нижней границы C7 до верхней границы сетки tlspine — "+Math.round(axialGapMm)+" мм. Это не измерение суставной щели C7–T1 и не доказательство разрыва суставов: в оригинальной MASI не показаны отдельные позвонки T1–T12. Геометрию перехода потребуется валидировать перед соединением с FHS.";
+ $("#continuity").textContent=continuityText;
+ $("#continuity").dataset.axialGapMm=String(Math.round(axialGapMm));
  $("#loading").hidden=true;$("#boneCount").textContent=String(parts.size);
  $("#neckCount").textContent=String(groups.neck.length);
  $("#shoulderCount").textContent=String(groups.shoulder.length);
@@ -216,6 +223,7 @@ async function load(){
   groupCounts:()=>Object.fromEntries(Object.entries(groups).map(([k,v])=>[k,v.length])),
   bounds:id=>{const p=parts.get(id);if(!p)throw Error("No part "+id);const bb=new THREE.Box3().setFromObject(p.holder);return {center:bb.getCenter(new THREE.Vector3()).toArray(),size:bb.getSize(new THREE.Vector3()).toArray()}},
   bodyFrame:id=>frames.get(id),visible:()=>[...parts].filter(([id,p])=>p.holder.visible).map(([id])=>id),
+  axialGapMm:()=>Math.max(0,new THREE.Box3().setFromObject(parts.get("cerv7").holder).min.y-new THREE.Box3().setFromObject(parts.get("spine").holder).max.y)*1000,
   select:id=>{chosen=id;show()},view:n=>{view=n;show();fit()}
  };
 }
