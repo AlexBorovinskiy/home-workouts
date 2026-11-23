@@ -261,6 +261,77 @@ async function readFHSZIP(buffer){
  await startAAH();
  await startNeck();
 }
+async function startNeck(){
+ if(!loadedFhs||neckLoadStarted)return;
+ neckLoadStarted=true;
+ try{
+  const [masi,reg]=await Promise.all([
+    getJSON("./assets/masi-neck-native.json"),
+    getJSON("./assets/c7-t1-registration.json")
+  ]);
+  if(masi.numberNeckVertebrae!==7||
+     reg.schema!=="c7-t1-masi-fhs-registration-candidate-v1"||
+     reg.anatomicalCompatibilityVerified!==false||
+     reg.fhsArchiveRelativeOsimPath!==fhs.archiveRelativeOsimPath)
+       throw Error("Несовместимые результаты предыдущей научной проверки шеи");
+  // Registered transform in the previous lab maps FHS -> MASI. This view
+  // retains FHS as fixed base, so the inverse maps MASI -> FHS.
+  const R=new THREE.Matrix4().set(
+    reg.rotationMatrix[0][0],reg.rotationMatrix[0][1],reg.rotationMatrix[0][2],0,
+    reg.rotationMatrix[1][0],reg.rotationMatrix[1][1],reg.rotationMatrix[1][2],0,
+    reg.rotationMatrix[2][0],reg.rotationMatrix[2][1],reg.rotationMatrix[2][2],0,
+    0,0,0,1
+  );
+  R.setPosition(V(reg.translationM));
+  neckRoot.matrixAutoUpdate=false;
+  neckRoot.matrix.copy(R).invert();
+  neckRoot.updateMatrixWorld(true);
+  // The source FHS head/neck meshes use .88875 while MASI uses 1.
+  // Use this source-observed ratio as a VISUAL trial only. Scaling is
+  // anchored on the C7/T1 landmark and does not update OpenSim dynamics.
+  const s=.88875,anchor=V(reg.masiAnchorM);
+  neckScaffold.scale.setScalar(s);
+  neckScaffold.position.copy(anchor).multiplyScalar(1-s);
+  neckScaffold.updateMatrixWorld(true);
+  const aligned=anchor.clone().applyMatrix4(neckRoot.matrix);
+  neckJointResidualMm=aligned.distanceTo(V(reg.fhsAnchorM))*1000;
+  if(neckJointResidualMm>.0001)throw Error("Не совпали суставные точки C7–T1");
+  const ids=[...Array.from({length:7},(_,i)=>"cerv"+(i+1)),"skull"];
+  const downloaded=await Promise.all(ids.map(async id=>{
+    const frame=masi.bodyFrames[id];
+    if(!frame)throw Error("Отсутствует шейный сегмент MASI "+id);
+    const res=await fetch(sourceMASI+encodeURIComponent(frame.file));
+    if(!res.ok)throw Error("Не удалось получить "+frame.file+" из научной модели (HTTP "+res.status+")");
+    return {id,frame,source:await res.text()};
+  }));
+  for(const old of [...neckScaffold.children]){
+    neckScaffold.remove(old);
+    old.traverse(obj=>{obj.geometry?.dispose();obj.material?.dispose()});
+  }
+  neckBones.clear();
+  for(const {id,frame,source} of downloaded){
+    const {geo,edges}=parseVtp(source,frame.file);
+    if(edges)throw Error("Шейная кость неожиданно состоит из линий: "+frame.file);
+    const bone=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({
+      color:id==="skull"?0xe0ded6:0xeac08a,roughness:.62,side:THREE.DoubleSide
+    }));
+    bone.position.copy(V(frame.position));
+    bone.quaternion.setFromRotationMatrix(rows(frame.rotation));
+    bone.scale.set(...frame.scale);
+    bone.userData={body:id,source:"MASI"};
+    neckScaffold.add(bone);neckBones.set(id,bone);
+  }
+  neckReady=true;
+  $("#neckStatus").textContent="MASI C1–C7 и череп восстановлены из реальных OpenSim-поз. Масштаб отображения 88,875% от исходной MASI; соединение C7–T1 только диагностическое. Можно сравнить с исходной FHS.";
+  updateVisibility();fit();
+  status("Собрана верхняя часть FHS, 24 видимых ребра, MASI C1–C7 и две подвижные кисти AAH.");
+ }catch(e){
+  console.error("MASI cervical display:",e);
+  $("#neckStatus").textContent="Не удалось восстановить MASI: "+e.message+". Включено исходное отображение FHS с известной ошибкой шеи.";
+  neckMode="fhs";neckReady=false;updateVisibility();fit();
+ }
+}
+
 async function cacheRead(){
  if(!("indexedDB" in window))return null;
  return new Promise((resolve,reject)=>{
@@ -329,8 +400,16 @@ async function startAAH(){
   status("FHS + AAH загружены: 118 FHS-сеток, 54 подвижных поверхности кистей. Относительное положение запястий проверено по полулунной кости.");
   applyHands();updateVisibility();fit();
   window.__assemblyQA={
-   ready:()=>loadedFhs&&loadedAAH,
-   fhsCount:()=>Object.values(group).reduce((sum,g)=>sum+g.children.length,0),
+   ready:()=>loadedFhs&&loadedAAH&&neckReady,
+   fhsCount:()=>fhsMeshes.length,
+   ribProxyCount:()=>ribProxies,
+   ribSegmentCount:()=>ribSegments,
+   neckBones:()=>[...neckBones.keys()],
+   neckSource:()=>neckMode,
+   neckReady:()=>neckReady,
+   neckJointResidualMm:()=>neckJointResidualMm,
+   neckCenters:()=>[...neckBones.values()].map(m=>m.getWorldPosition(new THREE.Vector3()).toArray()),
+   isNeckVisible:()=>neckRoot.visible,
    aahCount:()=>count,
    sideCount:side=>aahGroup[side].children.length,
    mode:()=>mode,pose:()=>pose,bend:()=>bend,
