@@ -1,5 +1,8 @@
 name: Inspect neutral and subject-specific FHS spinal alignment variants
 on:
+  push:
+    paths:
+      - '.github/workflows/inspect-fhs-profiles.yml'
   workflow_dispatch:
 permissions:
   contents: read
