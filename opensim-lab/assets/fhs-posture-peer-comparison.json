@@ -1,0 +1,383 @@
+{
+  "schema": "fhs-age-4049-male-source-sagittal-cohort-v1",
+  "scientificSource": "https://zenodo.org/records/18259702",
+  "sourceCohort": "Male/Age4049 from FHS ZIP, all available 25 individual models",
+  "subjectModelsAnalyzed": 25,
+  "failedModels": [],
+  "currentModel": {
+    "model": "110_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+    "pathInFHSArchive": "FHS_dataset_4.x - Copia/Male/Age4049/110_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+    "T1AnteriorToPelvisMm": -107.297,
+    "T1AnteriorToT12Mm": -25.46,
+    "T1T12VerticalMm": 261.849,
+    "thoracicSagittalChordAngleFromVerticalDeg": -5.553,
+    "lumbarSagittalChordAngleFromVerticalDeg": 3.1,
+    "pelvisXmm": 67.422,
+    "source": "Original FHS OpenSim 4.x model, Model.assemble() body frames"
+  },
+  "sourceSpinalFrameDistributions": {
+    "T1AnteriorToPelvisMm": {
+      "n": 25,
+      "min": -128.17,
+      "p10": -121.855,
+      "p25": -116.814,
+      "median": -103.172,
+      "p75": -90.548,
+      "p90": -79.9,
+      "max": -64.829,
+      "currentValue": -107.297,
+      "currentPercentileRank": 38.0,
+      "unit": "mm"
+    },
+    "thoracicSagittalChordAngleFromVerticalDeg": {
+      "n": 25,
+      "min": -6.207,
+      "p10": -4.377,
+      "p25": -2.346,
+      "median": -0.269,
+      "p75": 1.156,
+      "p90": 4.115,
+      "max": 6.704,
+      "currentValue": -5.553,
+      "currentPercentileRank": 6.0,
+      "unit": "degrees"
+    },
+    "lumbarSagittalChordAngleFromVerticalDeg": {
+      "n": 25,
+      "min": -0.442,
+      "p10": 0.682,
+      "p25": 1.482,
+      "median": 2.312,
+      "p75": 2.837,
+      "p90": 3.068,
+      "max": 3.274,
+      "currentValue": 3.1,
+      "currentPercentileRank": 90.0,
+      "unit": "degrees"
+    }
+  },
+  "closestToCohortMedians": [
+    {
+      "model": "989_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "T1AnteriorToPelvisMm": -99.151,
+      "thoracicSagittalChordAngleFromVerticalDeg": -0.48,
+      "lumbarSagittalChordAngleFromVerticalDeg": 2.527
+    },
+    {
+      "model": "461_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "T1AnteriorToPelvisMm": -95.864,
+      "thoracicSagittalChordAngleFromVerticalDeg": 0.152,
+      "lumbarSagittalChordAngleFromVerticalDeg": 2.568
+    },
+    {
+      "model": "947_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "T1AnteriorToPelvisMm": -96.985,
+      "thoracicSagittalChordAngleFromVerticalDeg": 1.156,
+      "lumbarSagittalChordAngleFromVerticalDeg": 2.396
+    },
+    {
+      "model": "545_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "T1AnteriorToPelvisMm": -106.595,
+      "thoracicSagittalChordAngleFromVerticalDeg": -1.174,
+      "lumbarSagittalChordAngleFromVerticalDeg": 1.639
+    },
+    {
+      "model": "258_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "T1AnteriorToPelvisMm": -103.172,
+      "thoracicSagittalChordAngleFromVerticalDeg": -1.241,
+      "lumbarSagittalChordAngleFromVerticalDeg": 3.01
+    },
+    {
+      "model": "448_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "T1AnteriorToPelvisMm": -112.93,
+      "thoracicSagittalChordAngleFromVerticalDeg": -0.394,
+      "lumbarSagittalChordAngleFromVerticalDeg": 3.274
+    }
+  ],
+  "allSubjects": [
+    {
+      "model": "110_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "pathInFHSArchive": "FHS_dataset_4.x - Copia/Male/Age4049/110_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "T1AnteriorToPelvisMm": -107.297,
+      "T1AnteriorToT12Mm": -25.46,
+      "T1T12VerticalMm": 261.849,
+      "thoracicSagittalChordAngleFromVerticalDeg": -5.553,
+      "lumbarSagittalChordAngleFromVerticalDeg": 3.1,
+      "pelvisXmm": 67.422,
+      "source": "Original FHS OpenSim 4.x model, Model.assemble() body frames"
+    },
+    {
+      "model": "166_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "pathInFHSArchive": "FHS_dataset_4.x - Copia/Male/Age4049/166_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "T1AnteriorToPelvisMm": -93.131,
+      "T1AnteriorToT12Mm": 13.771,
+      "T1T12VerticalMm": 276.374,
+      "thoracicSagittalChordAngleFromVerticalDeg": 2.853,
+      "lumbarSagittalChordAngleFromVerticalDeg": 2.312,
+      "pelvisXmm": 87.367,
+      "source": "Original FHS OpenSim 4.x model, Model.assemble() body frames"
+    },
+    {
+      "model": "176_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "pathInFHSArchive": "FHS_dataset_4.x - Copia/Male/Age4049/176_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "T1AnteriorToPelvisMm": -74.273,
+      "T1AnteriorToT12Mm": 33.184,
+      "T1T12VerticalMm": 282.319,
+      "thoracicSagittalChordAngleFromVerticalDeg": 6.704,
+      "lumbarSagittalChordAngleFromVerticalDeg": 2.192,
+      "pelvisXmm": 88.584,
+      "source": "Original FHS OpenSim 4.x model, Model.assemble() body frames"
+    },
+    {
+      "model": "258_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "pathInFHSArchive": "FHS_dataset_4.x - Copia/Male/Age4049/258_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "T1AnteriorToPelvisMm": -103.172,
+      "T1AnteriorToT12Mm": -5.826,
+      "T1T12VerticalMm": 269.015,
+      "thoracicSagittalChordAngleFromVerticalDeg": -1.241,
+      "lumbarSagittalChordAngleFromVerticalDeg": 3.01,
+      "pelvisXmm": 80.238,
+      "source": "Original FHS OpenSim 4.x model, Model.assemble() body frames"
+    },
+    {
+      "model": "275_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "pathInFHSArchive": "FHS_dataset_4.x - Copia/Male/Age4049/275_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "T1AnteriorToPelvisMm": -110.581,
+      "T1AnteriorToT12Mm": -15.59,
+      "T1T12VerticalMm": 267.03,
+      "thoracicSagittalChordAngleFromVerticalDeg": -3.341,
+      "lumbarSagittalChordAngleFromVerticalDeg": 2.644,
+      "pelvisXmm": 77.357,
+      "source": "Original FHS OpenSim 4.x model, Model.assemble() body frames"
+    },
+    {
+      "model": "329_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "pathInFHSArchive": "FHS_dataset_4.x - Copia/Male/Age4049/329_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "T1AnteriorToPelvisMm": -88.942,
+      "T1AnteriorToT12Mm": 6.098,
+      "T1T12VerticalMm": 262.429,
+      "thoracicSagittalChordAngleFromVerticalDeg": 1.331,
+      "lumbarSagittalChordAngleFromVerticalDeg": 1.662,
+      "pelvisXmm": 73.97,
+      "source": "Original FHS OpenSim 4.x model, Model.assemble() body frames"
+    },
+    {
+      "model": "368_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "pathInFHSArchive": "FHS_dataset_4.x - Copia/Male/Age4049/368_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "T1AnteriorToPelvisMm": -90.548,
+      "T1AnteriorToT12Mm": 5.07,
+      "T1T12VerticalMm": 281.158,
+      "thoracicSagittalChordAngleFromVerticalDeg": 1.033,
+      "lumbarSagittalChordAngleFromVerticalDeg": 3.156,
+      "pelvisXmm": 80.238,
+      "source": "Original FHS OpenSim 4.x model, Model.assemble() body frames"
+    },
+    {
+      "model": "371_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "pathInFHSArchive": "FHS_dataset_4.x - Copia/Male/Age4049/371_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "T1AnteriorToPelvisMm": -116.845,
+      "T1AnteriorToT12Mm": -11.168,
+      "T1T12VerticalMm": 273.123,
+      "thoracicSagittalChordAngleFromVerticalDeg": -2.341,
+      "lumbarSagittalChordAngleFromVerticalDeg": 1.482,
+      "pelvisXmm": 81.992,
+      "source": "Original FHS OpenSim 4.x model, Model.assemble() body frames"
+    },
+    {
+      "model": "376_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "pathInFHSArchive": "FHS_dataset_4.x - Copia/Male/Age4049/376_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "T1AnteriorToPelvisMm": -89.433,
+      "T1AnteriorToT12Mm": 6.504,
+      "T1T12VerticalMm": 249.41,
+      "thoracicSagittalChordAngleFromVerticalDeg": 1.494,
+      "lumbarSagittalChordAngleFromVerticalDeg": 0.624,
+      "pelvisXmm": 72.304,
+      "source": "Original FHS OpenSim 4.x model, Model.assemble() body frames"
+    },
+    {
+      "model": "408_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "pathInFHSArchive": "FHS_dataset_4.x - Copia/Male/Age4049/408_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "T1AnteriorToPelvisMm": -122.914,
+      "T1AnteriorToT12Mm": -11.374,
+      "T1T12VerticalMm": 277.625,
+      "thoracicSagittalChordAngleFromVerticalDeg": -2.346,
+      "lumbarSagittalChordAngleFromVerticalDeg": 2.917,
+      "pelvisXmm": 89.81,
+      "source": "Original FHS OpenSim 4.x model, Model.assemble() body frames"
+    },
+    {
+      "model": "448_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "pathInFHSArchive": "FHS_dataset_4.x - Copia/Male/Age4049/448_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "T1AnteriorToPelvisMm": -112.93,
+      "T1AnteriorToT12Mm": -2.052,
+      "T1T12VerticalMm": 298.502,
+      "thoracicSagittalChordAngleFromVerticalDeg": -0.394,
+      "lumbarSagittalChordAngleFromVerticalDeg": 3.274,
+      "pelvisXmm": 92.288,
+      "source": "Original FHS OpenSim 4.x model, Model.assemble() body frames"
+    },
+    {
+      "model": "461_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "pathInFHSArchive": "FHS_dataset_4.x - Copia/Male/Age4049/461_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "T1AnteriorToPelvisMm": -95.864,
+      "T1AnteriorToT12Mm": 0.689,
+      "T1T12VerticalMm": 259.329,
+      "thoracicSagittalChordAngleFromVerticalDeg": 0.152,
+      "lumbarSagittalChordAngleFromVerticalDeg": 2.568,
+      "pelvisXmm": 77.929,
+      "source": "Original FHS OpenSim 4.x model, Model.assemble() body frames"
+    },
+    {
+      "model": "544_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "pathInFHSArchive": "FHS_dataset_4.x - Copia/Male/Age4049/544_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "T1AnteriorToPelvisMm": -125.925,
+      "T1AnteriorToT12Mm": -18.772,
+      "T1T12VerticalMm": 275.631,
+      "thoracicSagittalChordAngleFromVerticalDeg": -3.896,
+      "lumbarSagittalChordAngleFromVerticalDeg": 0.169,
+      "pelvisXmm": 79.658,
+      "source": "Original FHS OpenSim 4.x model, Model.assemble() body frames"
+    },
+    {
+      "model": "545_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "pathInFHSArchive": "FHS_dataset_4.x - Copia/Male/Age4049/545_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "T1AnteriorToPelvisMm": -106.595,
+      "T1AnteriorToT12Mm": -5.407,
+      "T1T12VerticalMm": 263.908,
+      "thoracicSagittalChordAngleFromVerticalDeg": -1.174,
+      "lumbarSagittalChordAngleFromVerticalDeg": 1.639,
+      "pelvisXmm": 80.238,
+      "source": "Original FHS OpenSim 4.x model, Model.assemble() body frames"
+    },
+    {
+      "model": "564_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "pathInFHSArchive": "FHS_dataset_4.x - Copia/Male/Age4049/564_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "T1AnteriorToPelvisMm": -101.074,
+      "T1AnteriorToT12Mm": 1.767,
+      "T1T12VerticalMm": 256.858,
+      "thoracicSagittalChordAngleFromVerticalDeg": 0.394,
+      "lumbarSagittalChordAngleFromVerticalDeg": -0.442,
+      "pelvisXmm": 73.97,
+      "source": "Original FHS OpenSim 4.x model, Model.assemble() body frames"
+    },
+    {
+      "model": "588_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "pathInFHSArchive": "FHS_dataset_4.x - Copia/Male/Age4049/588_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "T1AnteriorToPelvisMm": -70.13,
+      "T1AnteriorToT12Mm": 31.213,
+      "T1T12VerticalMm": 268.426,
+      "thoracicSagittalChordAngleFromVerticalDeg": 6.633,
+      "lumbarSagittalChordAngleFromVerticalDeg": 2.365,
+      "pelvisXmm": 83.764,
+      "source": "Original FHS OpenSim 4.x model, Model.assemble() body frames"
+    },
+    {
+      "model": "611_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "pathInFHSArchive": "FHS_dataset_4.x - Copia/Male/Age4049/611_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "T1AnteriorToPelvisMm": -116.814,
+      "T1AnteriorToT12Mm": -21.17,
+      "T1T12VerticalMm": 257.633,
+      "thoracicSagittalChordAngleFromVerticalDeg": -4.697,
+      "lumbarSagittalChordAngleFromVerticalDeg": 2.098,
+      "pelvisXmm": 76.787,
+      "source": "Original FHS OpenSim 4.x model, Model.assemble() body frames"
+    },
+    {
+      "model": "688_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "pathInFHSArchive": "FHS_dataset_4.x - Copia/Male/Age4049/688_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "T1AnteriorToPelvisMm": -128.17,
+      "T1AnteriorToT12Mm": -13.822,
+      "T1T12VerticalMm": 282.674,
+      "thoracicSagittalChordAngleFromVerticalDeg": -2.799,
+      "lumbarSagittalChordAngleFromVerticalDeg": 2.837,
+      "pelvisXmm": 94.168,
+      "source": "Original FHS OpenSim 4.x model, Model.assemble() body frames"
+    },
+    {
+      "model": "797_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "pathInFHSArchive": "FHS_dataset_4.x - Copia/Male/Age4049/797_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "T1AnteriorToPelvisMm": -120.267,
+      "T1AnteriorToT12Mm": -0.127,
+      "T1T12VerticalMm": 296.373,
+      "thoracicSagittalChordAngleFromVerticalDeg": -0.024,
+      "lumbarSagittalChordAngleFromVerticalDeg": 1.276,
+      "pelvisXmm": 94.799,
+      "source": "Original FHS OpenSim 4.x model, Model.assemble() body frames"
+    },
+    {
+      "model": "846_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "pathInFHSArchive": "FHS_dataset_4.x - Copia/Male/Age4049/846_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "T1AnteriorToPelvisMm": -104.821,
+      "T1AnteriorToT12Mm": -1.295,
+      "T1T12VerticalMm": 276.315,
+      "thoracicSagittalChordAngleFromVerticalDeg": -0.269,
+      "lumbarSagittalChordAngleFromVerticalDeg": 0.897,
+      "pelvisXmm": 79.658,
+      "source": "Original FHS OpenSim 4.x model, Model.assemble() body frames"
+    },
+    {
+      "model": "889_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "pathInFHSArchive": "FHS_dataset_4.x - Copia/Male/Age4049/889_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "T1AnteriorToPelvisMm": -119.029,
+      "T1AnteriorToT12Mm": -28.767,
+      "T1T12VerticalMm": 264.502,
+      "thoracicSagittalChordAngleFromVerticalDeg": -6.207,
+      "lumbarSagittalChordAngleFromVerticalDeg": 3.019,
+      "pelvisXmm": 75.09,
+      "source": "Original FHS OpenSim 4.x model, Model.assemble() body frames"
+    },
+    {
+      "model": "947_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "pathInFHSArchive": "FHS_dataset_4.x - Copia/Male/Age4049/947_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "T1AnteriorToPelvisMm": -96.985,
+      "T1AnteriorToT12Mm": 5.64,
+      "T1T12VerticalMm": 279.562,
+      "thoracicSagittalChordAngleFromVerticalDeg": 1.156,
+      "lumbarSagittalChordAngleFromVerticalDeg": 2.396,
+      "pelvisXmm": 84.957,
+      "source": "Original FHS OpenSim 4.x model, Model.assemble() body frames"
+    },
+    {
+      "model": "985_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "pathInFHSArchive": "FHS_dataset_4.x - Copia/Male/Age4049/985_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "T1AnteriorToPelvisMm": -64.829,
+      "T1AnteriorToT12Mm": 22.842,
+      "T1T12VerticalMm": 263.432,
+      "thoracicSagittalChordAngleFromVerticalDeg": 4.956,
+      "lumbarSagittalChordAngleFromVerticalDeg": 2.104,
+      "pelvisXmm": 72.304,
+      "source": "Original FHS OpenSim 4.x model, Model.assemble() body frames"
+    },
+    {
+      "model": "986_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "pathInFHSArchive": "FHS_dataset_4.x - Copia/Male/Age4049/986_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "T1AnteriorToPelvisMm": -88.341,
+      "T1AnteriorToT12Mm": -0.654,
+      "T1T12VerticalMm": 237.472,
+      "thoracicSagittalChordAngleFromVerticalDeg": -0.158,
+      "lumbarSagittalChordAngleFromVerticalDeg": 0.77,
+      "pelvisXmm": 66.89,
+      "source": "Original FHS OpenSim 4.x model, Model.assemble() body frames"
+    },
+    {
+      "model": "989_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "pathInFHSArchive": "FHS_dataset_4.x - Copia/Male/Age4049/989_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+      "T1AnteriorToPelvisMm": -99.151,
+      "T1AnteriorToT12Mm": -2.248,
+      "T1T12VerticalMm": 268.148,
+      "thoracicSagittalChordAngleFromVerticalDeg": -0.48,
+      "lumbarSagittalChordAngleFromVerticalDeg": 2.527,
+      "pelvisXmm": 80.238,
+      "source": "Original FHS OpenSim 4.x model, Model.assemble() body frames"
+    }
+  ],
+  "clinicalNormalitySupported": false,
+  "modelReplacementRecommendedAutomatically": false,
+  "warnings": [
+    "Cohort median does not mean clinically neutral spine or healthy spinal curvature",
+    "Only age/sex peer FHS models compared, not whole-population normative data",
+    "Sagittal chord angle between vertebral body frames is not a radiographic Cobb angle",
+    "Source FHS body frames only; no human posture photos or measured clinical landmarks",
+    "No changes to the current scene or original muscle attachments are authorized by these measures"
+  ]
+}
