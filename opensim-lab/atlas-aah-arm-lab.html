@@ -62,6 +62,12 @@ a{color:var(--accent)}
 <h3>Локоть · координата AAH ra_el_e_f</h3>
 <input type="range" id="elbow" min="0" max="120" value="0" step="1" disabled aria-label="Сгибание локтя">
 <div id="elbowValue" style="font-size:12px;color:var(--muted)">0°</div>
+<h3>Ось сгибания локтя</h3>
+<div class="buttons">
+<button data-axis="anatomic" class="on">Анатомическая · тест</button>
+<button data-axis="raw">Первоначальная AAH</button>
+</div>
+<p>Первая попытка прямого переноса отправляла предплечье вбок. Сравни две оси: первая использует сагиттальное сгибание по положению костей атласа, вторая показывает прямой перенос из AAH.</p>
 <h3>Сгибание пальцев · AAH</h3>
 <div class="buttons"><button data-pose="curl" class="on">Сжать пальцы</button><button data-pose="cylinder">Поза для цилиндра</button></div>
 <input type="range" id="finger" min="0" max="100" value="0" step="1" disabled aria-label="Сгибание пальцев">
@@ -72,6 +78,8 @@ a{color:var(--accent)}
 <h3>Ракурс</h3>
 <div class="buttons">
 <button data-view="rightarm" class="on">Правая рука</button>
+<button data-view="hand">Кисть крупно</button>
+<button data-view="elbow">Локоть крупно</button>
 <button data-view="front">Всё тело</button>
 <button data-view="side">Сбоку</button>
 </div>
@@ -121,7 +129,7 @@ const landmarks=[
  ["RA2R","radius.vtp"]
 ];
 let atlas=null,original=[],bones=[],rig=new Map(),poseFrames=null,elbowFrames=null,registration=null;
-let elbow=0,finger=0,pose="curl",mode="rig",view="rightarm",ready=false,sourceAtlas=null;
+let elbow=0,finger=0,pose="curl",mode="rig",view="rightarm",ready=false,sourceAtlas=null,axisMode="anatomic";
 const sourceCenters=new Map(),targetCenters=new Map(),sourceRest=new Map();
 const nameOf=x=>x.userData?.name||x.name;
 function status(s){$("#status").textContent=s}
@@ -194,8 +202,9 @@ function getElbowQuaternion(angle){
  return qa.slerp(qb,t).multiply(qr.invert());
 }
 function elbowPivotFromOriginal(){
- const h=bones.find(b=>nameOf(b)===nameMap.RA1H),u=bones.find(b=>nameOf(b)===nameMap.RA2U);
- if(!h||!u)throw Error("Нет плечевой/локтевой костей");
+ const h=bones.find(b=>nameOf(b)===nameMap.RA1H),u=bones.find(b=>nameOf(b)===nameMap.RA2U),
+       r=bones.find(b=>nameOf(b)===nameMap.RA2R);
+ if(!h||!u||!r)throw Error("Нет плечевой/локтевой/лучевой костей");
  const avgEnd=(obj,isMin)=>{
   const geo=obj.geometry,arr=geo.getAttribute("position");obj.updateMatrixWorld(true);
   let limit=isMin?Infinity:-Infinity;
@@ -210,14 +219,27 @@ function elbowPivotFromOriginal(){
   if(!n)throw Error("Нет конечной суставной поверхности");
   return sum.multiplyScalar(1/n);
  };
- const lowerH=avgEnd(h,true),upperU=avgEnd(u,false);
+ const lowerH=avgEnd(h,true),upperU=avgEnd(u,false),upperR=avgEnd(r,false);
  const midpoint=lowerH.clone().add(upperU).multiplyScalar(.5);
- return {p:midpoint,gapMm:lowerH.distanceTo(upperU)*1000};
+ // Atlas resting arm: flexion primarily in sagittal plane. Use proximal
+ // radius/ulna lateral difference to select the world lateral hinge axis;
+ // choose forward (+Z) bend of the hanging forearm, not a sideways swing.
+ const side=upperR.clone().sub(upperU);
+ if(Math.abs(side.x)<.003)throw Error("Нет надёжного латерального направления предплечья");
+ const axis=new THREE.Vector3(Math.sign(side.x),0,0);
+ const wristVec=targetCenters.get("RA3L").clone().sub(midpoint);
+ if(axis.clone().cross(wristVec).z<0)axis.negate();
+ return {p:midpoint,gapMm:lowerH.distanceTo(upperU)*1000,
+         flexAxis:axis,rawSide:side.toArray()};
 }
 function getElbowWorld(){
  const source=registration.rot.clone();
  const q=getElbowQuaternion(elbow);
- return source.multiply(q).multiply(registration.rot.clone().invert()).normalize();
+ if(axisMode==="raw")return source.multiply(q).multiply(registration.rot.clone().invert()).normalize();
+ // Preserve native OpenSim ra_el_e_f angle but map hinge axis into the atlas
+ // anatomical sagittal plane. Diagnostic retarget, NOT validated joint axis.
+ const radians=2*Math.acos(THREE.MathUtils.clamp(Math.abs(q.w),0,1));
+ return new THREE.Quaternion().setFromAxisAngle(sourceAtlas.flexAxis,radians);
 }
 function applyPose(){
  if(!ready)return;
@@ -260,13 +282,17 @@ function appearance(){
 function fit(){
  if(!ready)return;
  scene.updateMatrixWorld(true);
- const relevant=view==="rightarm"?[...rig.values()].map(x=>mode==="rig"?x.mesh:x.source):bones;
+ const selected=[...rig.entries()].filter(([id])=>
+   view==="hand"?/^RA[34567]/.test(id):
+   view==="elbow"?/^RA(?:1H|2U|2R)$/.test(id):true).map(([,r])=>mode==="rig"?r.mesh:r.source);
+ const relevant=["rightarm","hand","elbow"].includes(view)?selected:bones;
  const box=new THREE.Box3();for(const b of relevant)if(b.visible)box.expandByObject(b);
  if(box.isEmpty())return;
  const centre=box.getCenter(new THREE.Vector3()),size=box.getSize(new THREE.Vector3());
  const aspect=Math.max(.35,camera.aspect),tan=Math.tan(THREE.MathUtils.degToRad(camera.fov/2));
  const d=1.6*Math.max(size.y/(2*tan),size.x/(2*tan*aspect),size.z/(2*tan*aspect),.12);
- const dir=view==="side"?new THREE.Vector3(1,.06,.03):new THREE.Vector3(0,.06,1);
+ const dir=view==="side"?new THREE.Vector3(1,.06,.03):
+  view==="hand"?new THREE.Vector3(0,.22,1):new THREE.Vector3(0,.06,1);
  controls.target.copy(centre);camera.position.copy(centre).add(dir.normalize().multiplyScalar(d));camera.lookAt(centre);controls.update();
  document.querySelectorAll("[data-view]").forEach(b=>b.classList.toggle("on",b.dataset.view===view));
 }
@@ -329,7 +355,8 @@ async function init(){
     "Среднее квадратичное расхождение 4 ориентиров кисти: "+registration.rms.toFixed(2).replace(".",",")+" мм. "+
     "Контрольный ориентир лучевой кости: "+registration.errors.find(e=>e.id==="RA2R").mm.toFixed(1).replace(".",",")+
     " мм. Расхождение поверхностей локтя по оценке: "+sourceAtlas.gapMm.toFixed(1).replace(".",",")+" мм. "+
-    "Эти числа оценивают регистрацию, но не суставную валидность.";
+    "Предполагаемая латеральная ось локтя: "+sourceAtlas.flexAxis.toArray().join(",")+
+    ". Эти числа оценивают регистрацию, но не суставную валидность.";
   if(registration.rms>35||registration.errors.find(x=>x.id==="RA2R").mm>100)
     throw Error("Слишком большое рассогласование анатомических ориентиров: ручную анимацию блокируем. "+$("#accuracyText").textContent);
   ready=true;
@@ -344,6 +371,11 @@ $("#finger").oninput=e=>{finger=Number(e.target.value)/100;applyPose()};
 document.querySelectorAll("[data-pose]").forEach(b=>b.onclick=()=>{pose=b.dataset.pose;document.querySelectorAll("[data-pose]").forEach(k=>k.classList.toggle("on",k.dataset.pose===pose));applyPose()});
 document.querySelectorAll("[data-view]").forEach(b=>b.onclick=()=>{view=b.dataset.view;fit()});
 document.querySelectorAll("[data-mode]").forEach(b=>b.onclick=()=>{mode=b.dataset.mode;appearance()});
+document.querySelectorAll("[data-axis]").forEach(b=>b.onclick=()=>{
+ axisMode=b.dataset.axis;
+ document.querySelectorAll("[data-axis]").forEach(k=>k.classList.toggle("on",k.dataset.axis===axisMode));
+ applyPose();
+});
 $("#ghost").onchange=appearance;
 $("#reset").onclick=()=>{elbow=0;finger=0;pose="curl";$("#elbow").value="0";$("#finger").value="0";document.querySelectorAll("[data-pose]").forEach(b=>b.classList.toggle("on",b.dataset.pose==="curl"));applyPose();fit()};
 new ResizeObserver(()=>{renderer.setSize(stage.clientWidth,stage.clientHeight,false);camera.aspect=stage.clientWidth/Math.max(1,stage.clientHeight);camera.updateProjectionMatrix()}).observe(stage);
@@ -352,7 +384,7 @@ window.__armQA={
  ready:()=>ready,boneCount:()=>rig.size,sourceCount:()=>bones.length,
  registration:()=>registration?{rms:registration.rms,scale:registration.scale,errors:registration.errors}:null,
  elbowPivot:()=>sourceAtlas?.p.toArray(),elbowGap:()=>sourceAtlas?.gapMm,
- elbowAngle:()=>elbow,fingerProgress:()=>finger,view:()=>view,mode:()=>mode,
+ elbowAngle:()=>elbow,fingerProgress:()=>finger,view:()=>view,mode:()=>mode,axisMode:()=>axisMode,axis:()=>sourceAtlas?.flexAxis.toArray(),
  coordinates:()=>elbowFrames?.coordinate,
  boneOrigin:id=>rig.get(id)?.mesh.getWorldPosition(new THREE.Vector3()).toArray(),
  sourceBoneOrigin:id=>rig.get(id)?.source.getWorldPosition(new THREE.Vector3()).toArray(),
