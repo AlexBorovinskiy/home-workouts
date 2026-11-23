@@ -419,7 +419,6 @@ function determineWristSign(){
  finger=1;applyPose();
  const curl=vecCenter(rig.get("RA7D3").mesh);
  wristExtensionSign=curl.sub(open).dot(neutralPalmFrame().z)>0?-1:1;
- Object.assign(saved,{});
  finger=saved.finger;pose=saved.pose;gripVisible=saved.gripVisible;
  handTask=saved.handTask;applyPose();
 }
@@ -1526,6 +1525,9 @@ async function init(){
   status("Готова пробная анимация: "+rig.size+" оригинальных костей Écorché. Риг AAH задаёт сгибание локтя и пальцев; остальные кости атласа не меняются.");
   $("#hud").textContent="Écorché × AAH / OpenSim 4.6 · 28 атласных костей · эксперимент";
   applyPose();appearance();view="hand";fit();
+  const requestedTask=new URLSearchParams(location.search).get("task");
+  if(requestedTask==="pushup"||requestedTask==="side-plank")
+   chooseHandTask(requestedTask);
  }catch(e){console.error("Atlas-to-AAH arm retarget:",e);status("Не удалось построить проверенный риг: "+e.message);$("#hud").textContent="Эксперимент не прошёл проверку источников";}
 }
 document.querySelectorAll("[data-hand-task]").forEach(b=>b.onclick=()=>chooseHandTask(b.dataset.handTask));
