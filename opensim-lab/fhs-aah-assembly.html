@@ -64,7 +64,7 @@ label{font-size:12px;color:#e5f2ef}
 <h3>Рост костной модели</h3>
 <div class="buttons">
 <button data-height="182" class="on">182 см · мой рост</button>
-<button data-height="source">Исходные 150 см</button>
+<button data-height="source">Исходный масштаб</button>
 </div>
 <div class="box" id="heightInfo" style="margin-top:9px">После загрузки научных измерений модель будет увеличена до 182 см единым масштабом.</div>
 <p>Масштабируем всю сборку сразу: FHS, MASI, AAH, Rajagopal и суставные ориентиры. Кости, стыки и углы не перестраиваются, а исходные данные сохраняются.</p>
@@ -166,6 +166,7 @@ let neckMode="masi",ribMode="masi",neckReady=false,neckLoadStarted=false,ribProx
 let legData=null,legsReady=false,legLoadStarted=false,legPelvisResidualMm=null;
 let anatomyAuditData=null;
 let heightMode="182";
+let nativeDisplayBounds=null;
 const TARGET_HEIGHT_CM=182;
 const neckBones=new Map(),handMesh={right:new Map(),left:new Map()},legMeshes=new Map(),legBodies=new Map(),fhsMeshes=[];
 const sourceAAH="https://raw.githubusercontent.com/nishbo/ms_arm_and_hand/main/AAH%20Model/Geometry/";
@@ -578,7 +579,8 @@ async function startAAH(){
     postureAuditHeight:()=>anatomyAuditData?.measurements?.visibleSkeletonTopToFootBottomMm,
     heightMode:()=>heightMode,
     displayScaleFactor:()=>skeletonRoot.scale.x,
-    nominalHeightCm:()=>anatomyAuditData?anatomyAuditData.measurements.visibleSkeletonTopToFootBottomMm*skeletonRoot.scale.y/10:null,
+    nominalHeightCm:()=>nativeDisplayBounds?nativeDisplayBounds.heightM*100*skeletonRoot.scale.y:null,
+    nativeDisplayHeightCm:()=>nativeDisplayBounds?.heightM*100,
     worldVisibleBounds:()=>{const b=skeletonWorldBounds();return {min:b.min.toArray(),max:b.max.toArray(),heightCm:(b.max.y-b.min.y)*100}},
     setHeightMode,
    sideCount:side=>aahGroup[side].children.length,
@@ -655,7 +657,7 @@ async function startPostureAudit(){
   const a=data.measurements;
   const signed=(v,forward,back)=>Math.abs(v/10).toFixed(1).replace(".",",")+" см "+(v>=0?forward:back);
   $("#postureReport").innerHTML=
-   "<b>Высота скелета:</b> "+(a.visibleSkeletonTopToFootBottomMm/10).toFixed(1).replace(".",",")+" см"+
+   "<b>Ранняя оценка высоты (часть поверхностей):</b> "+(a.visibleSkeletonTopToFootBottomMm/10).toFixed(1).replace(".",",")+" см"+
    "<br><b>T1 относительно таза:</b> "+signed(a.T1AnteriorOffsetFromPelvisOriginMm,"вперёд","назад")+
    "<br><b>Центр черепа относительно T1:</b> "+signed(a.skullMeshVisualCentreAnteriorOffsetFromT1Mm,"вперёд","назад")+
    "<br><b>Разница между стопами:</b> "+a.footBottomYSymmetryMm.toFixed(2).replace(".",",")+" мм"+
@@ -689,25 +691,34 @@ function setHeightMode(next){
  if(next!=="182"&&next!=="source")throw Error("Unknown display height mode");
  heightMode=next;
  document.querySelectorAll("[data-height]").forEach(b=>b.classList.toggle("on",b.dataset.height===next));
- if(!anatomyAuditData){
-  $("#heightInfo").textContent="Жду исходную 3D-метрику OpenSim, чтобы правильно применить масштаб…";
+ if(!anatomyAuditData||!legsReady||!neckReady||!loadedAAH){
+  $("#heightInfo").textContent="Жду полного набора видимых 3D-костей, чтобы измерить точный рост…";
   return;
  }
- const bounds=anatomyAuditData.measurements.fullSceneGeometryBoundingBox;
- const heightMm=anatomyAuditData.measurements.visibleSkeletonTopToFootBottomMm;
- if(!(heightMm>1000&&heightMm<2200&&Number.isFinite(bounds.minM[1])))
-  throw Error("Недопустимые исходные размеры научного скелета");
- const factor=next==="182"?(TARGET_HEIGHT_CM*10/heightMm):1;
- // 182 cm display mode puts the original sole minimum at scene ground Y=0.
- // Original source mode retains true OpenSim global coordinates.
+ if(!nativeDisplayBounds){
+  // The older VTP anatomy audit sampled a subset of visible surfaces and gave
+  // 149.947 cm. The entire rendered skeleton can differ by centimetres.
+  // Measure ALL actually visible meshes at unit scale BEFORE setting 182 cm.
+  skeletonRoot.scale.setScalar(1);
+  skeletonRoot.position.set(0,0,0);
+  skeletonRoot.updateMatrixWorld(true);
+  const bounds=skeletonWorldBounds();
+  if(bounds.isEmpty())throw Error("Не удалось измерить геометрию исходного скелета");
+  nativeDisplayBounds={minY:bounds.min.y,maxY:bounds.max.y,heightM:bounds.max.y-bounds.min.y};
+  if(!(nativeDisplayBounds.heightM>1&&nativeDisplayBounds.heightM<2.2))
+   throw Error("Недопустимые размеры полного 3D-скелета");
+ }
+ const factor=next==="182"?(TARGET_HEIGHT_CM/100/nativeDisplayBounds.heightM):1;
+ // Keep all FHS/MASI/AAH/Rajagopal parts AND landmarks in one frame.
+ // 182 cm mode positions the source foot sole at Y=0.
  skeletonRoot.scale.setScalar(factor);
- skeletonRoot.position.set(0,next==="182"?-bounds.minM[1]*factor:0,0);
+ skeletonRoot.position.set(0,next==="182"?-nativeDisplayBounds.minY*factor:0,0);
  skeletonRoot.updateMatrixWorld(true);
  $("#heightInfo").textContent=next==="182"?
-  "Рост отображения: 182,0 см · общий масштаб ×"+factor.toFixed(4).replace(".",",")+
-  " · подошвы на уровне Y=0. Пропорции и исходные суставные положения сохранены.":
-  "Исходная высота: "+(heightMm/10).toFixed(2).replace(".",",")+
-  " см · масштаб ×1,0000 · исходная система координат OpenSim.";
+  "Рост отображения: 182,0 см · единый масштаб ×"+factor.toFixed(4).replace(".",",")+
+  " · стопы на уровне Y=0. Вся геометрия измерена непосредственно на сцене.":
+  "Исходная высота всей 3D-геометрии: "+(nativeDisplayBounds.heightM*100).toFixed(2).replace(".",",")+
+  " см · масштаб ×1,0000 · исходные координаты OpenSim.";
  if(loadedFhs)fit();
 }
 function updateVisibility(){
