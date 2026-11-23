@@ -356,7 +356,8 @@ window.__armQA={
  coordinates:()=>elbowFrames?.coordinate,
  boneOrigin:id=>rig.get(id)?.mesh.getWorldPosition(new THREE.Vector3()).toArray(),
  sourceBoneOrigin:id=>rig.get(id)?.source.getWorldPosition(new THREE.Vector3()).toArray(),
- meshWorldPosition:id=>{const r=rig.get(id);return r?.mesh.localToWorld(new THREE.Vector3()).toArray()},
+ meshWorldPosition:id=>{const r=rig.get(id);scene.updateMatrixWorld(true);return r?vecCenter(r.mesh).toArray():null},
+ sourceWorldCenter:id=>{const r=rig.get(id);scene.updateMatrixWorld(true);return r?vecCenter(r.source).toArray():null},
  visible:()=>[...rig.values()].filter(r=>r.mesh.visible).length
 };
 init();
