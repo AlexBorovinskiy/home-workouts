@@ -5,6 +5,7 @@ on:
       - 'opensim-lab/inspect_masi_source.py'
       - 'opensim-lab/verify_masi_opensim.py'
       - 'opensim-lab/convert_masi_legacy.py'
+      - 'opensim-lab/test_masi_kinematics.py'
       - '.github/workflows/qa-masi-source.yml'
   workflow_dispatch:
 permissions:
@@ -34,6 +35,9 @@ jobs:
         run: |
           python opensim-lab/convert_masi_legacy.py --source /tmp/masi-v2-authors.osim --output /tmp/masi-name-migrated.osim
           python opensim-lab/verify_masi_opensim.py --model /tmp/masi-name-migrated.osim --output qa-masi-source/masi-migrated-native-audit.json
+      - name: Confirm seven cervical bones and independent movement in native MASI
+        run: |
+          python opensim-lab/test_masi_kinematics.py --model /tmp/masi-name-migrated.osim --output qa-masi-source/masi-kinematics.json
       - name: Verify source and provenance
         run: |
           python - <<'PY'
