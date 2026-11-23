@@ -47,11 +47,24 @@ jobs:
             const data=await page.evaluate(()=>{
               const q=window.__c7t1QA;
               return {parts:q.partIds(),closestMm:q.minVertexMm(),anchorMm:q.anchorErrorMm(),
-                C7:q.bounds('cerv7'),T1:q.bounds('thoracic1'),T12:q.bounds('thoracic12'),L5:q.bounds('lumbar5')}
+                C7:q.bounds('cerv7'),T1:q.bounds('thoracic1'),T12:q.bounds('thoracic12'),L5:q.bounds('lumbar5'),
+                exactC7:q.tightBounds('cerv7'),exactT1:q.tightBounds('thoracic1'),boneSizes:q.sizes()}
             });
             if(data.parts.length!==17||data.closestMm<1||data.closestMm>5||
                 Math.abs(data.closestMm-2.4114)>.06||data.anchorMm>.0001||errors.length)
               throw Error('Native anatomical QA mismatched: '+JSON.stringify({data,errors}));
+            // Tight world-coordinate bounds MUST use transformed mesh vertices,
+            // not Three.js's approximate bounding box transformed as a cuboid.
+            const c7=data.exactC7.sizeMm,t1=data.exactT1.sizeMm;
+            const almost=(a,b)=>Math.abs(a-b)<.15;
+            if(!almost(c7[0],62.9939)||!almost(c7[1],46.4399)||!almost(c7[2],67.7324)||
+               !almost(t1[0],47.807)||!almost(t1[1],32.0536)||!almost(t1[2],66.2817))
+              throw Error('Incorrect vertex-accurate sizes '+JSON.stringify({c7,t1}));
+            if(!await page.locator('#sizeAudit').innerText().then(s=>s.includes('C7')&&s.includes('T1')&&s.includes('размерами'))) {
+              // Keep a numerical QA threshold, not a fragile style/wording check.
+              const words=await page.locator('#sizeAudit').innerText();
+              if(!words.includes('C7')||!words.includes('T1')||!words.includes('1.32'))throw Error('Scale audit not rendered: '+words);
+            }
             await page.locator('#canvas').screenshot({path:'qa-c7-t1-web/neck-T1-joined-back.png'});
             await page.locator('[data-view="side"]').click();
             await page.locator('#canvas').screenshot({path:'qa-c7-t1-web/neck-T1-joined-side.png'});
