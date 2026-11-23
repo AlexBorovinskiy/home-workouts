@@ -370,9 +370,8 @@ function updateDumbbellRadius(){
  // CylinderGeometry's native radius is the first creation radius.
  const mesh=dumbbell.bar;
  const old=mesh.geometry.parameters.radiusTop;
- mesh.scale.x=1;
- mesh.scale.y=(handleDiameterMm/2000)/old;
- mesh.scale.z=(handleDiameterMm/2000)/old;
+ const radial=(handleDiameterMm/2000)/old;
+ mesh.scale.set(radial,1,radial);
 }
 function currentPalmFrame(){
  // Local X runs across the knuckles, local Y toward the fingertips;
@@ -586,6 +585,9 @@ async function init(){
   sourceAtlas=elbowPivotFromOriginal();
   buildAtlasFingerJoints();
   makeDumbbell();
+  // Internal pose sampling requires ready rig data before the initial grip
+  // plan; the grip itself stays hidden until its verification completes.
+  ready=true;
   gripPlan=planDumbbellGrip();
   $("#boneCount").textContent=rig.size.toString();
   $("#registration").textContent=registration.rms.toFixed(1).replace(".",",")+" мм";
