@@ -19,6 +19,8 @@ jobs:
       - name: Install native OpenSim 4.6
         run: python -m pip install --disable-pip-version-check 'opensim==4.6'
       - name: Download actual authors' public OpenSim models and repository inventories
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p /tmp/ready-model-candidates qa-public-models
           curl -fL --retry 3 --max-time 90 \
@@ -33,11 +35,11 @@ jobs:
           curl -fL --retry 3 --max-time 90 \
             'https://raw.githubusercontent.com/nishbo/ms_arm_and_hand/main/AAH%20Model/LeftArmAndHand_NoMuscles.osim' \
             -o /tmp/ready-model-candidates/aah-left.osim
-          curl -fL --retry 3 --max-time 90 \
-            https://api.github.com/repos/nishbo/ms_arm_and_hand/git/trees/main?recursive=1 \
+          curl -fL --retry 3 --max-time 90 -H "Authorization: Bearer $GH_TOKEN" \
+            'https://api.github.com/repos/nishbo/ms_arm_and_hand/git/trees/main?recursive=1' \
             -o /tmp/ready-model-candidates/aah-tree.json
-          curl -fL --retry 3 --max-time 90 \
-            https://api.github.com/repos/opensim-org/opensim-models/git/trees/master?recursive=1 \
+          curl -fL --retry 3 --max-time 90 -H "Authorization: Bearer $GH_TOKEN" \
+            'https://api.github.com/repos/opensim-org/opensim-models/git/trees/master?recursive=1' \
             -o /tmp/ready-model-candidates/opensim-tree.json
       - name: Build auditable model inventory and native OpenSim compatibility report
         run: |
@@ -66,7 +68,7 @@ jobs:
                   v['counts']['coordinatesDeclaredInXML'],v['nativeOpenSim']['status'])
           assert a['aah_right_nomuscles']['fingerAssessment']['digitMeshFileCount']>=15
           assert a['aah_left_nomuscles']['fingerAssessment']['digitMeshFileCount']>=15
-          assert d['augmented2025']['downloadStatus'].endswith('independently inspected') is False or True
+          assert d['augmented2025']['paperReportedCounts']['dof']==48
           print('PUBLIC_MODELS_STRUCTURAL_AUDIT_COMPLETED')
           PY
       - uses: actions/upload-artifact@v4
