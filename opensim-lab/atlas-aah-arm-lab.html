@@ -68,10 +68,23 @@ a{color:var(--accent)}
 <button data-axis="raw">Первоначальная AAH</button>
 </div>
 <p>Первая попытка прямого переноса отправляла предплечье вбок. Сравни две оси: первая использует сагиттальное сгибание по положению костей атласа, вторая показывает прямой перенос из AAH.</p>
+<h3>Захват гантели</h3>
+<div class="buttons">
+<button id="gripNow" class="on">Схватить гантель</button>
+<button id="releaseGrip">Разжать пальцы</button>
+<button id="hideDumbbell">Убрать гантель</button>
+</div>
+<label style="margin-top:10px">Диаметр рукоятки <strong id="handleDiameterValue">30 мм</strong></label>
+<input id="handleDiameter" type="range" min="24" max="36" step="2" value="30" disabled aria-label="Диаметр рукоятки">
+<label style="margin-top:8px">Смещение относительно ладони <strong id="handleOffsetValue">0 мм</strong></label>
+<input id="handleOffset" type="range" min="-15" max="15" step="1" value="0" disabled aria-label="Смещение рукоятки к ладони">
+<div id="contactReport" class="status" style="margin-top:8px">Измеряю положение пальцев относительно металлической рукоятки…</div>
+<p>Рукоять не должна проходить сквозь фаланги: проверяется расстояние до костной поверхности с запасом для мягких тканей. Это пока визуальный захват без силы, веса и физики контакта.</p>
 <h3>Сгибание пальцев · AAH</h3>
 <div class="buttons"><button data-pose="curl" class="on">Сжать пальцы</button><button data-pose="cylinder">Поза для цилиндра</button></div>
 <input type="range" id="finger" min="0" max="100" value="0" step="1" disabled aria-label="Сгибание пальцев">
 <div id="fingerValue" style="font-size:12px;color:var(--muted)">0%</div>
+<label style="margin-top:8px"><input type="checkbox" id="showContact" checked> Отображать расчёт зазоров по пальцам</label>
 <h3>Сравнение</h3>
 <div class="buttons"><button data-mode="rig" class="on">Риг AAH</button><button data-mode="source">Без движений</button></div>
 <label style="margin-top:11px"><input type="checkbox" id="ghost"> Показывать исходную позу полупрозрачно</label>
@@ -130,7 +143,16 @@ const landmarks=[
 ];
 let atlas=null,original=[],bones=[],rig=new Map(),poseFrames=null,elbowFrames=null,registration=null;
 let elbow=0,finger=0,pose="curl",mode="rig",view="rightarm",ready=false,sourceAtlas=null,axisMode="anatomic";
+let dumbbell=null,gripBase=null,gripFrame=null,gripPlan=null,gripVisible=false,gripReady=false;
+let handleDiameterMm=30,handleOffsetMm=0,contactResult=null;
 const sourceCenters=new Map(),targetCenters=new Map(),sourceRest=new Map(),jointPivots=new Map();
+const contactDigits={
+ index:["RA5P2","RA6M2","RA7D2"],
+ middle:["RA5P3","RA6M3","RA7D3"],
+ ring:["RA5P4","RA6M4","RA7D4"],
+ little:["RA5P5","RA6M5","RA7D5"],
+ thumb:["RA5P1","RA6D1"]
+};
 const jointParents={
  RA4M1:"RA3T",RA5P1:"RA4M1",RA6D1:"RA5P1",
  RA5P2:"RA4M2",RA6M2:"RA5P2",RA7D2:"RA6M2",
@@ -313,9 +335,169 @@ function applyPose(){
   const M=body==="RA1H"?r.rest.clone():E.clone().multiply(relativeMotion(body)).multiply(r.rest);
   r.mesh.matrix.copy(M);r.mesh.matrixWorldNeedsUpdate=true;
  }
+ setDumbbellPose(E);
  scene.updateMatrixWorld(true);
+ if(gripReady)updateContactReport();
  $("#elbowValue").textContent=elbow+"°";
  $("#fingerValue").textContent=Math.round(finger*100)+"%";
+}
+// Dumbbell is an independently drawn prop, not a fake bone. It is placed
+// across the actual atlas palm and attached to the elbow/forearm transform.
+// Contact probes are distance-to-metal estimates, not soft-tissue simulation.
+function makeDumbbell(){
+ const root=new THREE.Group();root.name="AAH-palm-dumbbell";
+ root.matrixAutoUpdate=false;scene.add(root);
+ const mat=new THREE.MeshStandardMaterial({color:0x455867,roughness:.43,metalness:.7});
+ const plateMat=new THREE.MeshStandardMaterial({color:0x253743,metalness:.63,roughness:.49});
+ const edgeMat=new THREE.MeshStandardMaterial({color:0x7db8bb,metalness:.52,roughness:.4});
+ const segment=(radius,length,x,material)=>{
+  const c=new THREE.Mesh(new THREE.CylinderGeometry(radius,radius,length,32,1),material);
+  c.rotation.z=Math.PI/2;c.position.x=x;root.add(c);return c;
+ };
+ const bar=segment(handleDiameterMm/2000,.178,0,mat);bar.name="real-scale-handle";
+ // Plates are deliberately beyond the anatomical width of the knuckles.
+ for(const side of [-1,1]){
+  segment(.044,.019,side*.106,plateMat);
+  segment(.038,.007,side*.121,mat);
+  segment(.024,.009,side*.128,edgeMat);
+  segment(.018,.004,side*.137,plateMat);
+ }
+ dumbbell={root,bar};
+ root.visible=false;
+}
+function updateDumbbellRadius(){
+ if(!dumbbell)return;
+ // CylinderGeometry's native radius is the first creation radius.
+ const mesh=dumbbell.bar;
+ const old=mesh.geometry.parameters.radiusTop;
+ mesh.scale.x=1;
+ mesh.scale.y=(handleDiameterMm/2000)/old;
+ mesh.scale.z=(handleDiameterMm/2000)/old;
+}
+function currentPalmFrame(){
+ // Local X runs across the knuckles, local Y toward the fingertips;
+ // local Z points toward the side to which the fingers actually curl.
+ const wrist=vecCenter(rig.get("RA3L").mesh);
+ const m2=vecCenter(rig.get("RA4M2").mesh),
+       m3=vecCenter(rig.get("RA4M3").mesh),
+       m5=vecCenter(rig.get("RA4M5").mesh);
+ const x=m2.clone().sub(m5).normalize();
+ const y=m3.clone().sub(wrist).normalize();
+ x.addScaledVector(y,-x.dot(y)).normalize();
+ const z=x.clone().cross(y).normalize();
+ const knuckles=["RA5P2","RA5P3","RA5P4","RA5P5"].map(id=>vecCenter(rig.get(id).mesh));
+ const origin=knuckles.reduce((a,b)=>a.add(b),new THREE.Vector3()).multiplyScalar(.25)
+  .addScaledVector(y,-.012);
+ return {x,y,z,origin};
+}
+function contactCloud(id,frame){
+ const mesh=rig.get(id).mesh,attr=mesh.geometry.attributes.position;
+ const stride=Math.max(1,Math.floor(attr.count/150));
+ const pts=[],p=new THREE.Vector3();
+ for(let i=0;i<attr.count;i+=stride){
+  p.fromBufferAttribute(attr,i).applyMatrix4(mesh.matrixWorld).sub(frame.origin);
+  pts.push([p.dot(frame.x),p.dot(frame.y),p.dot(frame.z)]);
+ }
+ return pts;
+}
+function collectContactClouds(frame){
+ const clouds={};
+ for(const [digit,parts] of Object.entries(contactDigits))
+  clouds[digit]=parts.flatMap(id=>contactCloud(id,frame));
+ clouds.palm=["RA4M2","RA4M3","RA4M4","RA4M5"].flatMap(id=>contactCloud(id,frame));
+ return clouds;
+}
+function fitScore(clouds,y,z,radius){
+ const dist=p=>{
+  const dx=Math.max(0,Math.abs(p[0])-.073);
+  return Math.hypot(p[1]-y,p[2]-z,dx);
+ };
+ let cost=0,penetrations=0,near=0;
+ const gap={},contact={};
+ for(const digit of Object.keys(contactDigits).concat("palm")){
+  let shortest=Infinity;
+  for(const p of clouds[digit])shortest=Math.min(shortest,dist(p));
+  const free=shortest-radius;
+  gap[digit]=free;
+  if(digit==="palm"){
+   // The bar rests against soft tissue ABOVE the metacarpals.
+   cost+=8*Math.pow(Math.max(0,.006-free),2);
+   continue;
+  }
+  if(free<.003){cost+=18*Math.pow(.003-free,2);penetrations++}
+  else if(free<.017){cost+=2.2*Math.pow(free-.006,2);near++}
+  else cost+=2.2*Math.pow(free-.010,2);
+  contact[digit]=free>=.002&&free<=.024;
+ }
+ cost+=.014*(z-.032)**2+.007*(y-.005)**2;
+ return {cost,penetrations,near,gap,contact};
+}
+function planDumbbellGrip(){
+ // All scene meshes at the atlas neutral elbow: source OpenSim AAH cylinder
+ // sample is a starting pose, then we search ONLY the prop position.
+ const prior={finger,pose,elbow};
+ elbow=0;pose="cylinder";finger=1;applyPose();
+ const frame=currentPalmFrame();
+ const openTip=vecCenter(rig.get("RA7D3").mesh);
+ finger=0;applyPose();
+ const restTip=vecCenter(rig.get("RA7D3").mesh);
+ if(openTip.clone().sub(restTip).dot(frame.z)<0)frame.z.negate();
+ // Ensure the x/y/z frame remains a true orthogonal right-handed basis.
+ if(frame.x.clone().cross(frame.y).dot(frame.z)<0)frame.x.negate();
+ finger=1;applyPose();
+ const clouds=collectContactClouds(frame);
+ const radius=handleDiameterMm/2000;
+ let best=null;
+ for(let yy=-.022;yy<=.021;yy+=.004){
+  for(let zz=.009;zz<=.077;zz+=.004){
+   const score=fitScore(clouds,yy,zz,radius);
+   if(!best||score.cost<best.score.cost)best={y:yy,z:zz,score};
+  }
+ }
+ if(!best)throw Error("Не найдено положение рукоятки между пальцами");
+ const R=M4().makeBasis(frame.x,frame.y,frame.z);
+ R.setPosition(frame.origin);
+ gripFrame=frame;
+ gripPlan={y:best.y,z:best.z,score:best.score,origin:frame.origin.toArray(),
+           x:frame.x.toArray(),normal:frame.z.toArray()};
+ gripBase=R.multiply(M4().makeTranslation(0,best.y,best.z));
+ elbow=prior.elbow;pose=prior.pose;finger=prior.finger;
+ applyPose();
+ return gripPlan;
+}
+function setDumbbellPose(E){
+ if(!dumbbell||!gripBase)return;
+ const shift=M4().makeTranslation(0,handleOffsetMm/1000,0);
+ dumbbell.root.matrix.copy(E).multiply(gripBase).multiply(shift);
+ dumbbell.root.matrixWorldNeedsUpdate=true;
+ dumbbell.root.visible=gripVisible&&mode==="rig";
+}
+function updateContactReport(){
+ if(!ready||!gripReady||!gripVisible||mode!=="rig"){
+  $("#contactReport").textContent="Гантель скрыта или исходная рука отображается без рига.";
+  return;
+ }
+ scene.updateMatrixWorld(true);
+ const frame={
+  origin:new THREE.Vector3().setFromMatrixPosition(dumbbell.root.matrixWorld),
+  x:new THREE.Vector3().setFromMatrixColumn(dumbbell.root.matrixWorld,0).normalize(),
+  y:new THREE.Vector3().setFromMatrixColumn(dumbbell.root.matrixWorld,1).normalize(),
+  z:new THREE.Vector3().setFromMatrixColumn(dumbbell.root.matrixWorld,2).normalize()
+ };
+ // Dynamic check in the handle's axis frame, including elbow movement.
+ const clouds=collectContactClouds(frame);
+ const stats=fitScore(clouds,0,0,handleDiameterMm/2000);
+ contactResult=stats;
+ const valid=Object.entries(stats.contact).filter(([,ok])=>ok).map(([digit])=>digit);
+ const worst=Math.min(...Object.values(stats.gap));
+ const label=d=>({index:"указ.",middle:"средн.",ring:"безым.",little:"мизин.",thumb:"больш."})[d];
+ const fmt=n=>Math.round(n*1000)+" мм";
+ const parts=Object.keys(contactDigits).map(d=>label(d)+": "+fmt(stats.gap[d]));
+ $("#contactReport").textContent=
+  "Расстояние кости → металл (по выборке поверхности): "+(valid.length)+"/5 пальцев в пределах 2–24 мм; "+
+  "минимальный зазор "+fmt(worst)+". "+
+  ($("#showContact").checked?parts.join(" · ")+". ":"")+
+  "Мягкие ткани не моделируются — фактический контакт не подтверждён.";
 }
 function appearance(){
  for(const r of rig.values()){
@@ -327,7 +509,9 @@ function appearance(){
   }
  }
  document.querySelectorAll("[data-mode]").forEach(b=>b.classList.toggle("on",b.dataset.mode===mode));
+ if(dumbbell)dumbbell.root.visible=gripVisible&&mode==="rig";
  if(ready&&view==="rightarm")fit();
+ if(gripReady)updateContactReport();
 }
 function fit(){
  if(!ready)return;
@@ -337,6 +521,7 @@ function fit(){
    view==="elbow"?/^RA(?:1H|2U|2R)$/.test(id):true).map(([,r])=>mode==="rig"?r.mesh:r.source);
  const relevant=["rightarm","hand","elbow"].includes(view)?selected:bones;
  const box=new THREE.Box3();for(const b of relevant)if(b.visible)box.expandByObject(b);
+ if(dumbbell?.root.visible&&view!=="elbow")box.expandByObject(dumbbell.root);
  if(box.isEmpty())return;
  const centre=box.getCenter(new THREE.Vector3()),size=box.getSize(new THREE.Vector3());
  const aspect=Math.max(.35,camera.aspect),tan=Math.tan(THREE.MathUtils.degToRad(camera.fov/2));
@@ -400,6 +585,8 @@ async function init(){
   registration=deriveRegistration();
   sourceAtlas=elbowPivotFromOriginal();
   buildAtlasFingerJoints();
+  makeDumbbell();
+  gripPlan=planDumbbellGrip();
   $("#boneCount").textContent=rig.size.toString();
   $("#registration").textContent=registration.rms.toFixed(1).replace(".",",")+" мм";
   $("#accuracyText").textContent=
@@ -410,11 +597,16 @@ async function init(){
     ". Эти числа оценивают регистрацию, но не суставную валидность.";
   if(registration.rms>35||registration.errors.find(x=>x.id==="RA2R").mm>100)
     throw Error("Слишком большое рассогласование анатомических ориентиров: ручную анимацию блокируем. "+$("#accuracyText").textContent);
-  ready=true;
+  ready=true;gripReady=true;
   $("#elbow").disabled=false;$("#finger").disabled=false;
+  $("#handleDiameter").disabled=false;$("#handleOffset").disabled=false;
+  gripVisible=true;elbow=75;pose="cylinder";finger=1;
+  $("#elbow").value="75";$("#finger").value="100";
+  document.querySelectorAll("[data-pose]").forEach(b=>b.classList.toggle("on",b.dataset.pose==="cylinder"));
+  applyPose();
   status("Готова пробная анимация: "+rig.size+" оригинальных костей Écorché. Риг AAH задаёт сгибание локтя и пальцев; остальные кости атласа не меняются.");
   $("#hud").textContent="Écorché × AAH / OpenSim 4.6 · 28 атласных костей · эксперимент";
-  applyPose();appearance();fit();
+  applyPose();appearance();view="hand";fit();
  }catch(e){console.error("Atlas-to-AAH arm retarget:",e);status("Не удалось построить проверенный риг: "+e.message);$("#hud").textContent="Эксперимент не прошёл проверку источников";}
 }
 $("#elbow").oninput=e=>{elbow=Number(e.target.value);applyPose()};
@@ -428,6 +620,29 @@ document.querySelectorAll("[data-axis]").forEach(b=>b.onclick=()=>{
  applyPose();
 });
 $("#ghost").onchange=appearance;
+$("#showContact").onchange=updateContactReport;
+$("#gripNow").onclick=()=>{
+ if(!ready)return;gripVisible=true;pose="cylinder";finger=1;elbow=75;view="hand";
+ $("#finger").value="100";$("#elbow").value="75";
+ document.querySelectorAll("[data-pose]").forEach(b=>b.classList.toggle("on",b.dataset.pose==="cylinder"));
+ applyPose();appearance();fit();
+};
+$("#releaseGrip").onclick=()=>{
+ if(!ready)return;finger=0;$("#finger").value="0";applyPose();
+};
+$("#hideDumbbell").onclick=()=>{
+ if(!ready)return;gripVisible=false;appearance();fit();
+};
+$("#handleDiameter").oninput=e=>{
+ if(!ready)return;handleDiameterMm=Number(e.target.value);
+ $("#handleDiameterValue").textContent=handleDiameterMm+" мм";
+ updateDumbbellRadius();updateContactReport();
+};
+$("#handleOffset").oninput=e=>{
+ if(!ready)return;handleOffsetMm=Number(e.target.value);
+ $("#handleOffsetValue").textContent=handleOffsetMm+" мм";
+ applyPose();
+};
 $("#reset").onclick=()=>{elbow=0;finger=0;pose="curl";$("#elbow").value="0";$("#finger").value="0";document.querySelectorAll("[data-pose]").forEach(b=>b.classList.toggle("on",b.dataset.pose==="curl"));applyPose();fit()};
 new ResizeObserver(()=>{renderer.setSize(stage.clientWidth,stage.clientHeight,false);camera.aspect=stage.clientWidth/Math.max(1,stage.clientHeight);camera.updateProjectionMatrix()}).observe(stage);
 (function render(){requestAnimationFrame(render);controls.update();renderer.render(scene,camera)})();
@@ -444,7 +659,12 @@ window.__armQA={
  sourceBoneOrigin:id=>rig.get(id)?.source.getWorldPosition(new THREE.Vector3()).toArray(),
  meshWorldPosition:id=>{const r=rig.get(id);scene.updateMatrixWorld(true);return r?vecCenter(r.mesh).toArray():null},
  sourceWorldCenter:id=>{const r=rig.get(id);scene.updateMatrixWorld(true);return r?vecCenter(r.source).toArray():null},
- visible:()=>[...rig.values()].filter(r=>r.mesh.visible).length
+ visible:()=>[...rig.values()].filter(r=>r.mesh.visible).length,
+ gripReady:()=>gripReady,gripVisible:()=>gripVisible,gripPlan:()=>gripPlan,
+ handleCenter:()=>{scene.updateMatrixWorld(true);return dumbbell?.root.getWorldPosition(new THREE.Vector3()).toArray()},
+ handleAxis:()=>{scene.updateMatrixWorld(true);return dumbbell?.root.localToWorld(new THREE.Vector3(1,0,0)).sub(dumbbell.root.localToWorld(new THREE.Vector3())).normalize().toArray()},
+ handleDiameter:()=>handleDiameterMm,contact:()=>contactResult,
+ relativeHandleToWrist:()=>{scene.updateMatrixWorld(true);return dumbbell.root.getWorldPosition(new THREE.Vector3()).distanceTo(vecCenter(rig.get("RA3L").mesh))}
 };
 init();
 </script></body></html>
