@@ -34,7 +34,7 @@ jobs:
           name=models[0]
           Path('/tmp/sample-fhs.osim').write_bytes(z.read(name))
           Path('/tmp/archive-relative-name.txt').write_text(name)
-          for fn in ['skull.vtp','thumbprox.vtp','cerv1.vtp','thoracic1_s.vtp']:
+          for fn in ['skull.vtp','thumbprox.vtp','cerv1.vtp','thoracic1_s.vtp','Rib1R.vtp','Rib6L.vtp','Rib12R.vtp','pelvis_rv.vtp']:
             p=next((s for s in z.namelist() if s.endswith('/Geometry/'+fn)),None)
             assert p
             doc=ET.fromstring(z.read(p))
@@ -46,6 +46,12 @@ jobs:
               'polygonCount':piece.get('NumberOfPolys'),
             }
             print('FHS_VTP_STRUCTURE',fn,json.dumps(fields))
+            print('FHS_VTP_TOPOLOGY',fn,json.dumps({
+              'counts':piece.attrib,
+              'lines':[(x.get('Name'),x.get('format'),len((x.text or '').split())) for x in piece.findall('./Lines/DataArray')],
+              'strips':[(x.get('Name'),x.get('format'),len((x.text or '').split())) for x in piece.findall('./Strips/DataArray')],
+              'polys':[(x.get('Name'),x.get('format'),len((x.text or '').split())) for x in piece.findall('./Polys/DataArray')]
+            }))
           print('FHS_SOURCE_PATH',name)
           PY
       - name: Read native OpenSim transforms with exact body names
