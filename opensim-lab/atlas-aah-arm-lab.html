@@ -192,7 +192,7 @@ let dumbbell=null,gripBase=null,gripFrame=null,gripPlan=null,gripVisible=false,g
 let handleDiameterMm=24,handleOffsetMm=0,handleDepthMm=0,contactResult=null,thumbCorrection=null,thumbFit=null;
 const sourceCenters=new Map(),targetCenters=new Map(),sourceRest=new Map(),jointPivots=new Map();
 let muscleMode="bones",muscleOverlays=[],muscleSkin=null;
-let gripDigitProgress=null,gripPlanning=false,manualGripAngles=null;
+let gripDigitProgress=null,gripPlanning=false,manualGripAngles=null,gripTesting=false;
 const contactDigits={
  index:["RA5P2","RA6M2","RA7D2"],
  middle:["RA5P3","RA6M3","RA7D3"],
@@ -393,7 +393,7 @@ function applyPose(){
  setDumbbellPose(E);
  updateMusclePose();
  scene.updateMatrixWorld(true);
- if(gripReady&&!gripPlanning){updateGripButtons();updateContactReport()}
+ if(gripReady&&!gripPlanning&&!gripTesting){updateGripButtons();updateContactReport()}
  if(!gripPlanning){$("#elbowValue").textContent=elbow+"°";
   $("#fingerValue").textContent=Math.round(finger*100)+"%";}
 }
@@ -665,43 +665,70 @@ function planDumbbellGrip(){
   applyPose();
  }
 }
+// CMC correction is optional. The trajectory optimizer already chooses an
+// independently flexed thumb; never ruin a safe contact just to rotate it.
 function calculateThumbOpposition(){
- // Move the distal thumb phalanx toward the bar by an anatomical
- // first-metacarpal (CMC) root rotation around the atlas joint proxy.
- // This is ONLY a bounded visual IK retarget; not measured tendon force.
- const old={finger,elbow,pose,gripVisible};
- thumbCorrection=null;gripVisible=true;
- elbow=0;finger=1;pose="cylinder";applyPose();
- scene.updateMatrixWorld(true);
- const rootPivot=jointPivots.get("RA4M1")?.pivot;
- if(!rootPivot)throw Error("Нет суставного ориентира основания большого пальца");
- const tip=vecCenter(rig.get("RA6D1").mesh);
- const origin=new THREE.Vector3().setFromMatrixPosition(gripBase);
- const lateral=new THREE.Vector3().setFromMatrixColumn(gripBase,0).normalize();
- const t=THREE.MathUtils.clamp(tip.clone().sub(origin).dot(lateral),-.05,.05);
- const onAxis=origin.clone().addScaledVector(lateral,t);
- let radial=tip.clone().sub(onAxis);
- radial.addScaledVector(lateral,-radial.dot(lateral));
- if(radial.length()<.002)radial=gripFrame.z.clone();
- radial.normalize();
- // Handle radius + thumb bone thickness proxy 6 mm + expected soft tissue 4 mm.
- const desired=onAxis.clone().addScaledVector(radial,handleDiameterMm/2000+.010);
- const from=tip.clone().sub(rootPivot),to=desired.clone().sub(rootPivot);
- if(from.length()<.03||to.length()<.03)throw Error("Некорректный рычаг большого пальца");
- const q=new THREE.Quaternion().setFromUnitVectors(from.normalize(),to.normalize());
- const rawAngle=2*Math.acos(THREE.MathUtils.clamp(Math.abs(q.w),0,1));
- // 50 degrees cap keeps this an explicitly limited test, not unlimited
- // thumb displacement capable of hiding a bad atlas rig.
- const cap=THREE.MathUtils.degToRad(50);
- thumbCorrection=new THREE.Quaternion().slerpQuaternions(
-  new THREE.Quaternion(),q,Math.min(1,cap/Math.max(rawAngle,.00001)));
- thumbFit={angleDegrees:THREE.MathUtils.radToDeg(Math.min(rawAngle,cap)),
-           requestedDegrees:THREE.MathUtils.radToDeg(rawAngle),
-           sourceTip:tip.toArray(),targetTip:desired.toArray()};
- finger=1;applyPose();
- thumbFit.actualTip=vecCenter(rig.get("RA6D1").mesh).toArray();
- finger=old.finger;elbow=old.elbow;pose=old.pose;gripVisible=old.gripVisible;applyPose();
- return thumbFit;
+ const old={finger,elbow,pose,gripVisible,gripTesting};
+ gripTesting=true;thumbCorrection=null;gripVisible=true;
+ elbow=0;finger=1;pose="cylinder";
+ try{
+  applyPose();scene.updateMatrixWorld(true);
+  const baseTip=vecCenter(rig.get("RA6D1").mesh);
+  const rootPivot=jointPivots.get("RA4M1")?.pivot;
+  if(!rootPivot)throw Error("Нет суставного ориентира основания большого пальца");
+  const origin=new THREE.Vector3().setFromMatrixPosition(dumbbell.root.matrixWorld);
+  const lateral=new THREE.Vector3().setFromMatrixColumn(dumbbell.root.matrixWorld,0).normalize();
+  const t=THREE.MathUtils.clamp(baseTip.clone().sub(origin).dot(lateral),-.06,.06);
+  const onAxis=origin.clone().addScaledVector(lateral,t);
+  const radial=baseTip.clone().sub(onAxis);
+  radial.addScaledVector(lateral,-radial.dot(lateral));
+  if(radial.length()<.002)radial.copy(gripFrame.z);
+  radial.normalize();
+  const goal=onAxis.clone().addScaledVector(radial,handleDiameterMm/2000+.008);
+  const from=baseTip.clone().sub(rootPivot),to=goal.clone().sub(rootPivot);
+  if(from.length()<.025||to.length()<.025)throw Error("Некорректный рычаг большого пальца");
+  const desiredQ=new THREE.Quaternion().setFromUnitVectors(from.normalize(),to.normalize());
+  const rawAngle=2*Math.acos(THREE.MathUtils.clamp(Math.abs(desiredQ.w),0,1));
+  const maxAngle=THREE.MathUtils.degToRad(45);
+  const baseQ=new THREE.Quaternion().slerpQuaternions(new THREE.Quaternion(),
+   desiredQ,Math.min(1,maxAngle/Math.max(rawAngle,.00001)));
+  const clearance=()=>{
+   scene.updateMatrixWorld(true);
+   const frame={
+    origin:new THREE.Vector3().setFromMatrixPosition(dumbbell.root.matrixWorld),
+    x:new THREE.Vector3().setFromMatrixColumn(dumbbell.root.matrixWorld,0).normalize(),
+    y:new THREE.Vector3().setFromMatrixColumn(dumbbell.root.matrixWorld,1).normalize(),
+    z:new THREE.Vector3().setFromMatrixColumn(dumbbell.root.matrixWorld,2).normalize()
+   };
+   const clouds=collectContactClouds(frame,90);
+   const state=fitScore(clouds,0,0,handleDiameterMm/2000);
+   return {gap:state.gap.thumb,collision:state.collisionGap.thumb};
+  };
+  let best=null;
+  for(let step=0;step<=10;step++){
+   const blend=step/10;
+   thumbCorrection=new THREE.Quaternion().slerpQuaternions(
+    new THREE.Quaternion(),baseQ,blend);
+   applyPose();
+   const state=clearance();
+   const penalty=Math.pow(state.gap-.007,2)+
+    100*Math.pow(Math.max(0,.003-state.collision),2);
+   if(!best||penalty<best.penalty)best={blend,state,penalty};
+  }
+  thumbCorrection=best.blend>0?
+   new THREE.Quaternion().slerpQuaternions(new THREE.Quaternion(),baseQ,best.blend):null;
+  applyPose();
+  thumbFit={angleDegrees:THREE.MathUtils.radToDeg(Math.min(rawAngle,maxAngle))*best.blend,
+   requestedDegrees:THREE.MathUtils.radToDeg(rawAngle),
+   sourceTip:baseTip.toArray(),targetTip:goal.toArray(),
+   actualTip:vecCenter(rig.get("RA6D1").mesh).toArray(),
+   boneClearanceMm:best.state.collision*1000,
+   safelyAdjusted:best.state.collision>=.003};
+  return thumbFit;
+ }finally{
+  finger=old.finger;elbow=old.elbow;pose=old.pose;gripVisible=old.gripVisible;
+  gripTesting=old.gripTesting;applyPose();
+ }
 }
 function setDumbbellPose(E){
  if(!dumbbell||!gripBase)return;
@@ -732,7 +759,11 @@ function updateContactReport(){
  const fmt=n=>Math.round(n*1000)+" мм";
  const parts=Object.keys(contactDigits).map(d=>label(d)+": "+fmt(stats.gap[d]));
  const palmInfo="ладонь → металл: "+fmt(stats.gap.palm)+"; ";
- const validFit=stats.penetrations===0&&valid.length>=3&&stats.gap.palm>=.002&&stats.gap.palm<=.018;
+ const orientInfo="Угол в ладони "+(gripPlan?.thetaDeg??0).toFixed(0)+
+   "°, наклон "+(gripPlan?.phiDeg??0).toFixed(0)+"°; "+
+   "огибание рукояти "+(gripPlan?.wrappedDigits??0)+"/5 пальцев. ";
+ const validFit=stats.penetrations===0&&valid.length>=3&&
+  stats.gap.palm>=.002&&stats.gap.palm<=.018&&gripPlan?.wrappedDigits>=3;
  $("#contactReport").classList.toggle("warning",!validFit&&finger>.5);
  const verdict=validFit?"Предварительная проверка геометрии пройдена. ":
   "ГЕОМЕТРИЯ ХВАТА НЕ СОГЛАСОВАНА: нужно корректировать движения пальцев, а не только двигать гантель. ";
@@ -741,7 +772,7 @@ function updateContactReport(){
  $("#contactReport").textContent=
   verdict+"Средние/концевые фаланги → металл (выборка вершин): "+valid.length+
   "/5 пальцев с костным зазором 3–24 мм; "+
-  palmInfo+"минимальный зазор "+fmt(worst)+". "+
+  orientInfo+palmInfo+"минимальный зазор "+fmt(worst)+". "+
   ($("#showContact").checked?parts.join(" · ")+". ":"")+
   "Большой палец: пробная оппозиция "+(thumbFit?.angleDegrees||0).toFixed(0)+"°. "+
   (boneCollisions.length?"Потенциальные столкновения: "+boneCollisions.join(", ")+". ":"")+
