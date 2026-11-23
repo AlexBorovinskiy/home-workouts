@@ -110,6 +110,13 @@ jobs:
             }
             await page.locator('#sceneCanvas').screenshot({path:'qa-fhs-original/whole.png'});
             console.log('FHS_TORSO_IMAGE '+(await page.locator('#sceneCanvas').screenshot({type:'jpeg',quality:55})).toString('base64'));
+            for(const id of ['toggleHand','toggleHead','toggleSpine','toggleShoulder','togglePelvis'])await page.locator('#'+id).click();
+            await page.waitForTimeout(300);
+            await page.locator('#sceneCanvas').screenshot({path:'qa-fhs-original/ribs-only.png'});
+            console.log('FHS_RIBS_ONLY_IMAGE '+(await page.locator('#sceneCanvas').screenshot({type:'jpeg',quality:65})).toString('base64'));
+            for(const id of ['toggleHand','toggleHead','toggleSpine','toggleShoulder','togglePelvis'])await page.locator('#'+id).click();
+            await page.waitForTimeout(300);
+
             await page.locator('[data-view="head"]').click();
             await page.waitForTimeout(200);
             await page.locator('#sceneCanvas').screenshot({path:'qa-fhs-original/head.png'});
