@@ -471,6 +471,16 @@ function planDumbbellGrip(){
   }
  }
  if(!best)throw Error("Не найдено положение рукоятки между пальцами");
+ // Refine the best actual geometry sample to 1 mm, preserving the same
+ // soft-tissue-gap constraints across the five digits.
+ const coarse={y:best.y,z:best.z};
+ for(let yy=coarse.y-.004;yy<=coarse.y+.004001;yy+=.001){
+  for(let zz=coarse.z-.004;zz<=coarse.z+.004001;zz+=.001){
+   if(yy<.012||zz<.008)continue;
+   const score=fitScore(clouds,yy,zz,radius);
+   if(score.cost<best.score.cost)best={y:yy,z:zz,score};
+  }
+ }
  const R=M4().makeBasis(frame.x,frame.y,frame.z);
  R.setPosition(frame.origin);
  gripFrame=frame;
@@ -579,7 +589,8 @@ function fit(){
  for(const b of original)if(!mapped.has(b))
   b.visible=!close&&b.userData?.layer==="skeleton"&&b.userData?.tissue==="bone";
  for(const [body,r] of rig){
-  const isArm=body==="RA1H"||body==="RA2U"||body==="RA2R";
+  // Keep forearm shafts so the grip does not look like a floating hand.
+  const isArm=body==="RA1H";
   r.mesh.visible=mode==="rig"&&(!close||!isArm);
   r.source.visible=(mode==="source"||$("#ghost").checked)&&(!close||!isArm);
  }
