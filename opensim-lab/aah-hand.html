@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b2331">
+<link rel="icon" href="data:,">
+<title>AAH · подвижная кисть OpenSim</title>
+<style>
+:root{color-scheme:dark;--ink:#eaf8f3;--muted:#afcdd0;--mint:#9de1d1;--line:#3e6876;--panel:#153c4c}
+*{box-sizing:border-box}
+body{background:linear-gradient(160deg,#1a4954 0,#0a2637 45%,#061c2a 100%);color:var(--ink);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;margin:0}
+main{max-width:1190px;margin:auto;padding:18px 12px 60px}
+header{display:flex;gap:10px;justify-content:space-between;align-items:center;color:var(--mint);font-size:11px;letter-spacing:.07em;font-weight:800}
+header a{font-size:12px;letter-spacing:0;padding:9px 12px;border:1px solid var(--line);border-radius:11px;text-decoration:none;color:var(--ink)}
+h1{font-size:clamp(24px,4.8vw,38px);line-height:1.14;letter-spacing:-.035em;margin:24px 0 9px}
+.lead{color:var(--muted);line-height:1.65;max-width:850px;margin:0 0 17px}
+.layout{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(300px,.83fr);gap:13px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:12px}
+.stage{height:min(74vh,735px);min-height:490px;position:relative;touch-action:none;background:radial-gradient(ellipse at 52% 44%,#2b5964 0%,#0d2c3b 69%,#0a2231 100%)}
+canvas{display:block;width:100%;height:100%;touch-action:none}
+.hud{position:absolute;top:11px;left:11px;right:11px;max-width:max-content;border:1px solid #579394;border-radius:10px;background:#092d3bdf;padding:9px 13px;font-size:11px;line-height:1.55;color:#d7f5ee;pointer-events:none}
+.overlay{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#082d3bf2;border:1px solid #5a8d95;border-radius:12px;padding:14px;max-width:87%;text-align:center;line-height:1.6}
+.overlay[hidden]{display:none}
+.help{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);font-size:11px;background:#0a3142c7;padding:8px 11px;border-radius:24px;white-space:nowrap;color:var(--muted);pointer-events:none}
+.panel{padding:15px}
+h2{font-size:17px;margin:0 0 11px;line-height:1.35}
+h3{font-size:11px;letter-spacing:.075em;text-transform:uppercase;color:var(--muted);margin:15px 0 8px}
+button{font:inherit;color:var(--ink);background:#255367;border:1px solid #5b8691;border-radius:9px;padding:10px 11px;min-height:42px;font-weight:650;cursor:pointer}
+button.on,button:focus-visible{color:#10353d;background:var(--mint);border-color:var(--mint)}
+button[disabled]{opacity:.45;cursor:not-allowed}
+.actions{display:flex;gap:7px;flex-wrap:wrap}
+label{display:block;color:var(--ink)}
+label.check{display:flex;gap:9px;align-items:center;min-height:32px;font-size:12px}
+input[type=checkbox]{accent-color:var(--mint);width:17px;height:17px}
+input[type=range]{width:100%;height:27px;accent-color:var(--mint)}
+.rangeEnds{display:flex;justify-content:space-between;color:var(--muted);font-size:11px}
+.status{background:#0a2e3d;border:1px solid #436878;border-radius:10px;padding:11px;font-size:12px;line-height:1.55;color:#d0e7e2}
+.warn{background:#40382b;border:1px solid #8a6a49;border-radius:11px;color:#f8dfba;padding:12px;font-size:12px;line-height:1.65}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat{padding:9px 4px;background:#092d3b;border-radius:10px;text-align:center}
+.stat strong{font-size:24px;line-height:1.2;display:block}.stat small{display:block;font-size:10px;color:var(--muted)}
+.notes{font-size:12px;color:var(--muted);line-height:1.75}
+a{color:var(--mint)}
+#selected{line-height:1.6;font-size:12px;color:#d6eae8}
+#degree{font-size:12px;color:#d2e8e4}
+@media(max-width:760px){.layout{grid-template-columns:1fr}.stage{height:58vh;min-height:420px}.panel{padding:13px}}
+</style></head>
+<body><main>
+<header><span>HOME WORKOUTS · OPENSIM / AAH</span><a href="./index.html">К лаборатории OpenSim</a></header>
+<h1>Настоящая подвижная кисть</h1>
+<p class="lead">Кости пальцев и суставы из <b>AAH / NCams</b>, их положения рассчитаны в OpenSim 4.6. Можно открыть кисть, сжать пальцы и рассмотреть пробную позу рядом с цилиндрической рукояткой. Это кинематический эксперимент, а не симуляция усилия хвата.</p>
+<div class="layout">
+<div>
+<section class="card"><div class="stage" id="stage">
+<canvas id="scene" aria-label="3D-кости кисти AAH с настоящими суставными движениями OpenSim"></canvas>
+<div class="hud" id="hud">AAH · правое предплечье и кисть · OpenSim 4.6</div>
+<div class="overlay" id="loading">Загружаю оригинальные костные сетки AAH…</div>
+<div class="help">Пальцем вращать · двумя пальцами приблизить</div>
+</div></section>
+<section class="card panel">
+<h2>Что именно проверено</h2>
+<div class="warn"><b>Это не готовый правильный захват гантели.</b> Положения костей рассчитаны OpenSim по пробным значениям суставных углов; угол сгибания подобран для демонстрации, а не измерен при удержании рукоятки. Промежуточные положения плавно интерполируются в браузере. Столкновения, контакт с цилиндром, мышечное усилие, масса и нагрузка не моделируются.</div>
+<p class="notes">Источник: <a href="https://github.com/nishbo/ms_arm_and_hand" target="_blank" rel="noopener">NCams / AAH, Sobinov, Goodman, Hardesty et al.</a> (MIT). Используются оригинальные сетки VTP и отдельные .osim для каждой руки. <a href="./READY_MODELS_AUDIT.md">Аудит моделей</a> · <a href="https://github.com/AlexBorovinskiy/home-workouts/blob/main/opensim-lab/READY_MODELS_AUDIT.md" target="_blank" rel="noopener">Описание на GitHub</a>.</p>
+</section>
+</div>
+<aside>
+<section class="card panel">
+<h2>Управление кистью</h2>
+<h3>Выбери руку</h3>
+<div class="actions">
+<button data-side="right" class="on">Правая</button>
+<button data-side="left">Левая</button>
+</div>
+<h3>Позы</h3>
+<div class="actions">
+<button data-pose="open" class="on">Разжата</button>
+<button data-pose="curl">Сжать пальцы</button>
+<button data-pose="cylinder">Пробный захват</button>
+</div>
+<h3>Степень сгибания</h3>
+<input id="progress" type="range" min="0" max="100" step="1" value="0" aria-label="Степень сгибания пальцев">
+<div class="rangeEnds"><span>0% · разжата</span><span id="progressLabel">0%</span><span>100% · выбранная поза</span></div>
+<h3>Показать</h3>
+<label class="check"><input type="checkbox" id="forearm"> Кости предплечья</label>
+<label class="check"><input type="checkbox" id="handle"> Цилиндрическая рукоятка — ориентир</label>
+<label class="check"><input type="checkbox" id="colorDigits" checked> Различать пальцы по цвету</label>
+<div class="actions" style="margin-top:10px">
+<button id="fit">Уместить кисть</button>
+<button id="reset">Сбросить вид</button>
+</div>
+<h3>Выделенная кость</h3>
+<div id="selected">Коснись косточки на 3D-модели, чтобы посмотреть, какому пальцу она принадлежит.</div>
+<h3>Текущие углы</h3>
+<div id="degree" class="status">Показатели появятся после загрузки.</div>
+<div class="stats" style="margin-top:10px">
+<div class="stat"><strong id="nBones">—</strong><small>костных сеток</small></div>
+<div class="stat"><strong id="nCoords">—</strong><small>координат OpenSim</small></div>
+<div class="stat"><strong id="nMuscles">0</strong><small>мышц в модели</small></div>
+</div>
+<p class="notes" id="status">Доступные координаты включают сгибание MCP/PIP/DIP и противопоставление большого пальца CMC.</p>
+</section>
+<section class="card panel">
+<h2>Следующий контроль</h2>
+<p class="notes">После оценки движения проверим положение цилиндра относительно костей, суставные ограничения и положение большого пальца. Только затем можно будет обсуждать перенос кинематики кисти в полный скелет FHS.</p>
+</section>
+</aside></div>
+</main>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from "three";
+import {OrbitControls} from "three/addons/controls/OrbitControls.js";
+const $=s=>document.querySelector(s);
+const canvas=$("#scene"),stage=$("#stage");
+const scene=new THREE.Scene();
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true,preserveDrawingBuffer:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.5));
+renderer.setClearColor(0x092a38,0);
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+const camera=new THREE.PerspectiveCamera(37,1,.001,20);
+scene.add(new THREE.HemisphereLight(0xf5fcfa,0x355d72,2.5));
+const key=new THREE.DirectionalLight(0xfff5e3,2.6);key.position.set(2,4,3);scene.add(key);
+const fill=new THREE.DirectionalLight(0x8dbce5,1.15);fill.position.set(-2,0,-3);scene.add(fill);
+const orbit=new OrbitControls(camera,canvas);orbit.enableDamping=true;orbit.minDistance=.065;orbit.maxDistance=4;
+const root=new THREE.Group();scene.add(root);
+const V=x=>new THREE.Vector3(...x);
+const MAT=a=>new THREE.Matrix4().set(
+ a[0][0],a[0][1],a[0][2],0,
+ a[1][0],a[1][1],a[1][2],0,
+ a[2][0],a[2][1],a[2][2],0,0,0,0,1);
+const SOURCE="https://raw.githubusercontent.com/nishbo/ms_arm_and_hand/main/AAH%20Model/Geometry/";
+const materialColors={carpal:0xb4cdc7,palm:0xe2d9c5,thumb:0xf3bf88,index:0x95dcca,middle:0xd6c3f1,ring:0xadc7ed,little:0xd9c8a0,forearm:0xa0a6aa};
+let data=null,currentSide="right",desiredSide="right",ready=false,loadingSide=false,pose="curl",progress=0,visibleForearm=false,colorDigits=true,showHandle=false;
+let meshes=[],meshByBody=new Map(),picked=null,raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2(),down={x:0,y:0};
+const handle=new THREE.Mesh(new THREE.CylinderGeometry(.012,.012,.105,28),
+ new THREE.MeshStandardMaterial({color:0x83d7dd,metalness:.47,roughness:.32,transparent:true,opacity:.70,depthWrite:false}));
+scene.add(handle);handle.visible=false;
+function category(body){
+ const b=body.toUpperCase();
+ if(/^([RL]A)2[UR]$/.test(b))return "forearm";
+ if(/^([RL]A)3/.test(b))return "carpal";
+ if(/^([RL]A)4M1$/.test(b)||/^([RL]A)[56][PD]1$/.test(b))return "thumb";
+ if(/^([RL]A)4M2$/.test(b)||/^([RL]A)[567][PMD]2$/.test(b))return "index";
+ if(/^([RL]A)4M3$/.test(b)||/^([RL]A)[567][PMD]3$/.test(b))return "middle";
+ if(/^([RL]A)4M4$/.test(b)||/^([RL]A)[567][PMD]4$/.test(b))return "ring";
+ if(/^([RL]A)4M5$/.test(b)||/^([RL]A)[567][PMD]5$/.test(b))return "little";
+ return "other";
+}
+function include(body){return ["forearm","carpal","thumb","index","middle","ring","little"].includes(category(body))}
+function resize(){
+ const w=Math.max(1,stage.clientWidth),h=Math.max(1,stage.clientHeight);
+ renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(stage);resize();
+function parseVTP(xml,name){
+ const doc=new DOMParser().parseFromString(xml,"application/xml");
+ if(doc.querySelector("parsererror"))throw Error("Невозможно прочитать сетку "+name);
+ const piece=doc.querySelector("VTKFile > PolyData > Piece");
+ if(!piece)throw Error("Отсутствует PolyData "+name);
+ const v=piece.querySelector("Points > DataArray");
+ if(v?.getAttribute("format")?.toLowerCase()!=="ascii")throw Error("Неподдерживаемая кодировка "+name);
+ const points=Array.from((v?.textContent||"").trim().split(/\s+/),Number);
+ const arrays=[...piece.querySelectorAll("Polys > DataArray")];
+ const read=a=>(a?.textContent||"").trim().split(/\s+/).map(Number);
+ const connections=read(arrays.find(e=>e.getAttribute("Name")==="connectivity")||arrays[0]);
+ const offsets=read(arrays.find(e=>e.getAttribute("Name")==="offsets")||arrays[1]);
+ if(points.length%3||!points.length||!connections.length||!offsets.length||!points.every(Number.isFinite))throw Error("Повреждённая сетка "+name);
+ const indices=[];let start=0;
+ for(const end of offsets){
+  if(!Number.isInteger(end)||end<=start||end>connections.length)throw Error("Неверный полигон "+name);
+  for(let i=start+1;i<end-1;i++)indices.push(connections[start],connections[i],connections[i+1]);
+  start=end;
+ }
+ if(!indices.length||indices.some(i=>!Number.isInteger(i)||i<0||i>=points.length/3))throw Error("Неверные индексы "+name);
+ const geom=new THREE.BufferGeometry();
+ geom.setAttribute("position",new THREE.Float32BufferAttribute(points,3));
+ geom.setIndex(indices);
+ geom.computeVertexNormals();
+ return geom;
+}
+function skinColor(m){
+ if(picked?.userData?.body===m.userData.body)return 0xf9f0ad;
+ const c=m.userData.category;
+ return !colorDigits&&c!=="forearm"?0xe3dacc:materialColors[c];
+}
+function updateAppearance(){
+ for(const mesh of meshes){
+  mesh.visible=mesh.userData.category!=="forearm"||visibleForearm;
+  mesh.material.color.setHex(skinColor(mesh));
+ }
+ handle.visible=ready&&showHandle;
+ document.querySelectorAll("[data-side]").forEach(b=>b.classList.toggle("on",b.dataset.side===currentSide));
+ document.querySelectorAll("[data-pose]").forEach(b=>b.classList.toggle("on",(b.dataset.pose==="open"&&progress===0)||(b.dataset.pose===pose&&progress>0)));
+ $("#forearm").checked=visibleForearm;$("#colorDigits").checked=colorDigits;$("#handle").checked=showHandle;
+}
+function clearHand(){
+ for(const m of meshes){root.remove(m);m.geometry.dispose();m.material.dispose()}
+ meshes=[];meshByBody.clear();picked=null;
+}
+function findFrame(body,u){
+ const steps=data[currentSide].trajectories[pose];
+ const t=Math.max(0,Math.min(1,u))*(steps.length-1);
+ const i=Math.min(steps.length-2,Math.floor(t)),mix=t-i;
+ return [steps[i].frames[body],steps[i+1].frames[body],mix];
+}
+const tmpPosition=new THREE.Vector3(),tmpA=new THREE.Quaternion(),tmpB=new THREE.Quaternion();
+function applyPose(){
+ if(!ready)return;
+ for(const mesh of meshes){
+  const [a,b,t]=findFrame(mesh.userData.body,progress);
+  mesh.position.copy(V(a.p)).lerp(V(b.p),t);
+  tmpA.setFromRotationMatrix(MAT(a.R));tmpB.setFromRotationMatrix(MAT(b.R));
+  mesh.quaternion.copy(tmpA).slerp(tmpB,t);
+ }
+ root.updateMatrixWorld(true);
+ const poses=data[currentSide].trajectories[pose];
+ const scaled=progress*(poses.length-1);
+ const i=Math.min(poses.length-2,Math.floor(scaled)),f=scaled-i;
+ const start=poses[i].fingerDegrees,end=poses[i+1].fingerDegrees;
+ const prefix=currentSide==="right"?"ra":"la";
+ const interpolated=k=>((start[prefix+"_"+k]||0)*(1-f)+(end[prefix+"_"+k]||0)*f);
+ const joints=[
+  ["Указательный · MCP",interpolated("mcp2_e_f")],
+  ["Указательный · PIP",interpolated("pip2_e_f")],
+  ["Указательный · DIP",interpolated("dip2_e_f")],
+  ["Большой · оппозиция",interpolated("cmc1_opp")],
+ ];
+ $("#degree").innerHTML=joints.map(([label,deg])=>label+": <b>"+deg.toFixed(1).replace(".",",")+"°</b>").join(" · ");
+ $("#progressLabel").textContent=Math.round(progress*100)+"%";
+ $("#progress").value=String(Math.round(progress*100));
+ updateHandle();
+ updateAppearance();
+}
+function updateHandle(){
+ if(!ready)return;
+ const p=currentSide==="right"?"RA":"LA";
+ const idx=meshByBody.get(p+"4M2"),little=meshByBody.get(p+"4M5"),middle=meshByBody.get(p+"4M3");
+ if(!idx||!little||!middle){handle.visible=false;return}
+ const a=idx.position,b=little.position,c=middle.position;
+ const axis=b.clone().sub(a);
+ if(axis.length()<.015){handle.visible=false;return}
+ const center=a.clone().add(b).multiplyScalar(.5);
+ // Coarse visual reference only, not fitted to surface contact or the palm.
+ const thumb=meshByBody.get(p+"5P1");
+ if(thumb)center.lerp(thumb.position,.19);
+ else center.lerp(c,.15);
+ handle.position.copy(center);
+ handle.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),axis.normalize());
+ handle.visible=showHandle;
+}
+function fit(){
+ if(!ready)return;
+ const box=new THREE.Box3();
+ for(const m of meshes)if(m.userData.category!=="forearm"||visibleForearm)box.expandByObject(m);
+ if(box.isEmpty())return;
+ const mid=box.getCenter(new THREE.Vector3()),size=box.getSize(new THREE.Vector3());
+ const tan=Math.tan(THREE.MathUtils.degToRad(camera.fov/2));
+ const dist=Math.max(.18,1.55*Math.max(size.y/(2*tan),size.x/(2*tan*Math.max(.42,camera.aspect)),size.z/(2*tan*Math.max(.42,camera.aspect))));
+ orbit.target.copy(mid);
+ camera.position.copy(mid).add(new THREE.Vector3(.3,.3,1).normalize().multiplyScalar(dist));
+ camera.lookAt(mid);orbit.update();
+}
+async function sourceJSON(path){
+ const r=await fetch(path);
+ if(!r.ok)throw Error("HTTP "+r.status+" — "+path);
+ return r.json();
+}
+let shared;
+async function ensureData(){
+ if(!shared)shared=sourceJSON("./assets/aah-hand-poses.json").then(j=>{
+  if(j.schema!=="AAH-bilateral-OpenSim-pose-export-v1"||
+     !j.right?.actualOpenSimAssemblyForEachSample||!j.left?.actualOpenSimAssemblyForEachSample)
+      throw Error("Несовместимый экспорт OpenSim AAH");
+  return j;
+ });
+ return shared;
+}
+async function downloadMeshes(side,payload){
+ const files=payload.displayMeshes.filter(v=>include(v.body));
+ let next=0,done=0;
+ const result=new Array(files.length);
+ await Promise.all(Array.from({length:5},async ()=>{
+  while(next<files.length){
+   const i=next++;
+   const info=files[i],r=await fetch(SOURCE+encodeURIComponent(info.file));
+   if(!r.ok)throw Error(info.file+" HTTP "+r.status);
+   const geom=parseVTP(await r.text(),info.file);
+   result[i]={info,geom};
+   done++;
+   $("#loading").textContent=(side==="right"?"Правая":"Левая")+" кисть: загружено "+done+" из "+files.length+" костных поверхностей…";
+  }
+ }));
+ return result;
+}
+let generation=0;
+async function setSide(side){
+ if(loadingSide||side===currentSide&&ready)return;
+ if(!["left","right"].includes(side))throw Error("Некорректная сторона "+side);
+ const thisGeneration=++generation;
+ loadingSide=true;ready=false;
+ $("#loading").hidden=false;
+ $("#loading").textContent="Читаю положения костей OpenSim и оригинальные VTP…";
+ $("#status").textContent="Загрузка "+(side==="right"?"правой":"левой")+" кисти";
+ try{
+  data=await ensureData();
+  const payload=data[side];
+  if(payload.modelCounts.displayedMeshes!==33||payload.sampleCount!==13)throw Error("Недостаточные данные AAH");
+  const result=await downloadMeshes(side,payload);
+  if(thisGeneration!==generation)return;
+  clearHand();currentSide=side;
+  for(const {info,geom} of result){
+   const cat=category(info.body);
+   const mesh=new THREE.Mesh(geom,new THREE.MeshStandardMaterial({color:materialColors[cat],roughness:.62,metalness:.025,side:THREE.DoubleSide}));
+   mesh.scale.set(...info.scale);
+   mesh.userData={body:info.body,file:info.file,category:cat};
+   root.add(mesh);meshes.push(mesh);meshByBody.set(info.body,mesh);
+  }
+  ready=true;
+  $("#hud").textContent="AAH / "+(side==="right"?"правая":"левая")+" рука · OpenSim 4.6 · "+meshes.length+" исходных сеток";
+  $("#nBones").textContent=String(meshes.length);
+  $("#nCoords").textContent=String(payload.modelCounts.coordinateObjects);
+  $("#loading").hidden=true;
+  $("#status").textContent="Кисть загружена. Каждая кость движется по экспортированным положениям своего сегмента OpenSim. Контакт с рукояткой не проверен.";
+  $("#selected").textContent="Коснись кости на 3D-модели, чтобы узнать её название.";
+  applyPose();fit();
+ }catch(e){
+  console.error(e);ready=false;
+  $("#loading").hidden=false;$("#loading").textContent="Не удалось открыть кисть: "+e.message;
+  $("#status").textContent="Ошибка: "+e.message;
+ }finally{loadingSide=false}
+}
+function setPose(which){
+ if(!ready)return;
+ if(which==="open"){pose="curl";progress=0;showHandle=false}
+ else if(which==="curl"){pose="curl";progress=1;showHandle=false}
+ else if(which==="cylinder"){pose="cylinder";progress=1;showHandle=true}
+ else throw Error("Неизвестная поза "+which);
+ applyPose();fit();
+}
+document.querySelectorAll("[data-side]").forEach(b=>b.onclick=()=>setSide(b.dataset.side));
+document.querySelectorAll("[data-pose]").forEach(b=>b.onclick=()=>setPose(b.dataset.pose));
+$("#progress").oninput=e=>{progress=Number(e.target.value)/100;applyPose()};
+$("#forearm").onchange=e=>{visibleForearm=e.target.checked;updateAppearance();fit()};
+$("#colorDigits").onchange=e=>{colorDigits=e.target.checked;updateAppearance()};
+$("#handle").onchange=e=>{showHandle=e.target.checked;updateAppearance()};
+$("#fit").onclick=fit;
+$("#reset").onclick=()=>{picked=null;progress=0;pose="curl";visibleForearm=false;colorDigits=true;showHandle=false;applyPose();fit()};
+canvas.addEventListener("pointerdown",e=>{down.x=e.clientX;down.y=e.clientY});
+canvas.addEventListener("pointerup",e=>{
+ if(!ready||Math.hypot(e.clientX-down.x,e.clientY-down.y)>8)return;
+ const rect=canvas.getBoundingClientRect();
+ pointer.set(2*(e.clientX-rect.left)/rect.width-1,1-2*(e.clientY-rect.top)/rect.height);
+ raycaster.setFromCamera(pointer,camera);
+ const hit=raycaster.intersectObjects(meshes.filter(m=>m.visible),false)[0];
+ picked=hit?.object||null;
+ $("#selected").textContent=picked?picked.userData.body+" · "+picked.userData.file+" · "+picked.userData.category:
+  "Ничего не выделено. Выбери кость касанием.";
+ updateAppearance();
+});
+function tick(){requestAnimationFrame(tick);orbit.update();renderer.render(scene,camera)}tick();
+window.__aahQA={
+ ready:()=>ready,side:()=>currentSide,poses:()=>data?.[currentSide].trajectories?Object.keys(data[currentSide].trajectories):[],
+ count:()=>meshes.length,parts:()=>meshes.map(m=>m.userData.body),
+ progress:()=>progress,pose:()=>pose,
+ world:id=>{const m=meshByBody.get(id);if(!m)throw Error("No body "+id);return m.position.toArray()},
+ bbox:()=>{const b=new THREE.Box3();meshes.forEach(m=>{if(m.visible)b.expandByObject(m)});return b.getSize(new THREE.Vector3()).toArray()},
+ setPose,setSide,apply:(v,k)=>{if(k)pose=k;progress=v;applyPose()},
+ handle:()=>handle.visible
+};
+setSide("right");
+</script>
+</body></html>
