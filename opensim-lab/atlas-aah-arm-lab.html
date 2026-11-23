@@ -347,8 +347,8 @@ function applyPose(){
  }
  setDumbbellPose(E);
  scene.updateMatrixWorld(true);
- if(gripReady)updateContactReport();
- $("#elbowValue").textContent=elbow+"°";
+ if(gripReady){updateGripButtons();updateContactReport()}
+ $("#elbowValue".textContent=elbow+"°";
  $("#fingerValue").textContent=Math.round(finger*100)+"%";
 }
 // Dumbbell is an independently drawn prop, not a fake bone. It is placed
@@ -364,7 +364,7 @@ function makeDumbbell(){
   const c=new THREE.Mesh(new THREE.CylinderGeometry(radius,radius,length,32,1),material);
   c.rotation.z=Math.PI/2;c.position.x=x;root.add(c);return c;
  };
- const bar=segment(handleDiameterMm/2000,.178,0,mat);bar.name="real-scale-handle";
+ const bar=segment(handleDiameterMm/2000,.195,0,mat);bar.name="real-scale-handle";
  // Plates are deliberately beyond the anatomical width of the knuckles.
  for(const side of [-1,1]){
   segment(.044,.019,side*.106,plateMat);
@@ -564,7 +564,13 @@ function updateContactReport(){
   "Большой палец: пробная оппозиция "+(thumbFit?.angleDegrees||0).toFixed(0)+"°. "+
   "Мягкие ткани не моделируются — фактический контакт не подтверждён.";
 }
+function updateGripButtons(){
+ $("#gripNow").classList.toggle("on",gripVisible&&finger>.5);
+ $("#releaseGrip").classList.toggle("on",gripVisible&&finger<=.5);
+ $("#hideDumbbell").classList.toggle("on",!gripVisible);
+}
 function appearance(){
+ updateGripButtons();
  for(const r of rig.values()){
   r.mesh.visible=mode==="rig";
   r.source.visible=mode==="source"||$("#ghost").checked;
