@@ -1,0 +1,97 @@
+name: QA fullbody curl retarget bridge
+on:
+  push:
+    paths:
+      - '.github/workflows/qa-curl-retarget.yml'
+      - 'rig-foundation/curl-retarget-lab.html'
+      - 'anatomy-rigged/exercises/dumbbell-curl.json'
+      - 'anatomy-rigged/assets/unified-makehuman-cc0.glb'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install mobile browser harness
+        run: npm install --prefix /tmp/curl-bridge-qa --no-audit --no-fund playwright-core@1.56.1
+      - name: Validate real model, sourced frames, and both elbow arcs
+        shell: bash
+        run: |
+          mkdir -p qa-curl-bridge
+          python3 -m http.server 8773 --bind 127.0.0.1 >/tmp/curl-bridge.log 2>&1 &
+          node --input-type=module <<'NODE'
+          import {chromium} from '/tmp/curl-bridge-qa/node_modules/playwright-core/index.mjs';
+          import {writeFileSync} from 'node:fs';
+          const browser=await chromium.launch({channel:'chrome',headless:true,
+            args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+          const page=await browser.newPage({viewport:{width:430,height:932},isMobile:true,hasTouch:true,deviceScaleFactor:1});
+          const errors=[];
+          page.on('pageerror',e=>errors.push('pageerror '+e.message));
+          page.on('console',msg=>{if(msg.type()==='error')errors.push('console '+msg.text())});
+          const dist=(a,b)=>Math.hypot(...a.map((v,i)=>v-b[i]));
+          let record={};
+          try{
+            await page.goto('http://127.0.0.1:8773/rig-foundation/curl-retarget-lab.html',
+              {waitUntil:'domcontentloaded',timeout:90000});
+            await page.waitForFunction(()=>window.__curlQA?.ready()||
+              document.querySelector('#error')?.classList.contains('on'),null,{timeout:90000});
+            if(!await page.evaluate(()=>window.__curlQA?.ready()))
+              throw Error('No full-body retarget: '+await page.locator('#error').innerText());
+            const src=await page.evaluate(()=>window.__curlQA.source());
+            if(src.boneCount<50||src.frameCount!==3||src.builtInClipCount!==0||
+               Math.abs(src.peakL)!==92||Math.abs(src.peakR)!==92)
+              throw Error('Wrong actual source/model '+JSON.stringify(src));
+            const at=async t=>page.evaluate(v=>{
+               window.__curlQA.poseAt(v);return window.__curlQA.metrics();
+            },t);
+            const start=await at(0);
+            await page.locator('#scene').screenshot({path:'qa-curl-bridge/curl-start.png'});
+            const peak=await at(.5);
+            await page.locator('#scene').screenshot({path:'qa-curl-bridge/curl-peak.png'});
+            await page.locator('#rig').click();
+            await page.locator('#scene').screenshot({path:'qa-curl-bridge/curl-rig-peak.png'});
+            const end=await at(1);
+            await page.locator('#rig').click();
+            await page.locator('#scene').screenshot({path:'qa-curl-bridge/curl-end.png'});
+            const problems=[];
+            for(const side of ['l','r']){
+              const a=start.arms[side],b=peak.arms[side],c=end.arms[side];
+              const dAngle=b.segmentAngle-a.segmentAngle;
+              if(dist(a.shoulder,b.shoulder)>.001||dist(a.elbow,b.elbow)>.001)
+                problems.push(side+' shoulder/elbow slipped');
+              if(Math.abs(a.forearmLength-b.forearmLength)>.002)
+                problems.push(side+' forearm changed length');
+              if(Math.abs(dAngle-92)>5)
+                problems.push(side+' wrong physical elbow arc: '+dAngle);
+              if(b.wrist[1]-a.wrist[1]<.08)
+                problems.push(side+' wrist moved away from shoulder');
+              if(dist(a.wrist,c.wrist)>.002)
+                problems.push(side+' did not return to rest');
+            }
+            if(dist(peak.arms.l.wrist,[-peak.arms.r.wrist[0],peak.arms.r.wrist[1],peak.arms.r.wrist[2]])>.025)
+              problems.push('left/right motion is not mirrored');
+            if(errors.length||problems.length)throw Error(JSON.stringify({errors,problems,start,peak,end}));
+            record={source:src,start,peak,end,
+              wristRiseM:{l:peak.arms.l.wrist[1]-start.arms.l.wrist[1],
+                           r:peak.arms.r.wrist[1]-start.arms.r.wrist[1]},
+              passed:true};
+            console.log('CURL_TRANSFER_QA '+JSON.stringify(record));
+            writeFileSync('qa-curl-bridge/report.json',JSON.stringify(record,null,2));
+          }catch(err){
+            writeFileSync('qa-curl-bridge/failure.txt',String(err)+'\n'+errors.join('\n'));
+            await page.screenshot({path:'qa-curl-bridge/failure.png'}).catch(()=>{});
+            throw err;
+          }finally{await browser.close()}
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fullbody-curl-retarget-mobile-qa
+          path: qa-curl-bridge/
+          retention-days: 7
