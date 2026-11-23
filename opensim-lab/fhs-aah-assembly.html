@@ -271,7 +271,7 @@ async function startAAH(){
     if(!response.ok)throw Error("Нет авторской сетки AAH "+info.file+": HTTP "+response.status);
     const {geo,edges}=parseVtp(await response.text(),info.file);
     if(edges)throw Error("Неожиданные линии вместо кости AAH");
-    const color=/[RL]A[567].*1$/.test(info.body)?0xf0bd87:0x99dbc9;
+    const color=/^[RL]A(?:4M1|5P1|6D1)$/.test(info.body)?0xf0bd87:0x99dbc9;
     const m=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({color,roughness:.62,side:THREE.DoubleSide}));
     m.scale.set(...info.scale);m.userData={body:info.body,side};
     group.add(m);handMesh[side].set(info.body,m);count++;
@@ -280,7 +280,7 @@ async function startAAH(){
   }
   if(count!==54)throw Error("Некорректное число костей AAH: "+count);
   $("#countAAH").textContent=String(count);
-  $("#hud").textContent="FHS 118 поверхностей · AAH 54 подвижных кости · OpenSim 4.6";
+  $("#hud").textContent="FHS 118 поверхностей · AAH 54 подвижные костные поверхности · OpenSim 4.6";
   loadedAAH=true;
   status("FHS + AAH загружены: 118 FHS-сеток, 54 подвижных поверхности кистей. Относительное положение запястий проверено по полулунной кости.");
   applyHands();updateVisibility();fit();
