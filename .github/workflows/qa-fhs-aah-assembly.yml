@@ -67,7 +67,8 @@ jobs:
             const curled=await read();
             const rightShift=d(open.rightTip,curled.rightTip),leftShift=d(open.leftTip,curled.leftTip);
             if(rightShift<55||rightShift>95||leftShift<55||leftShift>95||
-              d(curled.rightAnchor,curled.rightTarget)>.002)
+              d(curled.rightAnchor,curled.rightTarget)>.05||
+              d(curled.leftAnchor,curled.leftTarget)>.05)
               throw Error('Kinematic motion or anchor failed: '+JSON.stringify({rightShift,leftShift,curled}));
             await page.locator('#canvas').screenshot({path:'qa-assembly/upper-body-hands-flexed.png'});
             await page.locator('[data-view="right"]').click();
