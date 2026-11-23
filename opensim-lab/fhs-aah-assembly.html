@@ -61,6 +61,13 @@ label{font-size:12px;color:#e5f2ef}
 </div>
 <input id="file" type="file" accept=".zip,application/zip">
 <p>Если ты уже загружал архив в предыдущей лаборатории в этом браузере, страница попытается восстановить его автоматически.</p>
+<h3>Рост костной модели</h3>
+<div class="buttons">
+<button data-height="182" class="on">182 см · мой рост</button>
+<button data-height="source">Исходные 150 см</button>
+</div>
+<div class="box" id="heightInfo" style="margin-top:9px">После загрузки научных измерений модель будет увеличена до 182 см единым масштабом.</div>
+<p>Масштабируем всю сборку сразу: FHS, MASI, AAH, Rajagopal и суставные ориентиры. Кости, стыки и углы не перестраиваются, а исходные данные сохраняются.</p>
 <h3>Источник кистей</h3>
 <div class="buttons">
 <button data-hands="aah" class="on">Подвижные AAH</button>
@@ -142,7 +149,13 @@ const V=a=>new THREE.Vector3(...a);
 const basis=a=>new THREE.Matrix4().makeBasis(...a.map(V));
 const rows=a=>new THREE.Matrix4().set(a[0][0],a[0][1],a[0][2],0,a[1][0],a[1][1],a[1][2],0,a[2][0],a[2][1],a[2][2],0,0,0,0,1);
 const c={bone:0xdddcce,spine:0x9ad2c6,rib:0xc7c7b9,arm:0xbdb3dc,hand:0x9de3cf,pelvis:0xd6b78d};
-const fhsRoot=new THREE.Group(),handRoot=new THREE.Group(),legsRoot=new THREE.Group(),auditMarkers=new THREE.Group();scene.add(fhsRoot,handRoot,legsRoot,auditMarkers);auditMarkers.visible=false;
+// One shared parent scales the entire assembled human without breaking
+// relative MASI/FHS/AAH/Rajagopal transforms or changing native OpenSim data.
+const skeletonRoot=new THREE.Group();
+const fhsRoot=new THREE.Group(),handRoot=new THREE.Group(),legsRoot=new THREE.Group(),auditMarkers=new THREE.Group();
+scene.add(skeletonRoot);
+skeletonRoot.add(fhsRoot,handRoot,legsRoot,auditMarkers);
+auditMarkers.visible=false;
 const group={head:new THREE.Group(),spine:new THREE.Group(),ribs:new THREE.Group(),shoulders:new THREE.Group(),pelvis:new THREE.Group(),rigidHands:new THREE.Group()};
 Object.values(group).forEach(g=>fhsRoot.add(g));
 const neckRoot=new THREE.Group(),neckScaffold=new THREE.Group(),masiRibsGroup=new THREE.Group();
@@ -152,12 +165,16 @@ let fhs=null,aah=null,mode="aah",pose="curl",bend=0,view="front",loadedFhs=false
 let neckMode="masi",ribMode="masi",neckReady=false,neckLoadStarted=false,ribProxies=0,ribSegments=0,neckJointResidualMm=null;
 let legData=null,legsReady=false,legLoadStarted=false,legPelvisResidualMm=null;
 let anatomyAuditData=null;
+let heightMode="182";
+const TARGET_HEIGHT_CM=182;
 const neckBones=new Map(),handMesh={right:new Map(),left:new Map()},legMeshes=new Map(),legBodies=new Map(),fhsMeshes=[];
 const sourceAAH="https://raw.githubusercontent.com/nishbo/ms_arm_and_hand/main/AAH%20Model/Geometry/";
 const sourceMASI="https://raw.githubusercontent.com/MyoHub/myoconverter/main/models/osim/Neck6D/Geometry/";
 const sourceRajagopal="https://raw.githubusercontent.com/opensim-org/opensim-models/master/Geometry/";
 function fit(){
  if(!loadedFhs)return;
+ // Ensure nested bodies include the latest global presentation scale.
+ skeletonRoot.updateMatrixWorld(true);
  const b=new THREE.Box3();
  if(["left","right"].includes(view)){
   const side=view==="right"?"R":"L";
@@ -559,6 +576,11 @@ async function startAAH(){
     postureLandmarkCount:()=>auditMarkers.children.length,
     postureMarkerVisible:()=>auditMarkers.visible,
     postureAuditHeight:()=>anatomyAuditData?.measurements?.visibleSkeletonTopToFootBottomMm,
+    heightMode:()=>heightMode,
+    displayScaleFactor:()=>skeletonRoot.scale.x,
+    nominalHeightCm:()=>anatomyAuditData?anatomyAuditData.measurements.visibleSkeletonTopToFootBottomMm*skeletonRoot.scale.y/10:null,
+    worldVisibleBounds:()=>{const b=skeletonWorldBounds();return {min:b.min.toArray(),max:b.max.toArray(),heightCm:(b.max.y-b.min.y)*100}},
+    setHeightMode,
    sideCount:side=>aahGroup[side].children.length,
    mode:()=>mode,pose:()=>pose,bend:()=>bend,
    handOrigin:side=>{const P=side==="right"?"RA":"LA";const m=handMesh[side].get(P+"3L");return m.getWorldPosition(new THREE.Vector3()).toArray()},
@@ -642,10 +664,51 @@ async function startPostureAudit(){
    data.hipSurfaceCompatibility.l.pelvisFHSAtSource.minimumMm.toFixed(1).replace(".",",")+" мм"+
    "<br><small>Это не диагноз и не проверка хрящевого суставного зазора. Выпрямление костей не выполнялось.</small>";
   buildAuditMarkers(data);
+  setHeightMode(heightMode);
  }catch(e){
   $("#postureReport").textContent="Точный отчёт пока недоступен: "+e.message;
   console.error("Anatomical posture audit:",e);
  }
+}
+// Measure actual visible geometry in world space, excluding hidden source
+// duplicates of hands, head and rib cage.
+function skeletonWorldBounds(){
+ skeletonRoot.updateMatrixWorld(true);
+ const box=new THREE.Box3();
+ for(const root of [fhsRoot,handRoot,legsRoot]){
+  root.traverse(obj=>{
+   if(!obj.isMesh&&!obj.isLineSegments)return;
+   let node=obj,visible=true;
+   while(node&&node!==scene){if(!node.visible){visible=false;break}node=node.parent}
+   if(visible)box.expandByObject(obj);
+  });
+ }
+ return box;
+}
+function setHeightMode(next){
+ if(next!=="182"&&next!=="source")throw Error("Unknown display height mode");
+ heightMode=next;
+ document.querySelectorAll("[data-height]").forEach(b=>b.classList.toggle("on",b.dataset.height===next));
+ if(!anatomyAuditData){
+  $("#heightInfo").textContent="Жду исходную 3D-метрику OpenSim, чтобы правильно применить масштаб…";
+  return;
+ }
+ const bounds=anatomyAuditData.measurements.fullSceneGeometryBoundingBox;
+ const heightMm=anatomyAuditData.measurements.visibleSkeletonTopToFootBottomMm;
+ if(!(heightMm>1000&&heightMm<2200&&Number.isFinite(bounds.minM[1])))
+  throw Error("Недопустимые исходные размеры научного скелета");
+ const factor=next==="182"?(TARGET_HEIGHT_CM*10/heightMm):1;
+ // 182 cm display mode puts the original sole minimum at scene ground Y=0.
+ // Original source mode retains true OpenSim global coordinates.
+ skeletonRoot.scale.setScalar(factor);
+ skeletonRoot.position.set(0,next==="182"?-bounds.minM[1]*factor:0,0);
+ skeletonRoot.updateMatrixWorld(true);
+ $("#heightInfo").textContent=next==="182"?
+  "Рост отображения: 182,0 см · общий масштаб ×"+factor.toFixed(4).replace(".",",")+
+  " · подошвы на уровне Y=0. Пропорции и исходные суставные положения сохранены.":
+  "Исходная высота: "+(heightMm/10).toFixed(2).replace(".",",")+
+  " см · масштаб ×1,0000 · исходная система координат OpenSim.";
+ if(loadedFhs)fit();
 }
 function updateVisibility(){
  const replace=mode==="aah"&&loadedAAH;
@@ -675,6 +738,7 @@ $("#file").onchange=async()=>{
  catch(e){console.error(e);status("Ошибка FHS ZIP: "+e.message)}
 };
 document.querySelectorAll("[data-hands]").forEach(b=>b.onclick=()=>{mode=b.dataset.hands;updateVisibility()});
+document.querySelectorAll("[data-height]").forEach(b=>b.onclick=()=>setHeightMode(b.dataset.height));
 document.querySelectorAll("[data-neck]").forEach(b=>b.onclick=()=>{
  neckMode=b.dataset.neck;updateVisibility();fit();
 });
