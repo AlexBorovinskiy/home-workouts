@@ -1,0 +1,281 @@
+{
+  "schema": "full-skeleton-posture-surface-audit-v1",
+  "sources": {
+    "fhs": "https://zenodo.org/records/18259702",
+    "masi": "https://doi.org/10.6084/m9.figshare.4249808.v2",
+    "aah": "https://github.com/nishbo/ms_arm_and_hand",
+    "rajagopal": "https://github.com/opensim-org/opensim-models/tree/master/Models/Rajagopal"
+  },
+  "summary": {
+    "purpose": "Coordinate-based 3D neutral stance and surface alignment diagnosis",
+    "diagnosticNotClinical": true,
+    "noSourceAnatomyModified": true,
+    "neckRegistrationResidualMm": 0.0,
+    "pelvisFrameRegistrationResidualMm": 0.0,
+    "measuredXCoordinateConvention": "OpenSim +X forward, +Y up; anterior-offset sign uses frame conventions"
+  },
+  "measuredLandmarkFrames": {
+    "FHS_pelvis": [
+      0.0674221,
+      0.0665793,
+      0.0
+    ],
+    "FHS_T1": [
+      -0.0398745,
+      0.5115651,
+      0.0
+    ],
+    "FHS_T12": [
+      -0.0144145,
+      0.2497157,
+      0.0
+    ],
+    "MASI_C7_registered": [
+      -0.0471377,
+      0.5355726,
+      -0.0
+    ],
+    "MASI_C1_registered": [
+      -0.0480491,
+      0.629089,
+      0.0
+    ],
+    "MASI_skull_frame_registered": [
+      -0.0076662,
+      0.6345117,
+      0.0
+    ],
+    "MASI_skull_geometry_centre": [
+      0.0059923,
+      0.6843254,
+      0.0
+    ],
+    "FHS_shoulders": {
+      "right": [
+        -0.0168047,
+        0.4853133,
+        0.143747
+      ],
+      "left": [
+        -0.0168047,
+        0.4853144,
+        -0.1437477
+      ]
+    }
+  },
+  "measurements": {
+    "fullSceneGeometryBoundingBox": {
+      "minM": [
+        -0.144135,
+        -0.724508,
+        -0.139358
+      ],
+      "maxM": [
+        0.188993,
+        0.774963,
+        0.139358
+      ],
+      "spanMm": [
+        333.127,
+        1499.471,
+        278.716
+      ]
+    },
+    "visibleSkeletonTopToFootBottomMm": 1499.471,
+    "distanceFromT1ToPelvisOriginMm": 457.739,
+    "T1AnteriorOffsetFromPelvisOriginMm": -107.297,
+    "headMeshVisualCentreAnteriorOffsetFromC7Mm": 53.13,
+    "skullFrameAnteriorOffsetFromT1Mm": 32.208,
+    "skullMeshVisualCentreAnteriorOffsetFromT1Mm": 45.867,
+    "skullMeshMeanAnteriorOffsetFromT1Mm": 62.163,
+    "skullVisualCentreToPelvisAnteriorMm": -61.43,
+    "shoulderJointFrameWidthMm": 287.495,
+    "hipJointFrameWidthMm": 130.226,
+    "shoulderToHipWidthRatio": 2.2077,
+    "T1ToT12VerticalMm": 261.849,
+    "C1ToC7VerticalMm": 93.516,
+    "pelvisYFromGroundSoleMm": 791.087,
+    "headTopYFromGroundSoleMm": 1499.471,
+    "legHipJointToHeelMm": {
+      "r": 701.158,
+      "l": 701.158
+    },
+    "hipY": {
+      "r": 0.0004298,
+      "l": 0.0004298
+    },
+    "footBottomYSymmetryMm": 0.0,
+    "leftRightLegLengthsDifferenceMm": 0.0
+  },
+  "hipSurfaceCompatibility": {
+    "r": {
+      "sourceHipJointCenterM": [
+        -0.056276,
+        0.86151,
+        0.07726
+      ],
+      "transformedHipJointCenterM": [
+        0.019994,
+        0.0004298,
+        0.065113
+      ],
+      "pelvisFHSAtSource": {
+        "minimumMm": 2.487,
+        "sourceToTargetMedianMm": 58.234,
+        "targetToSourceMedianMm": 81.158,
+        "sourceToTargetP10Mm": 7.687,
+        "targetToSourceP10Mm": 16.645,
+        "note": "Vertex-to-vertex separation is not a joint contact or cartilage-thickness measurement."
+      },
+      "femurToSourceRajPelvis": {
+        "minimumMm": 3.357,
+        "sourceToTargetMedianMm": 61.002,
+        "targetToSourceMedianMm": 40.479,
+        "sourceToTargetP10Mm": 11.28,
+        "targetToSourceP10Mm": 9.686,
+        "note": "Vertex-to-vertex separation is not a joint contact or cartilage-thickness measurement."
+      },
+      "RajPelvisToFHSPelvis": {
+        "minimumMm": 0.418,
+        "sourceToTargetMedianMm": 7.606,
+        "targetToSourceMedianMm": 21.941,
+        "sourceToTargetP10Mm": 2.525,
+        "targetToSourceP10Mm": 6.889,
+        "note": "Vertex-to-vertex separation is not a joint contact or cartilage-thickness measurement."
+      },
+      "rajSourcePelvisBoundingBox": {
+        "minM": [
+          -0.052889,
+          -0.035287,
+          -0.000296
+        ],
+        "maxM": [
+          0.067422,
+          0.145659,
+          0.112035
+        ],
+        "spanMm": [
+          120.311,
+          180.946,
+          112.33
+        ]
+      },
+      "hipHeightToHeelCentreMm": 701.158,
+      "medialSideCoordinateM": 0.065113
+    },
+    "l": {
+      "sourceHipJointCenterM": [
+        -0.056276,
+        0.86151,
+        -0.07726
+      ],
+      "transformedHipJointCenterM": [
+        0.019994,
+        0.0004298,
+        -0.065113
+      ],
+      "pelvisFHSAtSource": {
+        "minimumMm": 1.154,
+        "sourceToTargetMedianMm": 54.695,
+        "targetToSourceMedianMm": 80.983,
+        "sourceToTargetP10Mm": 8.237,
+        "targetToSourceP10Mm": 16.113,
+        "note": "Vertex-to-vertex separation is not a joint contact or cartilage-thickness measurement."
+      },
+      "femurToSourceRajPelvis": {
+        "minimumMm": 3.11,
+        "sourceToTargetMedianMm": 57.869,
+        "targetToSourceMedianMm": 41.745,
+        "sourceToTargetP10Mm": 11.723,
+        "targetToSourceP10Mm": 9.386,
+        "note": "Vertex-to-vertex separation is not a joint contact or cartilage-thickness measurement."
+      },
+      "RajPelvisToFHSPelvis": {
+        "minimumMm": 0.418,
+        "sourceToTargetMedianMm": 7.606,
+        "targetToSourceMedianMm": 21.941,
+        "sourceToTargetP10Mm": 2.525,
+        "targetToSourceP10Mm": 6.889,
+        "note": "Vertex-to-vertex separation is not a joint contact or cartilage-thickness measurement."
+      },
+      "rajSourcePelvisBoundingBox": {
+        "minM": [
+          -0.052889,
+          -0.035287,
+          -0.112035
+        ],
+        "maxM": [
+          0.067422,
+          0.145659,
+          0.000296
+        ],
+        "spanMm": [
+          120.311,
+          180.946,
+          112.33
+        ]
+      },
+      "hipHeightToHeelCentreMm": 701.158,
+      "medialSideCoordinateM": -0.065113
+    }
+  },
+  "footGeometry": {
+    "r": {
+      "bottomY": -0.724508,
+      "topY": -0.678011,
+      "bounds": {
+        "minM": [
+          -0.03478,
+          -0.724508,
+          0.0385
+        ],
+        "maxM": [
+          0.188993,
+          -0.678011,
+          0.118153
+        ],
+        "spanMm": [
+          223.772,
+          46.496,
+          79.653
+        ]
+      }
+    },
+    "l": {
+      "bottomY": -0.724508,
+      "topY": -0.678011,
+      "bounds": {
+        "minM": [
+          -0.03478,
+          -0.724508,
+          -0.118153
+        ],
+        "maxM": [
+          0.188993,
+          -0.678011,
+          -0.0385
+        ],
+        "spanMm": [
+          223.772,
+          46.496,
+          79.653
+        ]
+      }
+    }
+  },
+  "flags": {
+    "legLeftRightSymmetryOk": true,
+    "anatomicalPelvisHipJoinValidated": false,
+    "anatomicalCervicalJoinValidated": false,
+    "neutralPostureValidated": false,
+    "referenceHealthyAnthropometryCompared": false
+  },
+  "limitations": [
+    "Bone mesh nearest-vertex distances are not joint-space distances or cartilage measurements",
+    "The skull centre is a bounding-box proxy, not a clinically measured external auditory meatus or head COM",
+    "The FHS pelvis and Rajagopal hips have been matched by bone-frame origins and a trial scale, not calibrated anatomical hip centres",
+    "The reference FHS spine may represent a particular source pose; its kyphotic curvature is not independently adjusted",
+    "No medical posture diagnosis, exercise safety assessment, muscle force model, contact dynamics or validation",
+    "Do not change bone placements until cross-source fit is measured and approved by visual source comparison"
+  ]
+}
