@@ -1,0 +1,99 @@
+name: QA FHS skeleton with AAH articulated hands on mobile
+on:
+  push:
+    paths:
+      - 'opensim-lab/fhs-aah-assembly.html'
+      - 'opensim-lab/assets/aah-hand-poses.json'
+      - 'opensim-lab/assets/fhs-original-frames.json'
+      - '.github/workflows/qa-fhs-aah-assembly.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser automation
+        run: npm install --prefix /tmp/qa-assembly --no-audit --no-fund playwright-core@1.56.1
+      - name: Download original FHS scientific ZIP
+        run: |
+          curl -fL --retry 3 --max-time 180 'https://zenodo.org/records/18259702/files/FHS_dataset_4.x.zip?download=1' -o /tmp/fhs-original.zip
+          python - <<'PY'
+          import zipfile
+          with zipfile.ZipFile('/tmp/fhs-original.zip') as z:
+            assert 'FHS_dataset_4.x - Copia/Male/Age4049/110_SizeScaled_CurvatureAdjust_MuscleAdjust.osim' in z.namelist()
+          PY
+      - name: Check actual mobile WebGL model and biological source-aligned wrist placement
+        run: |
+          mkdir -p qa-assembly
+          python3 -m http.server 8770 --bind 127.0.0.1 >/tmp/qa-assembly-http.log 2>&1 &
+          node --input-type=module <<'NODE'
+          import {chromium} from '/tmp/qa-assembly/node_modules/playwright-core/index.mjs';
+          import {writeFileSync} from 'node:fs';
+          const browser=await chromium.launch({channel:'chrome',headless:true,
+            args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+          const page=await browser.newPage({viewport:{width:430,height:932},deviceScaleFactor:1,isMobile:true,hasTouch:true});
+          const errors=[];page.on('pageerror',e=>errors.push(e.message));
+          const read=()=>page.evaluate(()=>{
+            const q=window.__assemblyQA;
+            return {fhs:q.fhsCount(),aah:q.aahCount(),left:q.sideCount('left'),right:q.sideCount('right'),
+              leftAnchor:q.handOrigin('left'),rightAnchor:q.handOrigin('right'),
+              leftTarget:q.fhsHandOrigin('left'),rightTarget:q.fhsHandOrigin('right'),
+              rightTip:q.bodyPosition('right','RA7D2'),
+              leftTip:q.bodyPosition('left','LA7D2'),
+              mode:q.mode(),pose:q.pose(),bend:q.bend()};
+          });
+          const d=(a,b)=>Math.sqrt(a.reduce((s,v,i)=>s+(v-b[i])**2,0))*1000;
+          try{
+            await page.goto('http://127.0.0.1:8770/opensim-lab/fhs-aah-assembly.html',{waitUntil:'domcontentloaded'});
+            await page.locator('#file').setInputFiles('/tmp/fhs-original.zip');
+            await page.waitForFunction(()=>window.__assemblyQA?.ready()||
+              document.querySelector('#status')?.textContent?.includes('Ошибка FHS ZIP')||
+              document.querySelector('#status')?.textContent?.includes('не удалось присоединить'),null,{timeout:180000});
+            if(!(await page.evaluate(()=>window.__assemblyQA?.ready())))
+              throw Error('Assembly loading failed: '+await page.locator('#status').innerText());
+            const open=await read();
+            if(open.fhs!==118||open.aah!==54||open.left!==27||open.right!==27)
+              throw Error('Incomplete FHS/AAH anatomy '+JSON.stringify(open));
+            if(d(open.rightAnchor,open.rightTarget)>.002||d(open.leftAnchor,open.leftTarget)>.002)
+              throw Error('FHS/AAH wrist anchors do not align '+JSON.stringify(open));
+            await page.locator('#canvas').screenshot({path:'qa-assembly/upper-body-hands-open.png'});
+            await page.locator('[data-pose="curl"]').click();
+            const curled=await read();
+            const rightShift=d(open.rightTip,curled.rightTip),leftShift=d(open.leftTip,curled.leftTip);
+            if(rightShift<55||rightShift>95||leftShift<55||leftShift>95||
+              d(curled.rightAnchor,curled.rightTarget)>.002)
+              throw Error('Kinematic motion or anchor failed: '+JSON.stringify({rightShift,leftShift,curled}));
+            await page.locator('#canvas').screenshot({path:'qa-assembly/upper-body-hands-flexed.png'});
+            await page.locator('[data-view="right"]').click();
+            await page.locator('#canvas').screenshot({path:'qa-assembly/right-wrist-attached.png'});
+            await page.locator('[data-hands="fhs"]').click();
+            if((await read()).mode!=='fhs')throw Error('Rigid FHS hand fallback not selectable');
+            await page.locator('#canvas').screenshot({path:'qa-assembly/right-native-rigid-hand.png'});
+            await page.locator('[data-hands="aah"]').click();
+            await page.locator('[data-pose="cylinder"]').click();
+            await page.locator('#canvas').screenshot({path:'qa-assembly/right-trial-grip-no-handle.png'});
+            if(errors.length)throw Error('JavaScript page errors '+JSON.stringify(errors));
+            writeFileSync('qa-assembly/report.json',JSON.stringify({
+              open,curled,rightShift,leftShift,allAnchorsMatch:true,errors},null,2));
+            console.log('FHS_AAH_ASSEMBLY_MOBILE_QA_SUCCESS',JSON.stringify({
+              fhs:open.fhs,aah:open.aah,rawWristAnchorMismatchMm:Math.max(
+              d(open.rightAnchor,open.rightTarget),d(open.leftAnchor,open.leftTarget)),
+              rightIndexMovementMm:rightShift,leftIndexMovementMm:leftShift}));
+          }catch(e){
+            console.error(e);
+            await page.screenshot({path:'qa-assembly/failed.png',fullPage:true}).catch(()=>{});
+            throw e;
+          }finally{await browser.close()}
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: FHS-AAH-real-skeletal-upper-body-mobile-assembly
+          path: qa-assembly/
+          retention-days: 14
