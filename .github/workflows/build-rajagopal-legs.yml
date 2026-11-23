@@ -1,0 +1,90 @@
+name: Build OpenSim 4.6 Rajagopal legs for FHS complete skeleton
+on:
+  push:
+    paths:
+      - 'opensim-lab/export_rajagopal_lower_limbs.py'
+      - '.github/workflows/build-rajagopal-legs.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  export:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install verified original OpenSim
+        run: python -m pip install 'opensim==4.6'
+      - name: Download published Rajagopal 2023 OSIM and all 14 lower-limb VTP surfaces
+        run: |
+          curl -fL --retry 3 --max-time 120 \
+            'https://raw.githubusercontent.com/opensim-org/opensim-models/master/Models/Rajagopal/RajagopalLaiUhlrich2023.osim' \
+            -o /tmp/RajagopalLaiUhlrich2023.osim
+          mkdir -p /tmp/raj-leg-vtp
+          for f in r_femur r_tibia r_fibula r_patella r_talus r_foot r_bofoot l_femur l_tibia l_fibula l_patella l_talus l_foot l_bofoot; do
+            curl -fL --retry 3 --max-time 90 \
+              "https://raw.githubusercontent.com/opensim-org/opensim-models/master/Geometry/$f.vtp" \
+              -o "/tmp/raj-leg-vtp/$f.vtp"
+          done
+      - name: Export native assembled pelvis and 12 lower limb body transforms
+        run: |
+          python opensim-lab/export_rajagopal_lower_limbs.py \
+            --rajagopal-osim /tmp/RajagopalLaiUhlrich2023.osim \
+            --fhs-frames opensim-lab/assets/fhs-original-frames.json \
+            --output opensim-lab/assets/rajagopal-lower-limbs.json
+      - name: QA exact mesh inventory, source bounds and pelvic registration audit
+        run: |
+          python - <<'PY'
+          import json,xml.etree.ElementTree as ET,math
+          from pathlib import Path
+          d=json.loads(Path('opensim-lab/assets/rajagopal-lower-limbs.json').read_text())
+          assert d['schema']=='rajagopal-lower-limbs-native-4.6-v1'
+          assert d['geometryCounts']['bodyCount']==12
+          assert d['geometryCounts']['meshCount']==14
+          assert d['geometryCounts']['perSide']=={'r':7,'l':7}
+          assert d['visualInitialization']['anatomicallyValidated'] is False
+          assert d['visualInitialization']['hipCentersValidatedAgainstFhs'] is False
+          scale=d['visualInitialization']['uniformScale']
+          assert .6<scale<1.1
+          names=set()
+          for body,meshes in d['bodyMeshes'].items():
+            assert body in d['bodyFrames']
+            frame=d['bodyFrames'][body]
+            assert all(math.isfinite(v) for v in frame['positionM'])
+            for m in meshes:
+              name=m['file'];names.add(name)
+              root=ET.parse('/tmp/raj-leg-vtp/'+name).getroot()
+              arr=root.find('./PolyData/Piece/Points/DataArray')
+              assert arr is not None
+              pts=[float(v) for v in (arr.text or '').split()]
+              assert len(pts)>=90 and len(pts)%3==0,name
+              assert all(math.isfinite(v) for v in pts)
+          assert len(names)==14
+          for side in ('r','l'):
+            hip=d['jointWorldPoints']['hip_'+side]['parentPoint']
+            foot=d['bodyFrames']['calcn_'+side]['positionM']
+            verticalDrop=hip[1]-foot[1]
+            assert .4<verticalDrop<1.5,(side,verticalDrop)
+            assert d['jointWorldPoints']['hip_'+side]['parentPoint']==d['jointWorldPoints']['hip_'+side]['childPoint'] or math.dist(d['jointWorldPoints']['hip_'+side]['parentPoint'],d['jointWorldPoints']['hip_'+side]['childPoint'])<.001
+            print('RAJAGOPAL_LEG_QA',side, 'hip to heel drop m',round(verticalDrop,4))
+          print('RAJAGOPAL_LEGS_NATIVE_QA_OK',len(names),'source bone meshes')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rajagopal-2023-source-aligned-bilateral-leg-frames
+          path: opensim-lab/assets/rajagopal-lower-limbs.json
+          retention-days: 30
+      - name: Commit only machine-generated anatomy frame metadata, no copyrighted meshes
+        if: success() && github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add opensim-lab/assets/rajagopal-lower-limbs.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Store native Rajagopal 2023 bilateral leg transforms for full skeleton [skip ci]"
+            git push origin HEAD:main
+          fi
