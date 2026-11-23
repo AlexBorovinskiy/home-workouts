@@ -3,6 +3,7 @@ on:
   push:
     paths:
       - 'opensim-lab/audit_c7_t1_registration.py'
+      - 'opensim-lab/audit_c7_t1_triangle_surfaces.py'
       - '.github/workflows/qa-c7-t1-registration.yml'
   workflow_dispatch:
 permissions:
@@ -41,6 +42,28 @@ jobs:
             --fhs-archive /tmp/fhs-original.zip \
             --masi-c7-vtp /tmp/masi-c7.vtp \
             --output qa-c7-t1/registration.json
+      - name: Diagnose full triangle mesh contact vs previously used vertex distances
+        run: |
+          python opensim-lab/audit_c7_t1_triangle_surfaces.py \
+            --registration qa-c7-t1/registration.json \
+            --fhs-archive /tmp/fhs-original.zip \
+            --masi-c7-vtp /tmp/masi-c7.vtp \
+            --output qa-c7-t1/triangle-surface-audit.json
+          python - <<'PY'
+          import json,math
+          d=json.load(open('qa-c7-t1/triangle-surface-audit.json'))
+          assert d['schema']=='C7T1-triangle-surface-diagnostic-v1'
+          assert d['facetsSegmented'] is False
+          assert d['isValidatedHybrid'] is False
+          assert d['jointKinematicsUpdated'] is False
+          assert [v['c7VisualScale'] for v in d['trials']]==[1.0,.88875]
+          for t in d['trials']:
+              assert t['testedTriangleCounts']['C7']>=200
+              assert t['testedTriangleCounts']['T1']>=200
+              assert 0<=t['vertexToTriangleMinMm']<20
+              assert t['triangleIntersection']['nonCoplanarEdgeIntersectingTrianglePairs']>=0
+          print('C7T1_TRIANGLE_SURFACE_TEST_OK')
+          PY
       - name: Check registration and prohibit claims of anatomical validation
         run: |
           python - <<'PY'
