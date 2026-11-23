@@ -112,7 +112,7 @@ a{color:var(--accent)}
 <label style="margin-top:8px">Сила коррекции <strong id="fingerFitStrengthValue">100%</strong></label>
 <input id="fingerFitStrength" type="range" min="0" max="100" step="5" value="100" disabled aria-label="Сила корректировки указательного, среднего, безымянного пальцев и мизинца">
 <div id="fingerFitReport" class="status" style="margin-top:8px">Проверяю изгибы четырёх пальцев относительно рукояти…</div>
-<p>Независимо уточняются только средний и концевой суставы каждого пальца, по исходным осям вращения OpenSim. Большой палец, пястные кости и гантель остаются на месте.</p>
+<p>Уточняются сустав у основания пальца, средний и концевой суставы по исходным осям вращения OpenSim. Большой палец, пястные кости и гантель остаются на месте.</p>
 <h3>Мышцы правой руки · оригинальный Écorché</h3>
 <div class="buttons">
 <button data-muscles="bones" class="on">Кости</button>
@@ -381,7 +381,7 @@ function atlasJointRotation(body,parent,steps,u=finger){
 function initializeFingerAxes(){
  fingerAxes.clear();
  const steps=poseFrames.right.trajectories.cylinder;
- for(const digit of fourDigits)for(const id of contactDigits[digit].slice(1)){
+ for(const digit of fourDigits)for(const id of contactDigits[digit]){
   const q=atlasJointRotation(id,jointParents[id],steps,1);
   if(q.w<0)q.set(-q.x,-q.y,-q.z,-q.w);
   const axis=new THREE.Vector3(q.x,q.y,q.z);
@@ -1052,109 +1052,110 @@ function updateMusclePose(){
  }
  // Mesh vertices follow weighted animated bones in the GPU skinning shader.
 }
-// PIP/DIP search with a fixed handle and fixed thumb. The baseline is an
-// eligible candidate and survives whenever an improvement would penetrate
-// the bar. Sampled bone surface clearances are only an approximation.
+// MCP/PIP/DIP refinement with source-derived axes. No changes to the
+// successful thumb, metacarpal poses, handle position or handle orientation.
 function refineFourFingers(){
  if(!ready||!gripReady||!thumbFit)return null;
- const saved={finger,elbow,pose,gripVisible,fingerFitMode,fingerFitStrength,fingerFitting,
-  fingerCorrections};
+ const previous={finger,elbow,pose,gripVisible,fingerFitMode,fingerFitStrength,
+  fingerFitting,fingerCorrections};
  finger=1;elbow=0;pose="cylinder";gripVisible=true;
  fingerFitMode="refined";fingerFitStrength=1;fingerFitting=true;fingerCorrections={};
- const handlePos=new THREE.Vector3().setFromMatrixPosition(gripBase);
- const handleAxis=new THREE.Vector3().setFromMatrixColumn(gripBase,0).normalize();
- const radius=handleDiameterMm/2000;
- const point=new THREE.Vector3();
- const gapToBar=p=>{
-  const rel=p.clone().sub(handlePos),along=rel.dot(handleAxis);
-  const out=Math.sqrt(Math.max(0,rel.lengthSq()-along*along));
-  return Math.hypot(out,Math.max(0,Math.abs(along)-.073))-radius;
- };
- const sampleBone=id=>{
+ const center=new THREE.Vector3().setFromMatrixPosition(gripBase);
+ const axis=new THREE.Vector3().setFromMatrixColumn(gripBase,0).normalize();
+ const radius=handleDiameterMm/2000,p=new THREE.Vector3();
+ const boneGap=id=>{
   const mesh=rig.get(id).mesh,attr=mesh.geometry.getAttribute("position");
   const stride=Math.max(1,Math.floor(attr.count/80));
   let gap=Infinity;
   for(let i=0;i<attr.count;i+=stride){
-   point.fromBufferAttribute(attr,i).applyMatrix4(mesh.matrixWorld);
-   gap=Math.min(gap,gapToBar(point));
+   p.fromBufferAttribute(attr,i).applyMatrix4(mesh.matrixWorld).sub(center);
+   const along=p.dot(axis),out=Math.sqrt(Math.max(0,p.lengthSq()-along*along));
+   const d=Math.hypot(out,Math.max(0,Math.abs(along)-.073))-radius;
+   gap=Math.min(gap,d);
   }
   return gap;
  };
- const radial=p=>{
-  const rel=p.clone().sub(handlePos);
-  return rel.addScaledVector(handleAxis,-rel.dot(handleAxis)).normalize();
+ const radial=v=>{
+  const q=v.clone().sub(center);
+  return q.addScaledVector(axis,-q.dot(axis)).normalize();
  };
- const evaluate=(digit)=>{
-  const bones=contactDigits[digit];
-  const gaps=bones.map(sampleBone);
-  const prox=vecCenter(rig.get(bones[0]).mesh);
-  const dist=vecCenter(rig.get(bones[2]).mesh);
-  const wrap=THREE.MathUtils.radToDeg(Math.acos(
-   THREE.MathUtils.clamp(radial(prox).dot(radial(dist)),-1,1)));
-  const wrapTarget={index:82,middle:90,ring:90,little:88}[digit];
-  const deficit=Math.max(0,wrapTarget-wrap)/50;
-  const score=2400*Math.pow(Math.max(0,.003-Math.min(...gaps)),2)+
-   18*Math.pow(gaps[2]-.006,2)+8*Math.pow(gaps[1]-.006,2)+
-   2*Math.pow(gaps[0]-.008,2)+
-   .00035*deficit*deficit;
-  return {gapMm:gaps.map(x=>x*1000),minGapMm:Math.min(...gaps)*1000,
-   wrapDeg:wrap,score};
+ const evaluate=digit=>{
+  const bones=contactDigits[digit],gaps=bones.map(boneGap);
+  const proximal=radial(vecCenter(rig.get(bones[0]).mesh));
+  const tip=radial(vecCenter(rig.get(bones[2]).mesh));
+  const wrap=THREE.MathUtils.radToDeg(Math.acos(THREE.MathUtils.clamp(
+   proximal.dot(tip),-1,1)));
+  const desired={index:82,middle:90,ring:90,little:88}[digit];
+  const deficit=Math.max(0,desired-wrap)/50;
+  const min=Math.min(...gaps);
+  const score=9000*Math.pow(Math.max(0,.003-min),2)+
+   24*Math.pow(gaps[2]-.006,2)+
+   13*Math.pow(gaps[1]-.007,2)+
+   11*Math.pow(gaps[0]-.009,2)+
+   .0015*deficit*deficit;
+  return {score,wrapDeg:wrap,minGapMm:min*1000,gapMm:gaps.map(n=>n*1000)};
  };
- const result={};
+ const report={},labels={index:"Указ.",middle:"Средн.",ring:"Безым.",little:"Мизин."};
  let changed=0;
  try{
   for(const digit of fourDigits){
-   const bones=contactDigits[digit].slice(1);
-   if(!bones.every(id=>fingerAxes.has(id))){
-    result[digit]={status:"unavailable",reason:"нет подходящих исходных суставных осей"};
-    continue;
+   const ids=contactDigits[digit];
+   if(!ids.every(id=>fingerAxes.has(id))){
+    report[digit]={status:"unavailable"};continue;
    }
-   const tryPose=(pip,dip)=>{
-    fingerCorrections[digit]={[bones[0]]:pip,[bones[1]]:dip};
+   const tryPose=(mcp,pip,dip)=>{
+    fingerCorrections[digit]={[ids[0]]:mcp,[ids[1]]:pip,[ids[2]]:dip};
     applyPose();scene.updateMatrixWorld(true);
     const m=evaluate(digit);
-    // Favor small deviations from the measured OpenSim trajectory.
-    return {...m,pip,dip,total:m.score+.000002*(pip*pip+dip*dip)/100};
+    return {...m,mcp,pip,dip,
+     total:m.score+.00000018*(mcp*mcp+pip*pip+dip*dip)};
    };
-   let best=tryPose(0,0),baseline={...best};
-   for(const pip of [-10,0,10,20,30])for(const dip of [-10,0,10,20,30]){
-    const c=tryPose(pip,dip);
-    if(c.minGapMm<3||c.minGapMm>25)continue;
-    if(c.total<best.total-1e-9)best=c;
-   }
+   const baseline=tryPose(0,0,0);
+   let best=baseline;
+   const accept=(candidate)=>{
+    if(candidate.minGapMm<3||candidate.minGapMm>25||
+       candidate.wrapDeg<baseline.wrapDeg-1)return;
+    if(candidate.total<best.total-1e-10)best=candidate;
+   };
+   // First retarget the proximal phalanx toward the handle. The previous
+   // two-joint-only optimizer allowed the index finger to unwrap badly.
+   for(const mcp of [-25,-15,-5,0,10,20,30])
+    accept(tryPose(mcp,0,0));
+   const root={...best};
+   for(const pip of [-20,-10,0,10,20,30])
+    for(const dip of [-20,-10,0,10,20,30])
+     accept(tryPose(root.mcp,pip,dip));
    const coarse={...best};
-   for(const d1 of [-5,0,5])for(const d2 of [-5,0,5]){
-    const c=tryPose(THREE.MathUtils.clamp(coarse.pip+d1,-15,35),
-      THREE.MathUtils.clamp(coarse.dip+d2,-15,35));
-    if(c.minGapMm<3||c.minGapMm>25)continue;
-    if(c.total<best.total-1e-9)best=c;
-   }
-   if(best.minGapMm<3||best.total>baseline.total)best=baseline;
-   fingerCorrections[digit]={[bones[0]]:best.pip,[bones[1]]:best.dip};
-   applyPose();scene.updateMatrixWorld(true);
-   const adjusted=best.pip!==0||best.dip!==0;
+   for(const dm of [-5,0,5])for(const dp of [-5,0,5])
+    for(const dd of [-5,0,5])
+     accept(tryPose(
+      THREE.MathUtils.clamp(coarse.mcp+dm,-30,35),
+      THREE.MathUtils.clamp(coarse.pip+dp,-25,35),
+      THREE.MathUtils.clamp(coarse.dip+dd,-25,35)));
+   if(best.minGapMm<3||best.wrapDeg<baseline.wrapDeg-1||
+      best.total>baseline.total)best=baseline;
+   fingerCorrections[digit]={[ids[0]]:best.mcp,[ids[1]]:best.pip,[ids[2]]:best.dip};
+   const adjusted=!!(best.mcp||best.pip||best.dip);
    if(adjusted)changed++;
-   result[digit]={status:adjusted?"adjusted":"baseline",pipDeg:best.pip,
-    dipDeg:best.dip,original:baseline,refined:best};
+   report[digit]={status:adjusted?"adjusted":"baseline",
+    mcpDeg:best.mcp,pipDeg:best.pip,dipDeg:best.dip,original:baseline,refined:best};
   }
-  fingerFitReport={digits:result,changed,method:"AAH-axis-PIP-DIP-with-clearance"};
-  const labels={index:"Указ.",middle:"Средн.",ring:"Безым.",little:"Мизин."};
+  fingerFitReport={digits:report,changed,
+   method:"AAH-axis-MCP-PIP-DIP-safety-constrained"};
   $("#fingerFitReport").textContent=fourDigits.map(d=>{
-   const v=result[d];
+   const v=report[d];
    if(v.status==="unavailable")return labels[d]+": без коррекции (нет оси)";
-   return labels[d]+": "+v.pipDeg+"° / "+v.dipDeg+
-     "°; обхват "+v.original.wrapDeg.toFixed(0)+"° → "+v.refined.wrapDeg.toFixed(0)+
-     "°; минимальный костный зазор "+v.refined.minGapMm.toFixed(1).replace(".",",")+" мм";
-  }).join("; ")+". Большой палец и гантель не изменялись.";
+   return labels[d]+": MCP "+v.mcpDeg+"°, PIP "+v.pipDeg+"°, DIP "+v.dipDeg+
+    "°; обхват "+v.original.wrapDeg.toFixed(0)+"° → "+v.refined.wrapDeg.toFixed(0)+
+    "°; зазор ≥ "+v.refined.minGapMm.toFixed(1).replace(".",",")+" мм";
+  }).join("; ")+". Гантель и большой палец не изменены.";
   return fingerFitReport;
- }catch(e){
-  fingerCorrections=saved.fingerCorrections;
-  throw e;
- }finally{
-  finger=saved.finger;elbow=saved.elbow;pose=saved.pose;gripVisible=saved.gripVisible;
-  fingerFitMode=saved.fingerFitMode;fingerFitStrength=saved.fingerFitStrength;
-  fingerFitting=saved.fingerFitting;
-  applyPose();
+ }catch(e){fingerCorrections=previous.fingerCorrections;throw e}
+ finally{
+  finger=previous.finger;elbow=previous.elbow;pose=previous.pose;
+  gripVisible=previous.gripVisible;
+  fingerFitMode=previous.fingerFitMode;fingerFitStrength=previous.fingerFitStrength;
+  fingerFitting=previous.fingerFitting;applyPose();
  }
 }
 function showMuscleLayers(){
