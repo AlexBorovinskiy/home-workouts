@@ -1,0 +1,65 @@
+name: QA native MASI cervical anatomy browser
+on:
+  push:
+    paths:
+      - 'opensim-lab/masi-neck.html'
+      - 'opensim-lab/assets/masi-neck-native.json'
+      - '.github/workflows/qa-masi-neck-viewer.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  qa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install mobile browser QA tools
+        run: npm install --prefix /tmp/qa-masi-web --no-audit --no-fund playwright-core@1.56.1
+      - name: Verify real C1–C7 VTP geometry against native MASI transforms
+        shell: bash
+        run: |
+          mkdir -p qa-masi-neck
+          python3 -m http.server 8759 --bind 127.0.0.1 >/tmp/masi-web.log 2>&1 &
+          node --input-type=module <<'NODE'
+          import {chromium} from '/tmp/qa-masi-web/node_modules/playwright-core/index.mjs';
+          import {writeFileSync} from 'node:fs';
+          const browser=await chromium.launch({channel:'chrome',headless:true,args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+          const page=await browser.newPage({viewport:{width:430,height:932},deviceScaleFactor:1,isMobile:true,hasTouch:true});
+          const errors=[];
+          page.on('pageerror',e=>errors.push(e.message));
+          try{
+            await page.goto('http://127.0.0.1:8759/opensim-lab/masi-neck.html',{waitUntil:'domcontentloaded'});
+            await page.waitForFunction(()=>window.__masiQA?.ready()||document.querySelector('#loading')?.textContent?.includes('Не удалось'),null,{timeout:120000});
+            if(!await page.evaluate(()=>window.__masiQA?.ready()))throw Error('MASI viewer failed: '+await page.locator('#loading').innerText());
+            const j=await page.evaluate(()=>{
+              const v=window.__masiQA;return {counts:v.counts(),parts:v.parts(),
+                C1:v.bounds('cerv1'),C7:v.bounds('cerv7'),skull:v.bounds('skull')};
+            });
+            if(j.counts.cervical!==7||j.counts.parts!==9||errors.length)throw Error(JSON.stringify({j,errors}));
+            const separation=(j.C1.center[1]-j.C7.center[1])*1000;
+            if(separation<55||separation>165||j.C1.size.some(v=>!Number.isFinite(v)))
+              throw Error('Unreasonable cervico-cranial spacing: '+JSON.stringify({separation,j}));
+            await page.locator('#canvas').screenshot({path:'qa-masi-neck/neck-and-skull.png'});
+            console.log('MASI_NECK_IMAGE '+(await page.locator('#canvas').screenshot({type:'jpeg',quality:60})).toString('base64'));
+            await page.locator('[data-layer="bare"]').click();
+            await page.locator('#canvas').screenshot({path:'qa-masi-neck/c1-c7-only.png'});
+            console.log('MASI_CERVICAL_IMAGE '+(await page.locator('#canvas').screenshot({type:'jpeg',quality:60})).toString('base64'));
+            await page.locator('[data-camera="front"]').click();
+            await page.locator('#canvas').screenshot({path:'qa-masi-neck/c1-c7-frontal.png'});
+            console.log('MASI_NECK_QA '+JSON.stringify({counts:j.counts,cervicalSpacingMm:Math.round(separation*100)/100,errors,parts:j.parts}));
+            writeFileSync('qa-masi-neck/qa.json',JSON.stringify({j,separation,errors},null,2));
+          }catch(err){
+            await page.screenshot({path:'qa-masi-neck/error.png',fullPage:true}).catch(()=>{});
+            throw err;
+          }finally{await browser.close()}
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: masi-neck-mit-geometry-mobile-qa
+          path: qa-masi-neck/
+          retention-days: 7
