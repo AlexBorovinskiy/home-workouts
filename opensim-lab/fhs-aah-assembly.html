@@ -249,7 +249,7 @@ async function startAAH(){
   if(!aah)aah=await getJSON("./assets/aah-hand-poses.json");
   if(aah.schema!=="AAH-bilateral-OpenSim-pose-export-v1")throw Error("Несовместимая кинематика");
   let count=0;
-  for(const side of ("right","left")){
+  for(const side of ["right","left"]){
    const def=aah[side],P=side==="right"?"RA":"LA",S=side==="right"?"R":"L";
    const old=def.trajectories.curl[0].frames[P+"3L"],fhsHand=fhs.bodyFrames["hand_"+S];
    // Align the unmodified AAH lunate (same source VTP as FHS lunate) to its
