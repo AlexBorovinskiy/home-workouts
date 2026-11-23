@@ -155,7 +155,7 @@ function parseVtp(text,name){
  if(!piece)throw Error("Нет PolyData: "+name);
  const data=piece.querySelector("Points > DataArray");
  if(!data||data.getAttribute("format")!=="ascii")throw Error("Не-ASCII VTP: "+name);
- const n=a=>(a?.textContent||"").trim().split(/\s+/).map(Number);
+ const n=a=>{const s=(a?.textContent||"").trim();return s?s.split(/\s+/).map(Number):[]};
  const vertices=n(data);
  if(!vertices.length||vertices.length%3||vertices.some(x=>!Number.isFinite(x)))throw Error("Неправильные вершины: "+name);
  function indexSet(tag){
