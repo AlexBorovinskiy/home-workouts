@@ -1,0 +1,47 @@
+name: QA MASI full-body native anatomy
+on:
+  push:
+    paths:
+      - 'opensim-lab/audit_masi_fullbody.py'
+      - '.github/workflows/qa-masi-fullbody.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install native OpenSim 4.6
+        run: python -m pip install 'opensim==4.6'
+      - name: Download original MASI and migrate deprecated component names only
+        run: |
+          curl -fL --retry 3 --max-time 100 'https://ndownloader.figshare.com/files/6929198' -o /tmp/masi-authors.osim
+          test -s /tmp/masi-authors.osim
+          python opensim-lab/convert_masi_legacy.py --source /tmp/masi-authors.osim --output /tmp/masi-native.osim
+      - name: Export all body transforms, joint connections and motion checks
+        run: |
+          python opensim-lab/audit_masi_fullbody.py --model /tmp/masi-native.osim --output qa-masi-fullbody/masi-fullbody-audit.json
+      - name: Reject incomplete native source or failed neck and shoulder movement
+        run: |
+          python - <<'PY'
+          import json
+          d=json.load(open('qa-masi-fullbody/masi-fullbody-audit.json'))
+          assert d['checks']['sevenSeparateCervicalBodies']
+          assert d['checks']['allRequiredUpperBodySegmentsPresent']
+          assert d['checks']['relativeCervicalMotionObservedInTrial']
+          assert d['checks']['relativeScapularMotionObservedInTrial']
+          assert d['counts']['bodies'] > 20
+          print('MASI FULLBODY STRUCTURAL QA:', d['counts'])
+          print('LIMITS: anatomy graft, exercise motion and forces NOT validated')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: masi-native-fullbody-inventory
+          path: qa-masi-fullbody/
+          retention-days: 30
