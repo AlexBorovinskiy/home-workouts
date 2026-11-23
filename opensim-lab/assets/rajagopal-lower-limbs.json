@@ -1,0 +1,729 @@
+{
+  "schema": "rajagopal-lower-limbs-native-4.6-v1",
+  "source": {
+    "model": "RajagopalLaiUhlrich2023",
+    "osim": "https://github.com/opensim-org/opensim-models/blob/master/Models/Rajagopal/RajagopalLaiUhlrich2023.osim",
+    "geometryBase": "https://raw.githubusercontent.com/opensim-org/opensim-models/master/Geometry/",
+    "licenseCaveat": "Review the author repository's license terms before third-party redistribution; meshes are loaded directly from their source"
+  },
+  "engine": "version 4.6-2026-06-22-85aaf64, build date 18:15:35 Jun 22 2026",
+  "sourcePose": "OpenSim assembled source model default coordinates",
+  "sourcePelvisFrame": {
+    "positionM": [
+      0.0,
+      0.94,
+      0.0
+    ],
+    "rotation": [
+      [
+        1.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        1.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        1.0
+      ]
+    ]
+  },
+  "bodyFrames": {
+    "femur_r": {
+      "positionM": [
+        -0.056276,
+        0.86151,
+        0.07726
+      ],
+      "rotation": [
+        [
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0
+        ]
+      ]
+    },
+    "tibia_r": {
+      "positionM": [
+        -0.05269783816552843,
+        0.45541813642300255,
+        0.07699740708430061
+      ],
+      "rotation": [
+        [
+          0.999999999999999,
+          -3.237943871359228e-09,
+          -4.5676570036706776e-08
+        ],
+        [
+          3.2379443432040134e-09,
+          0.9999999999999998,
+          9.111607515797232e-09
+        ],
+        [
+          4.567657000374703e-08,
+          -9.111607648503578e-09,
+          0.9999999999999989
+        ]
+      ]
+    },
+    "patella_r": {
+      "positionM": [
+        -0.011965999999999997,
+        0.44275000000000003,
+        0.07726
+      ],
+      "rotation": [
+        [
+          0.9999993537747398,
+          -0.001136859755110773,
+          0.0
+        ],
+        [
+          0.001136859755110773,
+          0.9999993537747398,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0
+        ]
+      ]
+    },
+    "talus_r": {
+      "positionM": [
+        -0.06269783687035087,
+        0.05541813639062321,
+        0.07699741027217798
+      ],
+      "rotation": [
+        [
+          0.999999999999999,
+          -3.23794387135923e-09,
+          -4.567657002282899e-08
+        ],
+        [
+          3.2379443432040134e-09,
+          1.0,
+          9.111607543552808e-09
+        ],
+        [
+          4.567657001762482e-08,
+          -9.111607620748004e-09,
+          0.9999999999999989
+        ]
+      ]
+    },
+    "calcn_r": {
+      "positionM": [
+        -0.1114678370962775,
+        0.013468136304872598,
+        0.08491740842676358
+      ],
+      "rotation": [
+        [
+          0.999999999999999,
+          -3.2379438158480796e-09,
+          -4.5676570050584564e-08
+        ],
+        [
+          3.237944398715164e-09,
+          1.0,
+          9.111607557430595e-09
+        ],
+        [
+          4.567656998986924e-08,
+          -9.111607606870213e-09,
+          0.9999999999999989
+        ]
+      ]
+    },
+    "toes_r": {
+      "positionM": [
+        0.06733216286086749,
+        0.011468136893657593,
+        0.0859974166119575
+      ],
+      "rotation": [
+        [
+          0.999999999999999,
+          -3.2379438158480796e-09,
+          -4.567656999507341e-08
+        ],
+        [
+          3.2379443987151646e-09,
+          1.0,
+          9.111607557430384e-09
+        ],
+        [
+          4.5676570045380394e-08,
+          -9.111607606870425e-09,
+          0.9999999999999989
+        ]
+      ]
+    },
+    "femur_l": {
+      "positionM": [
+        -0.056276,
+        0.86151,
+        -0.07726
+      ],
+      "rotation": [
+        [
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0
+        ]
+      ]
+    },
+    "tibia_l": {
+      "positionM": [
+        -0.05269783816552843,
+        0.45541813642300255,
+        -0.07699740708430061
+      ],
+      "rotation": [
+        [
+          0.999999999999999,
+          -3.237943871359228e-09,
+          4.5676570036706776e-08
+        ],
+        [
+          3.2379443432040134e-09,
+          0.9999999999999998,
+          -9.111607515797232e-09
+        ],
+        [
+          -4.567657000374703e-08,
+          9.111607648503578e-09,
+          0.9999999999999989
+        ]
+      ]
+    },
+    "patella_l": {
+      "positionM": [
+        -0.011965999999999997,
+        0.44275000000000003,
+        -0.07726
+      ],
+      "rotation": [
+        [
+          0.9999993537747398,
+          -0.001136859755110773,
+          0.0
+        ],
+        [
+          0.001136859755110773,
+          0.9999993537747398,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0
+        ]
+      ]
+    },
+    "talus_l": {
+      "positionM": [
+        -0.06269783687035087,
+        0.05541813639062321,
+        -0.07699741027217798
+      ],
+      "rotation": [
+        [
+          0.999999999999999,
+          -3.23794387135923e-09,
+          4.567657002282899e-08
+        ],
+        [
+          3.2379443432040134e-09,
+          1.0,
+          -9.111607543552808e-09
+        ],
+        [
+          -4.567657001762482e-08,
+          9.111607620748004e-09,
+          0.9999999999999989
+        ]
+      ]
+    },
+    "calcn_l": {
+      "positionM": [
+        -0.1114678370962775,
+        0.013468136304872598,
+        -0.08491740842676358
+      ],
+      "rotation": [
+        [
+          0.999999999999999,
+          -3.2379438158480796e-09,
+          4.5676570050584564e-08
+        ],
+        [
+          3.237944398715164e-09,
+          1.0,
+          -9.111607557430595e-09
+        ],
+        [
+          -4.567656998986924e-08,
+          9.111607606870213e-09,
+          0.9999999999999989
+        ]
+      ]
+    },
+    "toes_l": {
+      "positionM": [
+        0.06733216286086749,
+        0.011468136893657593,
+        -0.0859974166119575
+      ],
+      "rotation": [
+        [
+          0.999999999999999,
+          -3.2379438158480796e-09,
+          4.567656999507341e-08
+        ],
+        [
+          3.2379443987151646e-09,
+          1.0,
+          -9.111607557430807e-09
+        ],
+        [
+          -4.5676570045380394e-08,
+          9.111607606870001e-09,
+          0.9999999999999989
+        ]
+      ]
+    }
+  },
+  "bodyMeshes": {
+    "femur_r": [
+      {
+        "file": "r_femur.vtp",
+        "body": "femur_r",
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    ],
+    "tibia_r": [
+      {
+        "file": "r_tibia.vtp",
+        "body": "tibia_r",
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      {
+        "file": "r_fibula.vtp",
+        "body": "tibia_r",
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    ],
+    "patella_r": [
+      {
+        "file": "r_patella.vtp",
+        "body": "patella_r",
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    ],
+    "talus_r": [
+      {
+        "file": "r_talus.vtp",
+        "body": "talus_r",
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    ],
+    "calcn_r": [
+      {
+        "file": "r_foot.vtp",
+        "body": "calcn_r",
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    ],
+    "toes_r": [
+      {
+        "file": "r_bofoot.vtp",
+        "body": "toes_r",
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    ],
+    "femur_l": [
+      {
+        "file": "l_femur.vtp",
+        "body": "femur_l",
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    ],
+    "tibia_l": [
+      {
+        "file": "l_tibia.vtp",
+        "body": "tibia_l",
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      {
+        "file": "l_fibula.vtp",
+        "body": "tibia_l",
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    ],
+    "patella_l": [
+      {
+        "file": "l_patella.vtp",
+        "body": "patella_l",
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    ],
+    "talus_l": [
+      {
+        "file": "l_talus.vtp",
+        "body": "talus_l",
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    ],
+    "calcn_l": [
+      {
+        "file": "l_foot.vtp",
+        "body": "calcn_l",
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    ],
+    "toes_l": [
+      {
+        "file": "l_bofoot.vtp",
+        "body": "toes_l",
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    ]
+  },
+  "jointWorldPoints": {
+    "hip_r": {
+      "parentFrameName": "pelvis_offset",
+      "childFrameName": "femur_r_offset",
+      "parentPoint": [
+        -0.056276,
+        0.86151,
+        0.07726
+      ],
+      "childPoint": [
+        -0.056276,
+        0.86151,
+        0.07726
+      ],
+      "jointFrameSeparationMm": 0.0
+    },
+    "hip_l": {
+      "parentFrameName": "pelvis_offset",
+      "childFrameName": "femur_l_offset",
+      "parentPoint": [
+        -0.056276,
+        0.86151,
+        -0.07726
+      ],
+      "childPoint": [
+        -0.056276,
+        0.86151,
+        -0.07726
+      ],
+      "jointFrameSeparationMm": 0.0
+    },
+    "walker_knee_r": {
+      "parentFrameName": "femur_r_offset",
+      "childFrameName": "tibia_r_offset",
+      "parentPoint": [
+        -0.060776,
+        0.45191,
+        0.07551
+      ],
+      "childPoint": [
+        -0.0607873780862651,
+        0.4518833363832807,
+        0.07551266674700588
+      ],
+      "jointFrameSeparationMm": 0.02911221123861381
+    },
+    "walker_knee_l": {
+      "parentFrameName": "femur_l_offset",
+      "childFrameName": "tibia_l_offset",
+      "parentPoint": [
+        -0.060776,
+        0.45191,
+        -0.07551
+      ],
+      "childPoint": [
+        -0.0607873780862651,
+        0.4518833363832807,
+        -0.07551266674700588
+      ],
+      "jointFrameSeparationMm": 0.02911221123861381
+    },
+    "patellofemoral_r": {
+      "parentFrameName": "femur_r_offset",
+      "childFrameName": "patella_r_offset",
+      "parentPoint": [
+        -0.064366,
+        0.45355,
+        0.07450999999999999
+      ],
+      "childPoint": [
+        -0.011965999999999997,
+        0.44275000000000003,
+        0.07726
+      ],
+      "jointFrameSeparationMm": 53.572030948994275
+    },
+    "patellofemoral_l": {
+      "parentFrameName": "femur_l_offset",
+      "childFrameName": "patella_l_offset",
+      "parentPoint": [
+        -0.064366,
+        0.45355,
+        -0.07450999999999999
+      ],
+      "childPoint": [
+        -0.011965999999999997,
+        0.44275000000000003,
+        -0.07726
+      ],
+      "jointFrameSeparationMm": 53.572030948994275
+    },
+    "ankle_r": {
+      "parentFrameName": "tibia_r_offset",
+      "childFrameName": "talus_r_offset",
+      "parentPoint": [
+        -0.06269783687035087,
+        0.05541813639062321,
+        0.07699741027217798
+      ],
+      "childPoint": [
+        -0.06269783687035087,
+        0.05541813639062321,
+        0.07699741027217798
+      ],
+      "jointFrameSeparationMm": 0.0
+    },
+    "ankle_l": {
+      "parentFrameName": "tibia_l_offset",
+      "childFrameName": "talus_l_offset",
+      "parentPoint": [
+        -0.06269783687035087,
+        0.05541813639062321,
+        -0.07699741027217798
+      ],
+      "childPoint": [
+        -0.06269783687035087,
+        0.05541813639062321,
+        -0.07699741027217798
+      ],
+      "jointFrameSeparationMm": 0.0
+    },
+    "subtalar_r": {
+      "parentFrameName": "talus_r_offset",
+      "childFrameName": "calcn_r_offset",
+      "parentPoint": [
+        -0.1114678370962775,
+        0.013468136304872598,
+        0.08491740842676358
+      ],
+      "childPoint": [
+        -0.1114678370962775,
+        0.013468136304872598,
+        0.08491740842676358
+      ],
+      "jointFrameSeparationMm": 0.0
+    },
+    "subtalar_l": {
+      "parentFrameName": "talus_l_offset",
+      "childFrameName": "calcn_l_offset",
+      "parentPoint": [
+        -0.1114678370962775,
+        0.013468136304872598,
+        -0.08491740842676358
+      ],
+      "childPoint": [
+        -0.1114678370962775,
+        0.013468136304872598,
+        -0.08491740842676358
+      ],
+      "jointFrameSeparationMm": 0.0
+    },
+    "mtp_r": {
+      "parentFrameName": "calcn_r_offset",
+      "childFrameName": "toes_r_offset",
+      "parentPoint": [
+        0.06733216286086749,
+        0.011468136893657593,
+        0.0859974166119575
+      ],
+      "childPoint": [
+        0.06733216286086749,
+        0.011468136893657593,
+        0.0859974166119575
+      ],
+      "jointFrameSeparationMm": 0.0
+    },
+    "mtp_l": {
+      "parentFrameName": "calcn_l_offset",
+      "childFrameName": "toes_l_offset",
+      "parentPoint": [
+        0.06733216286086749,
+        0.011468136893657593,
+        -0.0859974166119575
+      ],
+      "childPoint": [
+        0.06733216286086749,
+        0.011468136893657593,
+        -0.0859974166119575
+      ],
+      "jointFrameSeparationMm": 0.0
+    }
+  },
+  "sourceCoordinateValues": {
+    "pelvis_tilt": 0.0,
+    "pelvis_list": 0.0,
+    "pelvis_rotation": 0.0,
+    "pelvis_tx": 0.0,
+    "pelvis_ty": 0.94,
+    "pelvis_tz": 0.0,
+    "hip_flexion_r": 0.0,
+    "hip_adduction_r": 0.0,
+    "hip_rotation_r": 0.0,
+    "knee_angle_r": 0.0,
+    "knee_angle_r_beta": 0.0,
+    "ankle_angle_r": 0.0,
+    "subtalar_angle_r": 0.0,
+    "mtp_angle_r": 0.0,
+    "hip_flexion_l": 0.0,
+    "hip_adduction_l": 0.0,
+    "hip_rotation_l": 0.0,
+    "knee_angle_l": 0.0,
+    "knee_angle_l_beta": 0.0,
+    "ankle_angle_l": 0.0,
+    "subtalar_angle_l": 0.0,
+    "mtp_angle_l": 0.0
+  },
+  "fhsTargetPelvisFrame": {
+    "origin": [
+      0.06742212,
+      0.06657934,
+      0
+    ],
+    "basisColumns": [
+      [
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        1,
+        0
+      ],
+      [
+        0,
+        0,
+        1
+      ]
+    ]
+  },
+  "visualInitialization": {
+    "method": "FHS pelvis BODY ORIGIN AND AXES matched to Rajagopal pelvis, trial uniform scale from FHS pelvis visual geometry",
+    "uniformScale": 0.842777,
+    "sourceOfTrialScale": "FHS pelvic right and left visual mesh scale, not an independently measured cross-model landmark fit",
+    "anatomicallyValidated": false,
+    "hipCentersValidatedAgainstFhs": false,
+    "footGroundContactValidated": false
+  },
+  "geometryCounts": {
+    "bodyCount": 12,
+    "meshCount": 14,
+    "perSide": {
+      "r": 7,
+      "l": 7
+    }
+  },
+  "limitations": [
+    "FHS contains no hip-joint calibration or independent leg data; pelvis registration is only a pose and scale starting point",
+    "Rajagopal forefoot/toes are one aggregate toe body per side, not individually articulated toe phalanges",
+    "No thigh-muscle compatibility, joint dynamics, or collision validation after combining with FHS/MASI/AAH",
+    "The user can switch off the Rajagopal lower limbs without changing FHS or AAH source models"
+  ]
+}
