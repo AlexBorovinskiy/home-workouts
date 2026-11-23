@@ -1,0 +1,80 @@
+name: QA interactive C7-T1 MASI–FHS diagnostic lab
+on:
+  push:
+    paths:
+      - 'opensim-lab/c7-t1-lab.html'
+      - 'opensim-lab/assets/c7-t1-registration.json'
+      - '.github/workflows/qa-c7-t1-lab.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  viewer:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install mobile browser test tools
+        run: npm install --prefix /tmp/qa-c7-t1-web --no-audit --no-fund playwright-core@1.56.1
+      - name: Download unmodified FHS research archive for local-only browser test
+        run: |
+          curl -fL --retry 3 --max-time 180 'https://zenodo.org/records/18259702/files/FHS_dataset_4.x.zip?download=1' -o /tmp/fhs-scientific-original.zip
+          test -s /tmp/fhs-scientific-original.zip
+      - name: Check registration values and vertex-geometry origins in mobile Chrome
+        shell: bash
+        run: |
+          mkdir -p qa-c7-t1-web
+          python3 -m http.server 8767 --bind 127.0.0.1 >/tmp/qa-c7-t1-server.log 2>&1 &
+          node --input-type=module <<'NODE'
+          import {chromium} from '/tmp/qa-c7-t1-web/node_modules/playwright-core/index.mjs';
+          import {writeFileSync} from 'node:fs';
+          const browser=await chromium.launch({channel:'chrome',headless:true,args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+          const page=await browser.newPage({viewport:{width:430,height:932},deviceScaleFactor:1,isMobile:true,hasTouch:true});
+          const errors=[];page.on('pageerror',e=>errors.push(e.message));
+          try{
+            await page.goto('http://127.0.0.1:8767/opensim-lab/c7-t1-lab.html',{waitUntil:'domcontentloaded'});
+            await page.waitForFunction(()=>window.__c7t1QA?.masiReady()||document.querySelector('#loading')?.textContent?.startsWith('Ошибка загрузки:'),null,{timeout:120000});
+            if(!await page.evaluate(()=>window.__c7t1QA?.masiReady()))throw Error('MASI failed: '+await page.locator('#loading').innerText());
+            const before=await page.evaluate(()=>({anchor:window.__c7t1QA.anchorErrorMm(),fhs:window.__c7t1QA.fhsReady()}));
+            if(before.anchor>0.0001||before.fhs||errors.length)throw Error('Initial browser MASI/registration invalid '+JSON.stringify({before,errors}));
+            await page.locator('#zip').setInputFiles('/tmp/fhs-scientific-original.zip');
+            await page.waitForFunction(()=>window.__c7t1QA?.fhsReady()||document.querySelector('#status')?.textContent?.startsWith('Ошибка FHS:'),null,{timeout:150000});
+            const ready=await page.evaluate(()=>window.__c7t1QA?.fhsReady());
+            if(!ready)throw Error('FHS ZIP failed: '+await page.locator('#status').innerText());
+            const data=await page.evaluate(()=>{
+              const q=window.__c7t1QA;
+              return {parts:q.partIds(),closestMm:q.minVertexMm(),anchorMm:q.anchorErrorMm(),
+                C7:q.bounds('cerv7'),T1:q.bounds('thoracic1'),T12:q.bounds('thoracic12'),L5:q.bounds('lumbar5')}
+            });
+            if(data.parts.length!==17||data.closestMm<1||data.closestMm>5||
+                Math.abs(data.closestMm-2.4114)>.06||data.anchorMm>.0001||errors.length)
+              throw Error('Native anatomical QA mismatched: '+JSON.stringify({data,errors}));
+            await page.locator('#canvas').screenshot({path:'qa-c7-t1-web/neck-T1-joined-back.png'});
+            await page.locator('[data-view="side"]').click();
+            await page.locator('#canvas').screenshot({path:'qa-c7-t1-web/neck-T1-joined-side.png'});
+            await page.locator('[data-focus="spine"]').click();
+            await page.locator('#canvas').screenshot({path:'qa-c7-t1-web/17-vertebrae-full.png'});
+            await page.locator('[data-layer="reference"]').check();
+            await page.locator('#canvas').screenshot({path:'qa-c7-t1-web/fhs-vs-masi-scaffold.png'});
+            await page.reload({waitUntil:'domcontentloaded'});
+            await page.waitForFunction(()=>window.__c7t1QA?.fhsReady(),null,{timeout:140000});
+            const after=await page.evaluate(()=>({count:window.__c7t1QA.partIds().length,closestMm:window.__c7t1QA.minVertexMm()}));
+            if(after.count!==17||Math.abs(after.closestMm-data.closestMm)>.001||errors.length)
+              throw Error('FHS ZIP browser cache restore failed: '+JSON.stringify({after,errors}));
+            writeFileSync('qa-c7-t1-web/mobile-qa.json',JSON.stringify({data,after,errors},null,2));
+            console.log('C7_T1_BROWSER_QA_SUCCESS',JSON.stringify({sourceFhsLevels:data.parts.length,joinMm:data.closestMm,restored:true}));
+          }catch(error){
+            console.error(error);
+            await page.screenshot({path:'qa-c7-t1-web/failed.png',fullPage:true}).catch(()=>{});
+            throw error;
+          }finally{await browser.close()}
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: scientific-C7-T1-registered-FHS-local-zip-mobile-screenshots
+          path: qa-c7-t1-web/
+          retention-days: 14
