@@ -356,7 +356,7 @@ function applyPose(){
  setDumbbellPose(E);
  scene.updateMatrixWorld(true);
  if(gripReady){updateGripButtons();updateContactReport()}
- $("#elbowValue".textContent=elbow+"°";
+ $("#elbowValue").textContent=elbow+"°";
  $("#fingerValue").textContent=Math.round(finger*100)+"%";
 }
 // Dumbbell is an independently drawn prop, not a fake bone. It is placed
