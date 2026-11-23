@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b2533"><link rel="icon" href="data:,">
+<title>Ретаргетинг сгибания рук · Home Workouts</title>
+<style>
+:root{color-scheme:dark;--bg:#091a29;--fg:#e9f4f4;--soft:#a9c7cd;--line:#355668;--mint:#96e5d6}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 45% 0%,#224455,var(--bg) 64%);color:var(--fg);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+main{margin:auto;max-width:1040px;padding:17px 13px 55px}
+a{color:var(--mint)}header{display:flex;justify-content:space-between;align-items:center;gap:12px}header span{color:var(--mint);font-size:11px;letter-spacing:.13em;font-weight:800}
+h1{font-size:clamp(25px,4vw,35px);line-height:1.15;letter-spacing:-.03em;margin:21px 0 7px}
+.lead{color:var(--soft);font-size:13px;line-height:1.65;max-width:850px}
+.layout{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(265px,.8fr);gap:15px;margin-top:18px}
+section,aside{border:1px solid var(--line);border-radius:18px;overflow:hidden;background:#122e3d}
+#stage{height:min(69vh,675px);min-height:405px;background:radial-gradient(ellipse at 50% 35%,#27495a,#0a202e 75%);position:relative;touch-action:none}
+canvas{display:block;width:100%;height:100%;touch-action:none}
+.hud{position:absolute;top:12px;left:12px;border:1px solid #436d74;background:#0d2837de;border-radius:12px;padding:9px 12px;font-size:11px;max-width:76%}
+.hint{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);font-size:10px;color:#c2dbdf;background:#102c3de0;padding:7px 10px;border-radius:18px;white-space:nowrap}
+.error{position:absolute;inset:0;padding:28px;background:#1c2531eF;display:none;align-items:center;justify-content:center;text-align:center}
+.error.on{display:flex}
+.controls{padding:15px}.row{display:flex;gap:7px;flex-wrap:wrap}
+button{font:inherit;font-size:12px;font-weight:700;border:1px solid #446776;border-radius:10px;min-height:41px;padding:10px 12px;background:#204052;color:var(--fg);cursor:pointer}
+button.active{background:var(--mint);color:#0b2931;border-color:var(--mint)}button:disabled{opacity:.45;cursor:default}
+input[type=range]{accent-color:var(--mint);width:100%;min-height:34px;touch-action:pan-y}
+aside{padding:17px}.eyebrow{font-size:11px;letter-spacing:.12em;color:var(--mint);font-weight:800;text-transform:uppercase}
+p{font-size:12px;color:var(--soft);line-height:1.65}
+hr{border:0;border-top:1px solid var(--line);margin:18px 0}
+.metric{padding:11px;border:1px solid #335466;border-radius:10px;background:#0e2535;margin:9px 0}
+.metric strong{font-size:21px;display:block;font-variant-numeric:tabular-nums}
+.metric small{font-size:11px;color:var(--soft)}
+.status{color:var(--mint);font-size:12px;font-weight:700;line-height:1.5}
+@media(max-width:760px){.layout{grid-template-columns:1fr}aside{padding:15px}#stage{height:59vh;min-height:390px}}
+</style>
+</head>
+<body><main>
+<header><span>HOME WORKOUTS / RETARGET LAB</span><a href="./index.html">К ригу</a></header>
+<h1>Сгибание рук · перенос движения</h1>
+<p class="lead">Пилот единого рига тела. Используются исходная кожа и 53 кости MakeHuman CC0; три кадра берутся из нашего файла упражнения. Сгибание локтей переносится по геометрии суставов, а не по совпадению локальных осей двух моделей.</p>
+<div class="layout">
+<section>
+<div id="stage"><canvas id="scene" aria-label="Полная трехмерная модель человека"></canvas>
+<div class="hud" id="hud">Загружаю скелет и кадры...</div><div class="hint">Пальцем — вращать · двумя — приблизить</div>
+<div id="error" class="error" role="alert"></div></div>
+<div class="controls">
+<div class="row">
+<button id="play" disabled>▶ Воспроизвести</button>
+<button id="start" disabled>Старт</button>
+<button id="peak" disabled>Верхняя точка</button>
+<button id="end" disabled>Возврат</button>
+<button id="rig" aria-pressed="false" disabled>Показать риг</button>
+</div>
+<label for="phase" style="display:block;margin-top:14px">Положение в цикле · <strong id="phaseLabel">0%</strong></label>
+<input id="phase" type="range" min="0" max="100" step="1" value="0" disabled>
+</div>
+</section>
+<aside>
+<div class="eyebrow">Проверка переноса</div>
+<div class="metric"><strong id="count">—</strong><small>Костей единого рига</small></div>
+<div class="metric"><strong id="elbowL">—</strong><small>Левая рука · дополнительное сгибание</small></div>
+<div class="metric"><strong id="elbowR">—</strong><small>Правая рука · дополнительное сгибание</small></div>
+<div class="status" id="status">Проверяю исходные файлы…</div>
+<hr>
+<div class="eyebrow">Что подтверждает эта лаборатория</div>
+<p>Один и тот же набор ключевых кадров управляет обеими руками полнотелой модели. Плечи, корпус и ноги остаются привязанными к исходному ригу. Камера свободно вращается вокруг модели.</p>
+<p><strong>Пока не подтверждены:</strong> супинация предплечья, контакт кистей с гантелями, распределение нагрузки, точность техники. Это проверка маршрута переноса анимации, а не готовый урок.</p>
+<hr>
+<div class="eyebrow">Источники</div>
+<p>Риг: <code>unified-makehuman-cc0.glb</code>. Движение: <code>dumbbell-curl.json</code> (три кадра: старт, пик, возврат). Углы из этого файла интерпретируются как величина дополнительного сгибания локтя; его ось определяется по исходным положениям плеча, локтя и запястья.</p>
+</aside></div></main>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from "three";
+import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
+import {OrbitControls} from "three/addons/controls/OrbitControls.js";
+const $=s=>document.querySelector(s);
+const canvas=$("#scene"),stage=$("#stage");
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true,preserveDrawingBuffer:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.7));
+renderer.setClearColor(0x0d2534,0);
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+const scene=new THREE.Scene();
+scene.add(new THREE.HemisphereLight(0xf3f9f9,0x586e77,2.7));
+const light=new THREE.DirectionalLight(0xffe9df,2.8);light.position.set(3,5,5);scene.add(light);
+const light2=new THREE.DirectionalLight(0xa1dce5,1.3);light2.position.set(-3,2,-3);scene.add(light2);
+const camera=new THREE.PerspectiveCamera(37,1,.005,100);
+const orbit=new OrbitControls(camera,canvas);orbit.enableDamping=true;orbit.dampingFactor=.08;
+orbit.minDistance=.15;orbit.maxDistance=20;
+new ResizeObserver(()=>{const w=stage.clientWidth,h=stage.clientHeight;
+ renderer.setSize(w,h,false);camera.aspect=w/Math.max(1,h);camera.updateProjectionMatrix();
+}).observe(stage);
+const state={model:null,bones:{},rest:{},geometry:null,frames:null,helper:null,ready:false,phase:0,playing:false,started:0};
+const P=()=>new THREE.Vector3(),Q=()=>new THREE.Quaternion();
+function landmarks(){
+ state.model.updateMatrixWorld(true);
+ return Object.fromEntries(["l","r"].map(side=>{
+  const joints=["upperarm_","lowerarm_","hand_"].map(prefix=>state.bones[prefix+side].getWorldPosition(P()));
+  return [side,joints];
+ }));
+}
+function metrics(){
+ if(!state.ready)return null;
+ const ends=landmarks(),arms={};
+ for(const side of ["l","r"]){
+  const [shoulder,elbow,wrist]=ends[side];
+  const upper=elbow.clone().sub(shoulder),fore=wrist.clone().sub(elbow);
+  arms[side]={shoulder:shoulder.toArray(),elbow:elbow.toArray(),wrist:wrist.toArray(),
+   upperLength:upper.length(),forearmLength:fore.length(),
+   segmentAngle:THREE.MathUtils.radToDeg(upper.angleTo(fore))};
+ }
+ return {phase:state.phase,degreesL:sampleAngle(state.phase,"l"),
+  degreesR:sampleAngle(state.phase,"r"),arms};
+}
+function restore(){
+ for(const [name,bone] of Object.entries(state.bones)){
+  const r=state.rest[name];bone.position.copy(r.pos);bone.quaternion.copy(r.quat);
+ }
+}
+function sampleAngle(t,side){
+ const u=THREE.MathUtils.clamp(t,0,1)*2;
+ const i=Math.min(Math.floor(u),1),frac=u-i;
+ const key="forearm."+side.toUpperCase();
+ const v=state.frames;
+ return THREE.MathUtils.lerp(Math.abs(v[i][key][0]),Math.abs(v[i+1][key][0]),frac);
+}
+function poseAt(t){
+ if(!state.ready)return;
+ state.phase=THREE.MathUtils.clamp(t,0,1);
+ restore();state.model.updateMatrixWorld(true);
+ for(const side of ["l","r"]){
+  const bone=state.bones["lowerarm_"+side];
+  const parentQ=bone.parent.getWorldQuaternion(Q());
+  const localAxis=state.geometry[side].axis.clone().applyQuaternion(parentQ.invert());
+  const delta=Q().setFromAxisAngle(localAxis,THREE.MathUtils.degToRad(sampleAngle(state.phase,side)));
+  bone.quaternion.copy(state.rest[bone.name].quat).premultiply(delta);
+ }
+ state.model.updateMatrixWorld(true);
+ $("#phase").value=String(Math.round(100*state.phase));
+ $("#phaseLabel").textContent=Math.round(100*state.phase)+"%";
+ $("#elbowL").textContent=sampleAngle(state.phase,"l").toFixed(0)+"°";
+ $("#elbowR").textContent=sampleAngle(state.phase,"r").toFixed(0)+"°";
+ $("#status").textContent="Геометрический перенос сгибания локтей. Супинация и хват не перенесены.";
+}
+function fit(){
+ const box=new THREE.Box3().setFromObject(state.model);
+ const size=box.getSize(P()),center=box.getCenter(P());
+ const tanV=Math.tan(THREE.MathUtils.degToRad(camera.fov*.5));
+ const tanH=tanV*camera.aspect;
+ const distance=1.27*Math.max(size.y/(2*tanV),size.x/(2*tanH),size.z/(2*tanH),.75);
+ orbit.target.copy(center);camera.position.copy(center).add(new THREE.Vector3(distance*.06,size.y*.05,distance));
+ camera.lookAt(center);orbit.update();
+}
+async function init(){
+ const [gltf,response]=await Promise.all([
+  new GLTFLoader().loadAsync("../anatomy-rigged/assets/unified-makehuman-cc0.glb"),
+  fetch("../anatomy-rigged/exercises/dumbbell-curl.json")
+ ]);
+ if(!response.ok)throw Error("Нет исходной анимации: HTTP "+response.status);
+ const motion=await response.json();
+ if(motion.format!=="home-workouts-motion"||motion.frames?.length!==3)
+  throw Error("Некорректная структура трёх ключевых кадров");
+ for(const frame of motion.frames)for(const key of ["forearm.L","forearm.R"])
+  if(!Array.isArray(frame[key])||!Number.isFinite(frame[key][0]))
+   throw Error("Не найден сустав в кадре "+key);
+ state.model=gltf.scene;scene.add(state.model);
+ state.model.traverse(o=>{if(o.isBone){
+  state.bones[o.name]=o;state.rest[o.name]={pos:o.position.clone(),quat:o.quaternion.clone()};
+ }});
+ for(const key of ["upperarm_l","upperarm_r","lowerarm_l","lowerarm_r","hand_l","hand_r"])
+  if(!state.bones[key])throw Error("В 3D-риге отсутствует "+key);
+ restore();state.model.updateMatrixWorld(true);
+ const joints=landmarks(),geometry={};
+ for(const side of ["l","r"]){
+  const [shoulder,elbow,wrist]=joints[side];
+  const upper=elbow.clone().sub(shoulder),fore=wrist.clone().sub(elbow);
+  const hinge=P().crossVectors(upper,fore);
+  if(hinge.length()<.005)throw Error("Не определена анатомическая ось локтя "+side);
+  geometry[side]={axis:hinge.normalize(),neutralAngle:upper.angleTo(fore)};
+ }
+ state.frames=motion.frames;state.geometry=geometry;
+ state.helper=new THREE.SkeletonHelper(state.model);
+ state.helper.material.depthTest=false;state.helper.material.transparent=true;state.helper.material.opacity=.9;
+ state.helper.visible=false;scene.add(state.helper);
+ state.ready=true;
+ $("#count").textContent=Object.keys(state.bones).length;
+ for(const id of ["play","start","peak","end","rig","phase"])$("#"+id).disabled=false;
+ $("#hud").textContent="MakeHuman · "+Object.keys(state.bones).length+" костей · 3 кадра";
+ poseAt(0);fit();
+ window.__curlQA={
+  ready:()=>state.ready,source:()=>({frameCount:state.frames.length,peakL:state.frames[1]["forearm.L"][0],
+   peakR:state.frames[1]["forearm.R"][0],boneCount:Object.keys(state.bones).length,
+   builtInClipCount:gltf.animations.length}),
+  poseAt,metrics,
+  neutralAngles:()=>Object.fromEntries(["l","r"].map(x=>[x,THREE.MathUtils.radToDeg(state.geometry[x].neutralAngle)])),
+  boneNames:()=>Object.keys(state.bones)
+ };
+}
+$("#start").onclick=()=>{state.playing=false;$("#play").textContent="▶ Воспроизвести";poseAt(0)};
+$("#peak").onclick=()=>{state.playing=false;$("#play").textContent="▶ Воспроизвести";poseAt(.5)};
+$("#end").onclick=()=>{state.playing=false;$("#play").textContent="▶ Воспроизвести";poseAt(1)};
+$("#phase").oninput=v=>{state.playing=false;$("#play").textContent="▶ Воспроизвести";poseAt(Number(v.target.value)/100)};
+$("#play").onclick=()=>{state.playing=!state.playing;state.started=performance.now()-state.phase*3400;
+ $("#play").textContent=state.playing?"⏸ Остановить":"▶ Воспроизвести"};
+$("#rig").onclick=()=>{state.helper.visible=!state.helper.visible;$("#rig").classList.toggle("active",state.helper.visible);
+ $("#rig").setAttribute("aria-pressed",String(state.helper.visible))};
+(function render(){
+ requestAnimationFrame(render);
+ if(state.playing&&state.ready)poseAt(((performance.now()-state.started)%3400)/3400);
+ if(state.helper?.visible)state.helper.updateMatrixWorld(true);
+ orbit.update();renderer.render(scene,camera);
+})();
+init().catch(err=>{console.error(err);$("#error").classList.add("on");$("#error").textContent="Ошибка загрузки модели: "+err.message;
+ $("#hud").textContent="Не удалось запустить перенос"});
+</script></body></html>
