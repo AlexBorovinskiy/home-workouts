@@ -1,0 +1,113 @@
+name: QA MASI native upper-body anatomy viewer
+on:
+  push:
+    paths:
+      - 'opensim-lab/upper-body.html'
+      - 'opensim-lab/assets/masi-upper-addendum.json'
+      - 'opensim-lab/assets/masi-neck-native.json'
+      - '.github/workflows/qa-masi-upper-body.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  qa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install native OpenSim and mobile browser test tools
+        run: |
+          python -m pip install --disable-pip-version-check 'opensim==4.6'
+          npm install --prefix /tmp/qa-masi-upper --no-audit --no-fund playwright-core@1.56.1
+      - name: Reconstruct original MASI native body transforms
+        run: |
+          mkdir -p qa-masi-upper
+          curl -fL --retry 3 --max-time 100 'https://ndownloader.figshare.com/files/6929198' -o /tmp/masi-original.osim
+          python opensim-lab/convert_masi_legacy.py --source /tmp/masi-original.osim --output /tmp/masi-renamed.osim
+          python opensim-lab/audit_masi_fullbody.py --model /tmp/masi-renamed.osim --output qa-masi-upper/fullbody-native-audit.json
+      - name: Verify every displayed body frame matches native OpenSim and source local mesh transform
+        run: |
+          python - <<'PY'
+          import json,math
+          from pathlib import Path
+          native=json.loads(Path('qa-masi-upper/fullbody-native-audit.json').read_text())
+          cervical=json.loads(Path('opensim-lab/assets/masi-neck-native.json').read_text())
+          upper=json.loads(Path('opensim-lab/assets/masi-upper-addendum.json').read_text())
+          frames={**cervical['bodyFrames'],**upper['bodyFrames']}
+          required=set('skull jaw torso spine lclavicle rclavicle lscapula rscapula'.split())|{f'cerv{i}' for i in range(1,8)}
+          assert set(frames)==required, (set(frames)-required, required-set(frames))
+          for key,item in frames.items():
+              expected=native['bodies'][key]
+              assert max(abs(a-b) for a,b in zip(item['position'],expected['positionM']))<2e-6,key+' position'
+              for row_a,row_b in zip(item['rotation'],expected['rotation']):
+                  assert max(abs(a-b) for a,b in zip(row_a,row_b))<2e-6,key+' rotation'
+              attach=native['visualMeshesReferencedBySource'][key]
+              assert len(attach)==1 and attach[0]['file']==item['file'],key+' source mesh'
+              if key in upper['bodyFrames']:
+                  local=[float(x) for x in attach[0]['localTransform'].split()]
+                  assert len(local)==6 and max(abs(a-b) for a,b in zip(local,item['localTransform']))<2e-6,key+' local mesh transform'
+          print('NATIVE_UPPER_BODY_TRANSFORMS_VERIFIED',len(frames),sorted(required))
+          PY
+      - name: Test and screenshot actual mobile 3D scene
+        shell: bash
+        run: |
+          python3 -m http.server 8759 --bind 127.0.0.1 >/tmp/masi-upper-http.log 2>&1 &
+          node --input-type=module <<'NODE'
+          import {chromium} from '/tmp/qa-masi-upper/node_modules/playwright-core/index.mjs';
+          import {writeFileSync} from 'node:fs';
+          const browser=await chromium.launch({channel:'chrome',headless:true,args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+          const page=await browser.newPage({viewport:{width:430,height:932},deviceScaleFactor:1,isMobile:true,hasTouch:true});
+          const errors=[];page.on('pageerror',e=>errors.push(e.message));
+          try{
+            await page.goto('http://127.0.0.1:8759/opensim-lab/upper-body.html',{waitUntil:'domcontentloaded'});
+            await page.waitForFunction(()=>window.__upperQA?.ready()||document.querySelector('#loading')?.textContent?.includes('Ошибка загрузки:'),null,{timeout:120000});
+            const ready=await page.evaluate(()=>window.__upperQA?.ready()===true);
+            if(!ready)throw Error('Viewer load error: '+await page.locator('#loading').innerText());
+            const details=await page.evaluate(()=>{
+              const a=window.__upperQA;
+              return {parts:a.parts(),groups:a.groupCounts(),
+                C1:a.bounds('cerv1'),C7:a.bounds('cerv7'),
+                skull:a.bounds('skull'),spine:a.bounds('spine'),lscapula:a.bounds('lscapula'),rscapula:a.bounds('rscapula')};
+            });
+            if(details.parts.length!==15||details.groups.neck!==7||details.groups.shoulder!==4||errors.length)
+              throw Error('Incorrect anatomy inventory: '+JSON.stringify({details,errors}));
+            const cervicalSeparationMm=(details.C1.center[1]-details.C7.center[1])*1000;
+            const scapularSeparationMm=Math.abs(details.lscapula.center[2]-details.rscapula.center[2])*1000;
+            if(cervicalSeparationMm<55||cervicalSeparationMm>165||scapularSeparationMm<200||scapularSeparationMm>700)
+              throw Error('Out-of-range bone positions '+JSON.stringify({cervicalSeparationMm,scapularSeparationMm}));
+            for(const [name,part] of Object.entries(details)){
+              if(!part?.size)continue;
+              if(part.size.some(v=>!Number.isFinite(v)||v<0.005||v>1.5))throw Error('Invalid geometry for '+name);
+            }
+            await page.locator('#canvas').screenshot({path:'qa-masi-upper/upper-oblique.png'});
+            await page.locator('[data-view="back"]').click();
+            await page.locator('#canvas').screenshot({path:'qa-masi-upper/upper-back.png'});
+            await page.locator('[data-layer="chest"]').click();
+            await page.locator('[data-layer="spine"]').click();
+            if((await page.evaluate(()=>window.__upperQA.visible())).length!==13)throw Error('Layer toggles broken');
+            await page.locator('#bone').selectOption('cerv3');
+            await page.locator('#isolate').check();
+            if(JSON.stringify(await page.evaluate(()=>window.__upperQA.visible()))!==JSON.stringify(['cerv3']))throw Error('Bone isolation broken');
+            await page.locator('#canvas').screenshot({path:'qa-masi-upper/cerv3-isolated.png'});
+            await page.locator('#reset').click();
+            if((await page.evaluate(()=>window.__upperQA.visible())).length!==15)throw Error('Reset broken');
+            if(errors.length)throw Error('JavaScript errors: '+JSON.stringify(errors));
+            writeFileSync('qa-masi-upper/mobile-qa.json',JSON.stringify({details,cervicalSeparationMm,scapularSeparationMm,errors},null,2));
+            console.log('MASI_UPPER_BODY_MOBILE_QA_OK',JSON.stringify({parts:details.parts.length,cervicalSeparationMm,scapularSeparationMm}));
+          }catch(error){
+            await page.screenshot({path:'qa-masi-upper/error.png',fullPage:true}).catch(()=>{});
+            throw error;
+          }finally{await browser.close()}
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: masi-upper-body-scientific-mobile-qa
+          path: qa-masi-upper/
+          retention-days: 14
