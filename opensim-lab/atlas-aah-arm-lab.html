@@ -751,11 +751,13 @@ function fit(){
  const selected=[...rig.entries()].filter(([id])=>
    view==="hand"?/^RA[34567]/.test(id):
    view==="elbow"?/^RA(?:1H|2U|2R)$/.test(id):true).map(([,r])=>mode==="rig"?r.mesh:r.source);
- const muscleBounds=muscleOverlays.filter(x=>x.mesh.visible&&
-  (view!=="hand"||x.segment==="hand")).map(x=>x.mesh);
- const relevant=muscleMode==="muscles"&&muscleBounds.length
-  ?muscleBounds:(["rightarm","hand","elbow"].includes(view)?selected:bones);
- const box=new THREE.Box3();for(const b of relevant)if(b.visible)box.expandByObject(b);
+ // Fit to the posed bone proxies even when only muscles are visible.
+ // Expanding 44 deforming SkinnedMesh bounding boxes on every tap would
+ // require an expensive CPU skinning pass on mobile Safari.
+ const muscleOnly=muscleMode==="muscles"&&mode==="rig";
+ const relevant=["rightarm","hand","elbow"].includes(view)?selected:bones;
+ const box=new THREE.Box3();
+ for(const b of relevant)if(b.visible||muscleOnly)box.expandByObject(b);
  if(dumbbell?.root.visible&&view!=="elbow")box.expandByObject(dumbbell.root);
  if(box.isEmpty())return;
  const centre=box.getCenter(new THREE.Vector3()),size=box.getSize(new THREE.Vector3());
