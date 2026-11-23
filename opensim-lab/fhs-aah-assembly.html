@@ -112,7 +112,19 @@ label{font-size:12px;color:#e5f2ef}
 <div class="stat"><strong id="countLegs">—</strong><span>поверхностей ног</span></div>
 </div>
 <p id="wristReport" class="box">Кисти AAH будут закреплены через одинаковые исходные сетки полулунных костей. Оригинальная поза FHS не используется как целевое положение каждого пальца.</p>
-</section></aside></div></main>
+</section>
+<section class="card panel" id="anatomyAuditCard">
+<h2>Аудит пропорций и положения тела</h2>
+<p>Измерения по реальным VTP-поверхностям и координатам исходных научных моделей. Ориентиры показывают геометрию текущей сборки без изменения позы.</p>
+<div class="box" id="postureReport">Загружаю измерения позвоночника, головы, таза и ног…</div>
+<label class="check" style="margin-top:10px"><input id="showLandmarks" type="checkbox"> Показать контрольные точки и линии</label>
+<div class="buttons" style="margin-top:8px">
+<button id="auditSide">Проверить сбоку</button>
+<button id="auditFront">Проверить спереди</button>
+</div>
+<p>Контрольные точки — исходные суставные рамки и геометрические центры, а не клинические ориентиры осанки. Они не позволяют поставить диагноз. <a href="https://github.com/AlexBorovinskiy/home-workouts/blob/main/opensim-lab/assets/full-skeleton-posture-audit.json" target="_blank" rel="noopener">Полный отчёт с измерениями</a>.</p>
+</section>
+</aside></div></main>
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"}}</script>
 <script type="module">
@@ -129,7 +141,7 @@ const V=a=>new THREE.Vector3(...a);
 const basis=a=>new THREE.Matrix4().makeBasis(...a.map(V));
 const rows=a=>new THREE.Matrix4().set(a[0][0],a[0][1],a[0][2],0,a[1][0],a[1][1],a[1][2],0,a[2][0],a[2][1],a[2][2],0,0,0,0,1);
 const c={bone:0xdddcce,spine:0x9ad2c6,rib:0xc7c7b9,arm:0xbdb3dc,hand:0x9de3cf,pelvis:0xd6b78d};
-const fhsRoot=new THREE.Group(),handRoot=new THREE.Group(),legsRoot=new THREE.Group();scene.add(fhsRoot,handRoot,legsRoot);
+const fhsRoot=new THREE.Group(),handRoot=new THREE.Group(),legsRoot=new THREE.Group(),auditMarkers=new THREE.Group();scene.add(fhsRoot,handRoot,legsRoot,auditMarkers);auditMarkers.visible=false;
 const group={head:new THREE.Group(),spine:new THREE.Group(),ribs:new THREE.Group(),shoulders:new THREE.Group(),pelvis:new THREE.Group(),rigidHands:new THREE.Group()};
 Object.values(group).forEach(g=>fhsRoot.add(g));
 const neckRoot=new THREE.Group(),neckScaffold=new THREE.Group(),masiRibsGroup=new THREE.Group();
@@ -138,6 +150,7 @@ const aahGroup={right:new THREE.Group(),left:new THREE.Group()};Object.values(aa
 let fhs=null,aah=null,mode="aah",pose="curl",bend=0,view="front",loadedFhs=false,loadedAAH=false,loadAAHStarted=false;
 let neckMode="masi",ribMode="masi",neckReady=false,neckLoadStarted=false,ribProxies=0,ribSegments=0,neckJointResidualMm=null;
 let legData=null,legsReady=false,legLoadStarted=false,legPelvisResidualMm=null;
+let anatomyAuditData=null;
 const neckBones=new Map(),handMesh={right:new Map(),left:new Map()},legMeshes=new Map(),legBodies=new Map(),fhsMeshes=[];
 const sourceAAH="https://raw.githubusercontent.com/nishbo/ms_arm_and_hand/main/AAH%20Model/Geometry/";
 const sourceMASI="https://raw.githubusercontent.com/MyoHub/myoconverter/main/models/osim/Neck6D/Geometry/";
@@ -283,6 +296,7 @@ async function readFHSZIP(buffer){
  await startAAH();
  await startNeck();
  await startLegs();
+ await startPostureAudit();
 }
 async function startNeck(){
  if(!loadedFhs||neckLoadStarted)return;
@@ -540,6 +554,10 @@ async function startAAH(){
     legHipWorld:side=>V(legData.jointWorldPoints["hip_"+side].parentPoint).applyMatrix4(legsRoot.matrixWorld).toArray(),
     legFootWorld:side=>legBodies.get("calcn_"+side)?.getWorldPosition(new THREE.Vector3()).toArray(),
     legBoundingBox:()=>{const b=new THREE.Box3().setFromObject(legsRoot);return {min:b.min.toArray(),max:b.max.toArray()}},
+    postureAuditReady:()=>!!anatomyAuditData,
+    postureLandmarkCount:()=>auditMarkers.children.length,
+    postureMarkerVisible:()=>auditMarkers.visible,
+    postureAuditHeight:()=>anatomyAuditData?.measurements?.visibleSkeletonTopToFootBottomMm,
    sideCount:side=>aahGroup[side].children.length,
    mode:()=>mode,pose:()=>pose,bend:()=>bend,
    handOrigin:side=>{const P=side==="right"?"RA":"LA";const m=handMesh[side].get(P+"3L");return m.getWorldPosition(new THREE.Vector3()).toArray()},
@@ -569,6 +587,64 @@ function applyHands(){
  $("#bendLabel").textContent="Сгибание: "+Math.round(bend*100)+"%";
  document.querySelectorAll("[data-pose]").forEach(b=>b.classList.toggle("on",
    b.dataset.pose==="open"?bend===0:pose===b.dataset.pose&&bend>0));
+}
+function clearAuditMarkers(){
+ for(const obj of [...auditMarkers.children]){
+  auditMarkers.remove(obj);obj.geometry?.dispose();obj.material?.dispose();
+ }
+}
+function drawAuditLine(points,color){
+ const geometry=new THREE.BufferGeometry().setFromPoints(points.map(V));
+ const line=new THREE.Line(geometry,new THREE.LineBasicMaterial({color,transparent:true,opacity:.85}));
+ auditMarkers.add(line);
+}
+function buildAuditMarkers(data){
+ clearAuditMarkers();
+ const m=data.measuredLandmarkFrames;
+ const marks=[
+  ["Таз FHS",m.FHS_pelvis,0xf3c17c],
+  ["T1 FHS",m.FHS_T1,0x9ee1d4],
+  ["T12 FHS",m.FHS_T12,0x9ee1d4],
+  ["C7 MASI",m.MASI_C7_registered,0xedba91],
+  ["Центр черепа MASI",m.MASI_skull_geometry_centre,0xf0cb8a],
+  ["Правый тазобедренный центр",data.hipSurfaceCompatibility.r.transformedHipJointCenterM,0xbfc2ec],
+  ["Левый тазобедренный центр",data.hipSurfaceCompatibility.l.transformedHipJointCenterM,0xbfc2ec],
+ ];
+ const colors=[[0xf3c17c,0xffd59e],[0x9ee1d4,0x9ee1d4]];
+ const sphere=new THREE.SphereGeometry(.007,12,8);
+ for(const [name,position,color] of marks){
+  const dot=new THREE.Mesh(sphere.clone(),new THREE.MeshBasicMaterial({color,depthTest:false}));
+  dot.position.copy(V(position));dot.userData.name=name;dot.renderOrder=11;auditMarkers.add(dot);
+ }
+ sphere.dispose();
+ drawAuditLine([m.FHS_pelvis,m.FHS_T12,m.FHS_T1,m.MASI_C7_registered,m.MASI_skull_geometry_centre],0xf3c17c);
+ drawAuditLine([data.hipSurfaceCompatibility.r.transformedHipJointCenterM,
+               data.hipSurfaceCompatibility.l.transformedHipJointCenterM],0xc3c2ec);
+ auditMarkers.visible=$("#showLandmarks").checked;
+}
+async function startPostureAudit(){
+ try{
+  const data=await getJSON("./assets/full-skeleton-posture-audit.json");
+  if(data.schema!=="full-skeleton-posture-surface-audit-v1"||
+     data.flags.neutralPostureValidated!==false||
+     data.summary.noSourceAnatomyModified!==true)throw Error("Несовместимая версия анатомического аудита");
+  anatomyAuditData=data;
+  const a=data.measurements;
+  const signed=(v,forward,back)=>Math.abs(v/10).toFixed(1).replace(".",",")+" см "+(v>=0?forward:back);
+  $("#postureReport").innerHTML=
+   "<b>Высота скелета:</b> "+(a.visibleSkeletonTopToFootBottomMm/10).toFixed(1).replace(".",",")+" см"+
+   "<br><b>T1 относительно таза:</b> "+signed(a.T1AnteriorOffsetFromPelvisOriginMm,"вперёд","назад")+
+   "<br><b>Центр черепа относительно T1:</b> "+signed(a.skullMeshVisualCentreAnteriorOffsetFromT1Mm,"вперёд","назад")+
+   "<br><b>Разница между стопами:</b> "+a.footBottomYSymmetryMm.toFixed(2).replace(".",",")+" мм"+
+   "<br><b>Поверхности бедро–таз FHS, минимальные расстояния:</b> "+
+   data.hipSurfaceCompatibility.r.pelvisFHSAtSource.minimumMm.toFixed(1).replace(".",",")+" / "+
+   data.hipSurfaceCompatibility.l.pelvisFHSAtSource.minimumMm.toFixed(1).replace(".",",")+" мм"+
+   "<br><small>Это не диагноз и не проверка хрящевого суставного зазора. Выпрямление костей не выполнялось.</small>";
+  buildAuditMarkers(data);
+ }catch(e){
+  $("#postureReport").textContent="Точный отчёт пока недоступен: "+e.message;
+  console.error("Anatomical posture audit:",e);
+ }
 }
 function updateVisibility(){
  const replace=mode==="aah"&&loadedAAH;
@@ -612,7 +688,10 @@ document.querySelectorAll("[data-pose]").forEach(b=>b.onclick=()=>{
 $("#bend").oninput=e=>{bend=Number(e.target.value)/100;applyHands()};
 document.querySelectorAll("[data-view]").forEach(b=>b.onclick=()=>{view=b.dataset.view;fit()});
 for(const id of ["ribs","spine","shoulders","head","pelvis","legs"])$("#"+id).onchange=()=>{updateVisibility();fit()};
-$("#reset").onclick=()=>{view="front";bend=0;pose="curl";mode="aah";neckMode="masi";ribMode="masi";$("#legs").checked=true;applyHands();updateVisibility();fit()};
+$("#reset").onclick=()=>{view="front";bend=0;pose="curl";mode="aah";neckMode="masi";ribMode="masi";$("#legs").checked=true;$("#showLandmarks").checked=false;auditMarkers.visible=false;applyHands();updateVisibility();fit()};
+$("#showLandmarks").onchange=e=>{auditMarkers.visible=e.target.checked};
+$("#auditSide").onclick=()=>{view="profile";fit()};
+$("#auditFront").onclick=()=>{view="front";fit()};
 new ResizeObserver(()=>{renderer.setSize(stage.clientWidth,stage.clientHeight,false);camera.aspect=stage.clientWidth/Math.max(1,stage.clientHeight);camera.updateProjectionMatrix()}).observe(stage);
 (function loop(){requestAnimationFrame(loop);orbit.update();renderer.render(scene,camera)})();
 async function init(){
