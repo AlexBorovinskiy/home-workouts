@@ -3,6 +3,7 @@ on:
   push:
     paths:
       - 'opensim-lab/export_original_mesh_frames.py'
+      - 'opensim-lab/audit_anatomy_connections.py'
       - 'opensim-lab/original-anatomy.html'
       - 'opensim-lab/assets/fhs-original-frames.json'
       - '.github/workflows/qa-fhs-mesh-frames.yml'
@@ -85,6 +86,14 @@ jobs:
             --model /tmp/sample-fhs.osim \
             --archive-relative "$(cat /tmp/archive-relative-name.txt)" \
             --output qa-fhs-original/frames-manifest.json
+      - name: Audit original rib-vertebra and shoulder anatomical links
+        shell: bash
+        run: |
+          python opensim-lab/audit_anatomy_connections.py \
+            --model /tmp/sample-fhs.osim \
+            --archive /tmp/fhs-original.zip \
+            --archive-relative "$(cat /tmp/archive-relative-name.txt)" \
+            --output qa-fhs-original/anatomical-connections.json
       - name: Assert orthonormal body frames
         shell: bash
         run: |
