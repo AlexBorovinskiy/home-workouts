@@ -636,7 +636,16 @@ function buildMuscleOverlay(){
   if(Math.min(center.distanceTo(hum),center.distanceTo(fore),center.distanceTo(wrist))>.24)continue;
   const segment=hand.test(name)&&center.distanceTo(wrist)<.11?"hand":upper.test(name)?"upper":"forearm";
   const allowed=segment==="upper"?upperIndices:segment==="hand"?handIndices:fullIndices;
-  const geo=src.geometry.clone();
+  // Share immutable source mesh attributes with Écorché. Only new
+  // skinIndex/skinWeight arrays are allocated: important on mobile Safari.
+  const geo=new THREE.BufferGeometry(),sourceGeo=src.geometry;
+  if(sourceGeo.index)geo.setIndex(sourceGeo.index);
+  for(const [key,attribute] of Object.entries(sourceGeo.attributes))
+   geo.setAttribute(key,attribute);
+  for(const group of sourceGeo.groups)
+   geo.addGroup(group.start,group.count,group.materialIndex);
+  geo.drawRange.start=sourceGeo.drawRange.start;
+  geo.drawRange.count=sourceGeo.drawRange.count;
   const positions=geo.getAttribute("position"),count=positions.count;
   const indices=new Uint16Array(count*4),weights=new Float32Array(count*4);
   for(let v=0;v<count;v++){
