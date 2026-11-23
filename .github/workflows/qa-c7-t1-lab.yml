@@ -48,11 +48,17 @@ jobs:
               const q=window.__c7t1QA;
               return {parts:q.partIds(),closestMm:q.minVertexMm(),anchorMm:q.anchorErrorMm(),
                 C7:q.bounds('cerv7'),T1:q.bounds('thoracic1'),T12:q.bounds('thoracic12'),L5:q.bounds('lumbar5'),
-                exactC7:q.tightBounds('cerv7'),exactT1:q.tightBounds('thoracic1'),boneSizes:q.sizes()}
+                exactC7:q.tightBounds('cerv7'),exactT1:q.tightBounds('thoracic1'),boneSizes:q.sizes(),
+                proximity:q.currentProximity(),markers:q.proximityMarkers()}
             });
             if(data.parts.length!==17||data.closestMm<1||data.closestMm>5||
                 Math.abs(data.closestMm-2.4114)>.06||data.anchorMm>.0001||errors.length)
               throw Error('Native anatomical QA mismatched: '+JSON.stringify({data,errors}));
+            if(data.proximity.vertexToTriangleMinMm!==1.88213||
+               data.proximity.triangleIntersection.nonCoplanarEdgeIntersectingTrianglePairs!==0||
+               data.markers!==3||
+               !((await page.locator('#triangleAudit').innerText()).includes('1,882')))
+               throw Error('Surface-proximity diagnostics absent '+JSON.stringify({proximity:data.proximity,markers:data.markers}));
             // Tight world-coordinate bounds MUST use transformed mesh vertices,
             // not Three.js's approximate bounding box transformed as a cuboid.
             const c7=data.exactC7.sizeMm,t1=data.exactT1.sizeMm;
@@ -70,10 +76,16 @@ jobs:
             await page.locator('[data-neck-scale="0.88875"]').click();
             const scaled=await page.evaluate(()=>{
               const q=window.__c7t1QA;
-              return {s:q.scale(),distance:q.minVertexMm(),c7:q.tightBounds('cerv7').sizeMm,t1:q.tightBounds('thoracic1').sizeMm};
+              return {s:q.scale(),distance:q.minVertexMm(),c7:q.tightBounds('cerv7').sizeMm,
+                t1:q.tightBounds('thoracic1').sizeMm,proximity:q.currentProximity(),markers:q.proximityMarkers()};
             });
             if(Math.abs(scaled.s-.88875)>1e-7||Math.abs(scaled.distance-3.3768)>.10)
               throw Error('Trial scaled geometry disagrees with source audit '+JSON.stringify(scaled));
+            if(scaled.proximity.vertexToTriangleMinMm!==1.86979||
+               scaled.proximity.triangleIntersection.nonCoplanarEdgeIntersectingTrianglePairs!==0||
+               scaled.markers!==3||
+               !((await page.locator('#triangleAudit').innerText()).includes('1,870')))
+               throw Error('Scaled surface-proximity diagnostics absent '+JSON.stringify(scaled.proximity));
             if(scaled.c7.some((x,i)=>Math.abs(x-data.exactC7.sizeMm[i]*.88875)>.03)||
                scaled.t1.some((x,i)=>Math.abs(x-origT1[i])>.01))
               throw Error('Trial changed non-neck bone size: '+JSON.stringify({scaled,origT1}));
