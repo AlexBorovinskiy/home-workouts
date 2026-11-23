@@ -1,0 +1,96 @@
+name: QA atlas anatomical right arm driven by AAH OpenSim motion
+on:
+  push:
+    paths:
+      - 'opensim-lab/atlas-aah-arm-lab.html'
+      - 'opensim-lab/assets/aah-elbow-source-poses.json'
+      - '.github/workflows/qa-atlas-aah-arm.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Chromium test framework
+        run: npm install --prefix /tmp/qa-atlas-arm --no-audit --no-fund playwright-core@1.56.1
+      - name: Verify source-provenance pose and each anatomic atlas bone in mobile Chrome
+        run: |
+          mkdir -p qa-atlas-arm
+          python3 -m http.server 8797 --bind 127.0.0.1 >/tmp/qa-atlas-arm-http.log 2>&1 &
+          node --input-type=module <<'NODE'
+          import {chromium} from '/tmp/qa-atlas-arm/node_modules/playwright-core/index.mjs';
+          import {writeFileSync} from 'node:fs';
+          const browser=await chromium.launch({channel:'chrome',headless:true,
+            args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+          const page=await browser.newPage({viewport:{width:430,height:932},deviceScaleFactor:1,isMobile:true,hasTouch:true});
+          const errors=[];page.on('pageerror',e=>errors.push(e.message));
+          const read=()=>page.evaluate(()=>{
+            const q=window.__armQA;
+            return {ready:q.ready(),bones:q.boneCount(),atlasBones:q.sourceCount(),reg:q.registration(),
+              elbow:q.elbowAngle(),finger:q.fingerProgress(),gap:q.elbowGap(),pivot:q.elbowPivot(),
+              wrist:q.meshWorldPosition('RA3L'),index:q.meshWorldPosition('RA7D2'),
+              radius:q.meshWorldPosition('RA2R'),humerus:q.meshWorldPosition('RA1H'),
+              view:q.view(),mode:q.mode(),visible:q.visible(),coordinate:q.coordinates()};
+          });
+          const d=(a,b)=>Math.sqrt(a.reduce((s,v,i)=>s+(v-b[i])**2,0));
+          try{
+            await page.goto('http://127.0.0.1:8797/opensim-lab/atlas-aah-arm-lab.html',{waitUntil:'domcontentloaded'});
+            await page.waitForFunction(()=>window.__armQA?.ready()||
+              document.querySelector('#status')?.textContent?.includes('Не удалось построить'),null,{timeout:120000});
+            const open=await read();
+            if(!open.ready||open.bones!==28||open.atlasBones!==198||open.visible!==28||
+               open.coordinate!=='ra_el_e_f'||open.reg.rms>35||open.reg.scale<.45)
+              throw Error('Initial arm retarget invalid '+JSON.stringify(open)+' : '+await page.locator('#status').innerText());
+            await page.locator('#scene').screenshot({path:'qa-atlas-arm/right-arm-atlas-original-bones-AAH-neutral.png'});
+            await page.locator('#finger').fill('100');
+            const curled=await read();
+            const fingerMoved=d(open.index,curled.index);
+            if(curled.finger!==1||fingerMoved<.012||fingerMoved>.16)
+              throw Error('AAH finger motion not physically visible: '+JSON.stringify({fingerMoved,curled}));
+            await page.locator('#scene').screenshot({path:'qa-atlas-arm/right-arm-AAH-finger-curl.png'});
+            await page.locator('#elbow').fill('90');
+            const flex=await read();
+            const wristMoved=d(curled.wrist,flex.wrist);
+            const humerusMoved=d(curled.humerus,flex.humerus);
+            if(flex.elbow!==90||wristMoved<.12||wristMoved>.72||humerusMoved>.001)
+              throw Error('AAH native elbow motion detached humerus: '+JSON.stringify({wristMoved,humerusMoved,flex}));
+            await page.locator('#scene').screenshot({path:'qa-atlas-arm/right-arm-AAH-elbow-90-fingers-curled.png'});
+            await page.locator('[data-pose="cylinder"]').click();
+            await page.locator('#scene').screenshot({path:'qa-atlas-arm/right-arm-AAH-trial-cylinder-pose.png'});
+            await page.locator('[data-mode="source"]').click();
+            if((await read()).mode!=='source'||(await read()).visible!==0)
+              throw Error('Cannot compare undisturbed original atlas hand');
+            await page.locator('#scene').screenshot({path:'qa-atlas-arm/right-arm-original-anatomy-reference.png'});
+            await page.locator('[data-mode="rig"]').click();
+            await page.locator('[data-view="front"]').click();
+            await page.locator('#scene').screenshot({path:'qa-atlas-arm/full-skeleton-with-single-rigged-arm.png'});
+            await page.locator('#reset').click();
+            const back=await read();
+            if(back.elbow!==0||back.finger!==0||d(open.wrist,back.wrist)>.0005||d(open.index,back.index)>.0005)
+              throw Error('Right arm does not return to atlas neutral pose '+JSON.stringify(back));
+            if(errors.length)throw Error('Uncaught browser exceptions '+JSON.stringify(errors));
+            writeFileSync('qa-atlas-arm/report.json',JSON.stringify({
+              open,curled,flex,reset:back,fingerMovedM:fingerMoved,wristMovedM:wristMoved,
+              humerusMovedM:humerusMoved,errors},null,2));
+            console.log('ATLAS_AAH_REAL_ARM_MOBILE_QA_SUCCESS',JSON.stringify({
+              atlasBones:open.atlasBones,retargetedBones:open.bones,
+              registrationRmsMm:open.reg.rms,sourceElbowCoordinate:open.coordinate,
+              wristMovementMm:wristMoved*1000,fingerMovementMm:fingerMoved*1000}));
+          }catch(e){
+            console.error(e);
+            await page.screenshot({path:'qa-atlas-arm/failed.png',fullPage:true}).catch(()=>{});
+            throw e;
+          }finally{await browser.close()}
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: atlas-AAH-OpenSim-arm-retarget-first-pilot
+          path: qa-atlas-arm/
+          retention-days: 14
