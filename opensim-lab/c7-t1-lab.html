@@ -69,7 +69,7 @@ a{color:var(--mint)}
 <div class="stat"><strong>2,41 мм</strong><small>минимум между вершинами C7 и T1</small></div>
 <div class="stat"><strong>17</strong><small>позвонков FHS</small></div>
 </div>
-<p style="font-size:11px">Расстояние между вершинами вычислено для выбранного положения; это <b>не</b> измеренная суставная щель и не анатомическая валидация.</p>
+<p style="font-size:11px">Расстояние между вершинами вычислено для выбранного положения; это <b>не</b> измеренная суставная щель и не анатомическая валидация. Границы костных сеток перекрываются по вертикали, поэтому столкновения поверхностей пока не исключены.</p>
 </section>
 <section class="card panel">
 <h2>Управление моделью</h2>
@@ -90,7 +90,7 @@ a{color:var(--mint)}
 <label class="layer"><input type="checkbox" data-layer="chest" checked> MASI · грудная клетка (полупрозрачная)</label>
 <label class="layer"><input type="checkbox" data-layer="shoulder"> MASI · ключицы и лопатки</label>
 <label class="layer"><input type="checkbox" data-layer="reference"> MASI · старая цельная сетка позвоночника</label>
-<label class="layer"><input type="checkbox" data-layer="markers" checked> Отметки суставного ориентира и T1</label>
+<label class="layer"><input type="checkbox" data-layer="markers" checked> Белая точка сустава C7–T1</label>
 <div class="buttons" style="margin-top:10px"><button id="reset">Сбросить вид</button></div>
 </section>
 <section class="card panel">
@@ -232,7 +232,7 @@ async function loadMasi(){
  const joinErr=worldFHS.distanceTo(V(reg.masiAnchorM))*1000;
  if(joinErr>.0001)throw Error("Разные исходные суставные координаты (погрешность "+joinErr+" мм)");
  makeMarker(reg.masiAnchorM,0xf5ffdd,.005);
- label("C7–T1",reg.masiAnchorM,"#f1eac1");
+ // The joint is a small white marker; no large billboard obscures cervical bone geometry.
  masiReady=true;show();fit();$("#loading").hidden=true;
  $("#hud").textContent="MASI C1–C7 · исходные координаты OpenSim · подготовлена регистрация FHS";
  window.__c7t1QA={
