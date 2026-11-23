@@ -144,7 +144,7 @@ const landmarks=[
 let atlas=null,original=[],bones=[],rig=new Map(),poseFrames=null,elbowFrames=null,registration=null;
 let elbow=0,finger=0,pose="curl",mode="rig",view="rightarm",ready=false,sourceAtlas=null,axisMode="anatomic";
 let dumbbell=null,gripBase=null,gripFrame=null,gripPlan=null,gripVisible=false,gripReady=false;
-let handleDiameterMm=30,handleOffsetMm=0,contactResult=null;
+let handleDiameterMm=30,handleOffsetMm=0,contactResult=null,thumbCorrection=null,thumbFit=null;
 const sourceCenters=new Map(),targetCenters=new Map(),sourceRest=new Map(),jointPivots=new Map();
 const contactDigits={
  index:["RA5P2","RA6M2","RA7D2"],
@@ -326,6 +326,16 @@ function applyPose(){
   const J=M4().makeTranslation(P.x,P.y,P.z)
    .multiply(M4().makeRotationFromQuaternion(Q))
    .multiply(M4().makeTranslation(-P.x,-P.y,-P.z));
+  if(body==="RA4M1"&&thumbCorrection&&gripVisible&&mode==="rig"){
+   // Bounded anatomical thumb opposition correction computed against
+   // the actual handle geometry, not an arbitrary fixed rotation.
+   const blend=new THREE.Quaternion().slerpQuaternions(
+     new THREE.Quaternion(),thumbCorrection,THREE.MathUtils.clamp(finger,0,1));
+   const K=M4().makeTranslation(P.x,P.y,P.z)
+    .multiply(M4().makeRotationFromQuaternion(blend))
+    .multiply(M4().makeTranslation(-P.x,-P.y,-P.z));
+   J.premultiply(K);
+  }
   const transform=relativeMotion(j.parent).clone().multiply(J);
   memo.set(body,transform);return transform;
  };
@@ -471,6 +481,44 @@ function planDumbbellGrip(){
  applyPose();
  return gripPlan;
 }
+function calculateThumbOpposition(){
+ // Move the distal thumb phalanx toward the bar by an anatomical
+ // first-metacarpal (CMC) root rotation around the atlas joint proxy.
+ // This is ONLY a bounded visual IK retarget; not measured tendon force.
+ const old={finger,elbow,pose};
+ thumbCorrection=null;
+ elbow=0;finger=1;pose="cylinder";applyPose();
+ scene.updateMatrixWorld(true);
+ const rootPivot=jointPivots.get("RA4M1")?.pivot;
+ if(!rootPivot)throw Error("Нет суставного ориентира основания большого пальца");
+ const tip=vecCenter(rig.get("RA6D1").mesh);
+ const origin=new THREE.Vector3().setFromMatrixPosition(gripBase);
+ const lateral=gripFrame.x.clone().normalize();
+ const t=THREE.MathUtils.clamp(tip.clone().sub(origin).dot(lateral),-.05,.05);
+ const onAxis=origin.clone().addScaledVector(lateral,t);
+ let radial=tip.clone().sub(onAxis);
+ radial.addScaledVector(lateral,-radial.dot(lateral));
+ if(radial.length()<.002)radial=gripFrame.z.clone();
+ radial.normalize();
+ // Handle radius + thumb bone thickness proxy 6 mm + expected soft tissue 4 mm.
+ const desired=onAxis.clone().addScaledVector(radial,handleDiameterMm/2000+.010);
+ const from=tip.clone().sub(rootPivot),to=desired.clone().sub(rootPivot);
+ if(from.length()<.03||to.length()<.03)throw Error("Некорректный рычаг большого пальца");
+ const q=new THREE.Quaternion().setFromUnitVectors(from.normalize(),to.normalize());
+ const rawAngle=2*Math.acos(THREE.MathUtils.clamp(Math.abs(q.w),0,1));
+ // 50 degrees cap keeps this an explicitly limited test, not unlimited
+ // thumb displacement capable of hiding a bad atlas rig.
+ const cap=THREE.MathUtils.degToRad(50);
+ thumbCorrection=new THREE.Quaternion().slerpQuaternions(
+  new THREE.Quaternion(),q,Math.min(1,cap/Math.max(rawAngle,.00001)));
+ thumbFit={angleDegrees:THREE.MathUtils.radToDeg(Math.min(rawAngle,cap)),
+           requestedDegrees:THREE.MathUtils.radToDeg(rawAngle),
+           sourceTip:tip.toArray(),targetTip:desired.toArray()};
+ finger=1;applyPose();
+ thumbFit.actualTip=vecCenter(rig.get("RA6D1").mesh).toArray();
+ finger=old.finger;elbow=old.elbow;pose=old.pose;applyPose();
+ return thumbFit;
+}
 function setDumbbellPose(E){
  if(!dumbbell||!gripBase)return;
  const shift=M4().makeTranslation(0,handleOffsetMm/1000,0);
@@ -503,6 +551,7 @@ function updateContactReport(){
   "Средние/концевые фаланги → металл (выборка вершин): "+(valid.length)+"/5 пальцев в пределах 2–24 мм; "+
   "минимальный зазор "+fmt(worst)+". "+
   ($("#showContact").checked?parts.join(" · ")+". ":"")+
+  "Большой палец: пробная оппозиция "+(thumbFit?.angleDegrees||0).toFixed(0)+"°. "+
   "Мягкие ткани не моделируются — фактический контакт не подтверждён.";
 }
 function appearance(){
@@ -596,6 +645,7 @@ async function init(){
   // plan; the grip itself stays hidden until its verification completes.
   ready=true;
   gripPlan=planDumbbellGrip();
+  calculateThumbOpposition();
   $("#boneCount").textContent=rig.size.toString();
   $("#registration").textContent=registration.rms.toFixed(1).replace(".",",")+" мм";
   $("#accuracyText").textContent=
@@ -670,6 +720,7 @@ window.__armQA={
  sourceWorldCenter:id=>{const r=rig.get(id);scene.updateMatrixWorld(true);return r?vecCenter(r.source).toArray():null},
  visible:()=>[...rig.values()].filter(r=>r.mesh.visible).length,
  gripReady:()=>gripReady,gripVisible:()=>gripVisible,gripPlan:()=>gripPlan,
+ thumbFit:()=>thumbFit,
  handleCenter:()=>{scene.updateMatrixWorld(true);return dumbbell?.root.getWorldPosition(new THREE.Vector3()).toArray()},
  handleAxis:()=>{scene.updateMatrixWorld(true);return dumbbell?.root.localToWorld(new THREE.Vector3(1,0,0)).sub(dumbbell.root.localToWorld(new THREE.Vector3())).normalize().toArray()},
  handleDiameter:()=>handleDiameterMm,contact:()=>contactResult,
