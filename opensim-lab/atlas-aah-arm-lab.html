@@ -68,6 +68,18 @@ a{color:var(--accent)}
 <button data-axis="raw">Первоначальная AAH</button>
 </div>
 <p>Первая попытка прямого переноса отправляла предплечье вбок. Сравни две оси: первая использует сагиттальное сгибание по положению костей атласа, вторая показывает прямой перенос из AAH.</p>
+<h3>Задача кисти</h3>
+<div class="buttons">
+<button data-hand-task="grip" class="on">Гантель</button>
+<button data-hand-task="pushup">Отжимания: опора</button>
+<button data-hand-task="side-plank">Боковая планка: опора</button>
+</div>
+<div id="supportControls" hidden>
+<label style="margin-top:10px">Разгибание запястья <strong id="wristExtensionValue">70°</strong></label>
+<input id="wristExtension" type="range" min="35" max="85" step="1" value="70" disabled aria-label="Разгибание запястья при опоре кистью">
+<div id="supportReport" class="status" style="margin-top:9px">Измеряю опору ладони на плоскость.</div>
+<p>Один механизм для разных упражнений: ориентация кисти, сустав запястья, плоскость опоры и зазоры. Мягкие ткани и реальные силы пока не рассчитываются.</p>
+</div>
 <h3>Захват гантели</h3>
 <div class="buttons">
 <button id="gripNow" class="on">Схватить гантель</button>
@@ -213,6 +225,8 @@ const sourceCenters=new Map(),targetCenters=new Map(),sourceRest=new Map(),joint
 let muscleMode="bones",muscleOverlays=[],muscleSkin=null;
 let gripDigitProgress=null,gripPlanning=false,manualGripAngles=null,gripTesting=false;
 let thumbMode="opposition",thumbStrength=1;
+let handTask="grip",wristExtensionDeg=70,wristExtensionSign=-1;
+let supportSurface=null,supportMetrics=null;
 let fingerFitMode="refined",fingerFitStrength=1,fingerCorrections=null,fingerFitting=false;
 let fingerFitReport=null;
 const fingerAxes=new Map();
@@ -388,6 +402,144 @@ function initializeFingerAxes(){
   if(axis.lengthSq()>1e-10)fingerAxes.set(id,axis.normalize());
  }
 }
+// Reusable palm-on-plane kinematic constraint for push-ups and side plank.
+// Bone samples estimate clearance; this does not model soft tissue or forces.
+function neutralPalmFrame(){
+ const c=id=>vecCenter(rig.get(id).source);
+ const wrist=c("RA3L"),m2=c("RA4M2"),m3=c("RA4M3"),m5=c("RA4M5");
+ const y=m3.clone().sub(wrist).normalize();
+ const x=m2.clone().sub(m5);
+ x.addScaledVector(y,-x.dot(y)).normalize();
+ return {wrist,x,y,z:x.clone().cross(y).normalize()};
+}
+function determineWristSign(){
+ const saved={finger,pose,gripVisible,handTask};
+ handTask="grip";pose="cylinder";gripVisible=false;finger=0;applyPose();
+ const open=vecCenter(rig.get("RA7D3").mesh);
+ finger=1;applyPose();
+ const curl=vecCenter(rig.get("RA7D3").mesh);
+ wristExtensionSign=curl.sub(open).dot(neutralPalmFrame().z)>0?-1:1;
+ Object.assign(saved,{});
+ finger=saved.finger;pose=saved.pose;gripVisible=saved.gripVisible;
+ handTask=saved.handTask;applyPose();
+}
+function wristTransform(){
+ const {wrist,x}=neutralPalmFrame();
+ const angle=THREE.MathUtils.degToRad(wristExtensionDeg*wristExtensionSign);
+ return M4().makeTranslation(wrist.x,wrist.y,wrist.z)
+  .multiply(M4().makeRotationAxis(x,angle))
+  .multiply(M4().makeTranslation(-wrist.x,-wrist.y,-wrist.z));
+}
+function buildSupportSurface(){
+ const group=new THREE.Group();group.name="palm-floor-contact";scene.add(group);
+ const plane=new THREE.Mesh(new THREE.PlaneGeometry(.32,.30),
+  new THREE.MeshStandardMaterial({color:0x378e94,side:THREE.DoubleSide,
+   transparent:true,opacity:.38,depthWrite:false,roughness:.95}));
+ plane.rotation.x=-Math.PI/2;group.add(plane);
+ const grid=new THREE.GridHelper(.32,16,0xa5e1d4,0x4a7f83);
+ grid.position.y=.001;group.add(grid);
+ const marks={};
+ for(const digit of ["palm","index","middle","ring","little","thumb"]){
+  const dot=new THREE.Mesh(new THREE.SphereGeometry(.003,8,6),
+   new THREE.MeshBasicMaterial({color:0x93e1cf}));
+  group.add(dot);marks[digit]=dot;
+ }
+ group.visible=false;
+ supportSurface={group,marks};
+}
+function placeSupport(){
+ if(!supportSurface)return;
+ scene.updateMatrixWorld(true);
+ const c=id=>vecCenter(rig.get(id).mesh);
+ const m2=c("RA4M2"),m3=c("RA4M3"),m5=c("RA4M5"),w=c("RA3L");
+ const palm=m2.clone().add(m3).add(m5).multiplyScalar(1/3);
+ const longitudinal=m3.clone().sub(w).normalize();
+ const across=m2.clone().sub(m5);
+ across.addScaledVector(longitudinal,-across.dot(longitudinal)).normalize();
+ const normal=across.clone().cross(longitudinal).normalize();
+ if(normal.dot(c("RA2R").sub(palm))<0)normal.negate();
+ const upward=new THREE.Vector3(0,1,0);
+ const align=new THREE.Quaternion().setFromUnitVectors(normal,upward);
+ const fingerDirection=longitudinal.applyQuaternion(align);
+ fingerDirection.y=0;fingerDirection.normalize();
+ const target=handTask==="pushup"?new THREE.Vector3(0,0,-1):new THREE.Vector3(1,0,0);
+ const yaw=Math.atan2(fingerDirection.z*target.x-fingerDirection.x*target.z,
+  fingerDirection.x*target.x+fingerDirection.z*target.z);
+ const orient=new THREE.Quaternion().setFromAxisAngle(upward,yaw).multiply(align);
+ const pivot=M4().makeTranslation(palm.x,palm.y,palm.z)
+  .multiply(M4().makeRotationFromQuaternion(orient))
+  .multiply(M4().makeTranslation(-palm.x,-palm.y,-palm.z));
+ for(const r of rig.values()){
+  r.mesh.matrix.premultiply(pivot);r.mesh.matrixWorldNeedsUpdate=true;
+ }
+ scene.updateMatrixWorld(true);
+ const boneIds=["RA4M2","RA4M3","RA4M4","RA4M5",
+  "RA5P2","RA5P3","RA5P4","RA5P5",
+  "RA7D2","RA7D3","RA7D4","RA7D5","RA6D1"];
+ const contacts={},point=new THREE.Vector3();
+ for(const id of boneIds){
+  const mesh=rig.get(id).mesh,attr=mesh.geometry.getAttribute("position");
+  const stride=Math.max(1,Math.floor(attr.count/160));
+  let lowest={x:0,y:Infinity,z:0};
+  for(let k=0;k<attr.count;k+=stride){
+   point.fromBufferAttribute(attr,k).applyMatrix4(mesh.matrixWorld);
+   if(point.y<lowest.y)lowest={x:point.x,y:point.y,z:point.z};
+  }
+  contacts[id]=lowest;
+ }
+ // 7mm is an explicit working allowance for skin/pads, not measurement.
+ const floorY=Math.min(...Object.values(contacts).map(x=>x.y))-.007;
+ const groups={palm:["RA4M2","RA4M3","RA4M4","RA4M5"],
+  index:["RA7D2"],middle:["RA7D3"],ring:["RA7D4"],
+  little:["RA7D5"],thumb:["RA6D1"]};
+ const gaps={};
+ supportSurface.group.position.set(palm.x,floorY,palm.z);
+ for(const [name,ids] of Object.entries(groups)){
+  const p=ids.map(id=>contacts[id]).reduce((a,b)=>a.y<b.y?a:b);
+  const gap=(p.y-floorY)*1000;
+  gaps[name]=Math.round(gap*10)/10;
+  const dot=supportSurface.marks[name];
+  dot.position.set(p.x-palm.x,.003,p.z-palm.z);
+  dot.material.color.setHex(gap<=22?0x93e1cf:0xe2ad72);
+ }
+ const near=Object.keys(gaps).filter(k=>gaps[k]<=22);
+ supportSurface.group.visible=true;
+ supportMetrics={task:handTask,extensionDeg:wristExtensionDeg,
+  palmNormal:[0,1,0],floorY,gapsMm:gaps,
+  nearbyZones:near,minimumBoneGapMm:7,
+  method:"sampled-bone-surfaces with nominal 7 mm skin allowance"};
+ const names={palm:"Ладонь",index:"Указ.",middle:"Средн.",ring:"Безым.",
+  little:"Мизин.",thumb:"Больш."};
+ $("#supportReport").textContent=
+  (handTask==="pushup"?"Отжимания":"Боковая планка на прямой руке")+
+  " · запястье "+wristExtensionDeg+"°. Расстояния костей до пола: "+
+  Object.entries(gaps).map(([k,v])=>names[k]+" "+v.toFixed(0)+" мм").join(" · ")+
+  ". Вблизи плоскости "+near.length+"/6 зон. "+
+  "Контакт кожи и распределение нагрузки пока не проверены.";
+}
+function chooseHandTask(next){
+ if(!ready)return;
+ handTask=next;
+ const support=next!=="grip";
+ $("#supportControls").hidden=!support;
+ if(support){
+  gripVisible=false;pose="curl";finger=0;elbow=0;
+  wristExtensionDeg=next==="pushup"?72:68;
+  $("#finger").value="0";$("#elbow").value="0";
+  $("#wristExtension").value=String(wristExtensionDeg);
+  $("#wristExtensionValue").textContent=wristExtensionDeg+"°";
+ }else{
+  gripVisible=true;pose="cylinder";finger=1;elbow=75;
+  $("#finger").value="100";$("#elbow").value="75";
+  supportSurface.group.visible=false;supportMetrics=null;
+ }
+ view="hand";
+ document.querySelectorAll("[data-hand-task]").forEach(b=>
+  b.classList.toggle("on",b.dataset.handTask===handTask));
+ document.querySelectorAll("[data-pose]").forEach(b=>
+  b.classList.toggle("on",b.dataset.pose===pose));
+ applyPose();appearance();fit();
+}
 function applyPose(){
  if(!ready)return;
  const q=getElbowWorld();
@@ -395,6 +547,8 @@ function applyPose(){
  const E=M4().makeTranslation(pivot.x,pivot.y,pivot.z)
   .multiply(M4().makeRotationFromQuaternion(q))
   .multiply(M4().makeTranslation(-pivot.x,-pivot.y,-pivot.z));
+ const support=handTask!=="grip"&&!gripPlanning&&!gripTesting&&!fingerFitting;
+ const wrist=support?wristTransform():null;
  const steps=poseFrames.right.trajectories[pose],memo=new Map();
  const relativeMotion=body=>{
   if(memo.has(body))return memo.get(body);
@@ -440,10 +594,14 @@ function applyPose(){
  for(const [body,r] of rig){
   // Apply upstream elbow and finger joint transforms to all downstream
   // phalanges, anchored to the native atlas surfaces in their rest pose.
-  const M=body==="RA1H"?r.rest.clone():E.clone().multiply(relativeMotion(body)).multiply(r.rest);
+  const hand=/^RA[34567]/.test(body);
+  const M=body==="RA1H"?r.rest.clone():
+   E.clone().multiply(wrist&&hand?wrist:M4()).multiply(relativeMotion(body)).multiply(r.rest);
   r.mesh.matrix.copy(M);r.mesh.matrixWorldNeedsUpdate=true;
  }
  setDumbbellPose(E);
+ if(support)placeSupport();
+ else if(supportSurface)supportSurface.group.visible=false;
  updateMusclePose();
  scene.updateMatrixWorld(true);
  if(gripReady&&!gripPlanning&&!gripTesting&&!fingerFitting){updateGripButtons();updateContactReport()}
@@ -1184,7 +1342,8 @@ function appearance(){
  }
  showMuscleLayers();
  document.querySelectorAll("[data-mode]").forEach(b=>b.classList.toggle("on",b.dataset.mode===mode));
- if(dumbbell)dumbbell.root.visible=gripVisible&&mode==="rig";
+ if(dumbbell)dumbbell.root.visible=gripVisible&&mode==="rig"&&handTask==="grip";
+ if(supportSurface)supportSurface.group.visible=handTask!=="grip"&&mode==="rig";
  if(ready)fit();
  if(gripReady)updateContactReport();
 }
@@ -1217,12 +1376,14 @@ function fit(){
  const box=new THREE.Box3();
  for(const b of relevant)if(b.visible||muscleOnly)box.expandByObject(b);
  if(dumbbell?.root.visible&&view!=="elbow")box.expandByObject(dumbbell.root);
+ if(supportSurface?.group.visible)box.expandByObject(supportSurface.group);
  if(box.isEmpty())return;
  const centre=box.getCenter(new THREE.Vector3()),size=box.getSize(new THREE.Vector3());
  const aspect=Math.max(.35,camera.aspect),tan=Math.tan(THREE.MathUtils.degToRad(camera.fov/2));
  const d=(view==="hand"?1.24:1.6)*
   Math.max(size.y/(2*tan),size.x/(2*tan*aspect),size.z/(2*tan*aspect),.12);
- const dir=view==="side"?new THREE.Vector3(1,.06,.03):
+ const dir=handTask!=="grip"?new THREE.Vector3(.65,.78,.90):
+  view==="side"?new THREE.Vector3(1,.06,.03):
   view==="hand"&&gripFrame?gripFrame.z.clone().multiplyScalar(.8)
     .addScaledVector(gripFrame.x,.55).addScaledVector(gripFrame.y,.15):
   new THREE.Vector3(0,.06,1);
@@ -1272,6 +1433,7 @@ async function init(){
   atlas.traverse(o=>{if(o.isMesh)original.push(o)});
   buildRig();
   buildMuscleOverlay();
+  buildSupportSurface();
   status("Сопоставляю полулунную и пястные кости двух источников…");
   const neutral=fingers.right.trajectories.curl[0].frames;
   for(const [body,file] of landmarks){
@@ -1306,7 +1468,9 @@ async function init(){
    $("#handleYaw").disabled=false;$("#handlePitch").disabled=false;
    $("#thumbStrength").disabled=false;
    $("#fingerFitStrength").disabled=false;
+   $("#wristExtension").disabled=false;
   gripVisible=true;elbow=75;pose="cylinder";finger=1;
+  determineWristSign();
   refineFourFingers();
   $("#elbow").value="75";$("#finger").value="100";
   document.querySelectorAll("[data-pose]").forEach(b=>b.classList.toggle("on",b.dataset.pose==="cylinder"));
@@ -1316,6 +1480,12 @@ async function init(){
   applyPose();appearance();view="hand";fit();
  }catch(e){console.error("Atlas-to-AAH arm retarget:",e);status("Не удалось построить проверенный риг: "+e.message);$("#hud").textContent="Эксперимент не прошёл проверку источников";}
 }
+document.querySelectorAll("[data-hand-task]").forEach(b=>b.onclick=()=>chooseHandTask(b.dataset.handTask));
+$("#wristExtension").oninput=e=>{
+ if(!ready||handTask==="grip")return;
+ wristExtensionDeg=Number(e.target.value);
+ $("#wristExtensionValue").textContent=wristExtensionDeg+"°";applyPose();
+};
 $("#elbow").oninput=e=>{elbow=Number(e.target.value);applyPose()};
 $("#finger").oninput=e=>{finger=Number(e.target.value)/100;applyPose()};
 document.querySelectorAll("[data-pose]").forEach(b=>b.onclick=()=>{pose=b.dataset.pose;document.querySelectorAll("[data-pose]").forEach(k=>k.classList.toggle("on",k.dataset.pose===pose));applyPose()});
@@ -1330,7 +1500,10 @@ document.querySelectorAll("[data-axis]").forEach(b=>b.onclick=()=>{
 $("#ghost").onchange=appearance;
 $("#showContact").onchange=updateContactReport;
 $("#gripNow").onclick=()=>{
- if(!ready)return;gripVisible=true;pose="cylinder";finger=1;elbow=75;view="hand";
+ if(!ready)return;
+ handTask="grip";$("#supportControls").hidden=true;
+ document.querySelectorAll("[data-hand-task]").forEach(b=>b.classList.toggle("on",b.dataset.handTask==="grip"));
+ gripVisible=true;pose="cylinder";finger=1;elbow=75;view="hand";
  $("#finger").value="100";$("#elbow").value="75";
  document.querySelectorAll("[data-pose]").forEach(b=>b.classList.toggle("on",b.dataset.pose==="cylinder"));
  applyPose();appearance();fit();
@@ -1432,6 +1605,9 @@ window.__armQA={
  thumbFit:()=>thumbFit,thumbMode:()=>thumbMode,thumbStrength:()=>thumbStrength,
  fingerFit:()=>fingerFitReport,fingerCorrections:()=>fingerCorrections,
  fingerFitMode:()=>fingerFitMode,fingerAxes:()=>[...fingerAxes.keys()],
+ handTask:()=>handTask,wristExtension:()=>wristExtensionDeg,
+ supportMetrics:()=>supportMetrics,supportVisible:()=>!!supportSurface?.group.visible,
+ supportWristSign:()=>wristExtensionSign,
  handleCenter:()=>{scene.updateMatrixWorld(true);return dumbbell?.root.getWorldPosition(new THREE.Vector3()).toArray()},
  handleAxis:()=>{scene.updateMatrixWorld(true);return dumbbell?.root.localToWorld(new THREE.Vector3(1,0,0)).sub(dumbbell.root.localToWorld(new THREE.Vector3())).normalize().toArray()},
  handleDiameter:()=>handleDiameterMm,contact:()=>contactResult,
