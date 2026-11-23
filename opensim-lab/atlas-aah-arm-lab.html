@@ -87,6 +87,14 @@ a{color:var(--accent)}
 <input type="range" id="finger" min="0" max="100" value="0" step="1" disabled aria-label="Сгибание пальцев">
 <div id="fingerValue" style="font-size:12px;color:var(--muted)">0%</div>
 <label style="margin-top:8px"><input type="checkbox" id="showContact" checked> Отображать расчёт зазоров по пальцам</label>
+<h3>Мышцы правой руки · оригинальный Écorché</h3>
+<div class="buttons">
+<button data-muscles="bones" class="on">Кости</button>
+<button data-muscles="both">Кости + мышцы</button>
+<button data-muscles="muscles">Мышцы</button>
+</div>
+<div id="muscleReport" class="status" style="margin-top:8px">Загрузка исходных мышечных поверхностей…</div>
+<p>Исходные поверхности мышц перемещаются вместе с плечом и предплечьем. Пока это визуальный слой без деформации мышц, сухожилий и расчёта сил.</p>
 <h3>Сравнение</h3>
 <div class="buttons"><button data-mode="rig" class="on">Риг AAH</button><button data-mode="source">Без движений</button></div>
 <label style="margin-top:11px"><input type="checkbox" id="ghost"> Показывать исходную позу полупрозрачно</label>
@@ -176,6 +184,7 @@ let elbow=0,finger=0,pose="curl",mode="rig",view="rightarm",ready=false,sourceAt
 let dumbbell=null,gripBase=null,gripFrame=null,gripPlan=null,gripVisible=false,gripReady=false;
 let handleDiameterMm=24,handleOffsetMm=0,handleDepthMm=0,contactResult=null,thumbCorrection=null,thumbFit=null;
 const sourceCenters=new Map(),targetCenters=new Map(),sourceRest=new Map(),jointPivots=new Map();
+let muscleMode="bones",muscleOverlays=[];
 const contactDigits={
  index:["RA5P2","RA6M2","RA7D2"],
  middle:["RA5P3","RA6M3","RA7D3"],
@@ -365,6 +374,7 @@ function applyPose(){
   r.mesh.matrix.copy(M);r.mesh.matrixWorldNeedsUpdate=true;
  }
  setDumbbellPose(E);
+ updateMusclePose(E);
  scene.updateMatrixWorld(true);
  if(gripReady){updateGripButtons();updateContactReport()}
  $("#elbowValue").textContent=elbow+"°";
@@ -591,6 +601,60 @@ function updateGripButtons(){
  $("#releaseGrip").classList.toggle("on",gripVisible&&finger<=.5);
  $("#hideDumbbell").classList.toggle("on",!gripVisible);
 }
+// Authored Écorché muscle geometry, never generated primitive proxies.
+// This is a segmented rigid overlay, not a validated deformable muscle rig.
+function buildMuscleOverlay(){
+ muscleOverlays=[];
+ const candidates=original.filter(o=>o.isMesh&&
+  ["deep muscles","superficial muscles"].includes(o.userData?.layer));
+ const upper=/biceps|triceps|brachialis|coracobrachialis|deltoid/i;
+ const hand=/lumbrical|interosse|opponens|thenar|hypothenar|abductor pollicis|adductor pollicis|flexor pollicis|flexor digiti minimi/i;
+ const limb=/brachi|biceps|triceps|anconeus|supinator|pronator|flexor|extensor|palmaris|lumbrical|interosse|opponens|abductor pollicis|adductor pollicis|deltoid/i;
+ const hum=vecCenter(rig.get("RA1H").source);
+ const fore=vecCenter(rig.get("RA2R").source);
+ const wrist=vecCenter(rig.get("RA3L").source);
+ for(const src of candidates){
+  const name=nameOf(src);
+  if(!/(?:^|[^a-z])right(?:[^a-z]|$)/i.test(name)||!limb.test(name))continue;
+  const p=vecCenter(src);
+  if(Math.min(p.distanceTo(hum),p.distanceTo(fore),p.distanceTo(wrist))>.24)continue;
+  const segment=hand.test(name)?"hand":upper.test(name)?"upper":"forearm";
+  const mesh=src.clone(false);
+  mesh.geometry=src.geometry;
+  mesh.material=new THREE.MeshStandardMaterial({
+   color:0xc87c72,roughness:.86,metalness:0,transparent:true,
+   opacity:.74,depthWrite:false,side:THREE.DoubleSide
+  });
+  mesh.matrixAutoUpdate=false;mesh.matrix.copy(src.matrixWorld);
+  mesh.matrixWorldNeedsUpdate=true;mesh.renderOrder=2;
+  mesh.name="AAH-muscle-"+name;
+  scene.add(mesh);
+  muscleOverlays.push({mesh,rest:src.matrixWorld.clone(),name,segment});
+ }
+ $("#muscleReport").textContent=muscleOverlays.length
+  ? "Подключено "+muscleOverlays.length+" исходных мышечных поверхностей правой руки. Они пока движутся жёсткими сегментами; сокращение и растяжение не моделируются."
+  : "Не найдены подходящие подписанные мышцы правой руки. Искусственные меши не добавлены.";
+}
+function updateMusclePose(E){
+ for(const item of muscleOverlays){
+  item.mesh.matrix.copy(item.segment==="upper"?item.rest:E.clone().multiply(item.rest));
+  item.mesh.matrixWorldNeedsUpdate=true;
+ }
+}
+function showMuscleLayers(){
+ const show=mode==="rig"&&muscleMode!=="bones";
+ const close=view==="hand";
+ for(const item of muscleOverlays)
+  item.mesh.visible=show&&(!close||item.segment!=="upper");
+ for(const [id,r] of rig){
+  r.mesh.visible=mode==="rig"&&muscleMode!=="muscles"&&!(close&&id==="RA1H");
+  r.mesh.material.transparent=muscleMode==="both";
+  r.mesh.material.opacity=muscleMode==="both"?.32:1;
+  r.mesh.material.depthWrite=muscleMode!=="both";
+  if(muscleMode==="muscles"&&mode==="rig")r.source.visible=false;
+ }
+ document.querySelectorAll("[data-muscles]").forEach(b=>b.classList.toggle("on",b.dataset.muscles===muscleMode));
+}
 function appearance(){
  updateGripButtons();
  for(const r of rig.values()){
@@ -601,6 +665,7 @@ function appearance(){
    r.source.material.opacity=mode==="source"?1:.17;
   }
  }
+ showMuscleLayers();
  document.querySelectorAll("[data-mode]").forEach(b=>b.classList.toggle("on",b.dataset.mode===mode));
  if(dumbbell)dumbbell.root.visible=gripVisible&&mode==="rig";
  if(ready)fit();
@@ -622,11 +687,15 @@ function fit(){
   r.mesh.visible=mode==="rig"&&(!close||!isArm);
   r.source.visible=(mode==="source"||$("#ghost").checked)&&(!close||!isArm);
  }
+ showMuscleLayers();
  scene.updateMatrixWorld(true);
  const selected=[...rig.entries()].filter(([id])=>
    view==="hand"?/^RA[34567]/.test(id):
    view==="elbow"?/^RA(?:1H|2U|2R)$/.test(id):true).map(([,r])=>mode==="rig"?r.mesh:r.source);
- const relevant=["rightarm","hand","elbow"].includes(view)?selected:bones;
+ const muscleBounds=muscleOverlays.filter(x=>x.mesh.visible&&
+  (view!=="hand"||x.segment==="hand")).map(x=>x.mesh);
+ const relevant=muscleMode==="muscles"&&muscleBounds.length
+  ?muscleBounds:(["rightarm","hand","elbow"].includes(view)?selected:bones);
  const box=new THREE.Box3();for(const b of relevant)if(b.visible)box.expandByObject(b);
  if(dumbbell?.root.visible&&view!=="elbow")box.expandByObject(dumbbell.root);
  if(box.isEmpty())return;
@@ -683,6 +752,7 @@ async function init(){
   atlas=gltf.scene;scene.add(atlas);atlas.updateMatrixWorld(true);
   atlas.traverse(o=>{if(o.isMesh)original.push(o)});
   buildRig();
+  buildMuscleOverlay();
   status("Сопоставляю полулунную и пястные кости двух источников…");
   const neutral=fingers.right.trajectories.curl[0].frames;
   for(const [body,file] of landmarks){
@@ -727,6 +797,7 @@ $("#finger").oninput=e=>{finger=Number(e.target.value)/100;applyPose()};
 document.querySelectorAll("[data-pose]").forEach(b=>b.onclick=()=>{pose=b.dataset.pose;document.querySelectorAll("[data-pose]").forEach(k=>k.classList.toggle("on",k.dataset.pose===pose));applyPose()});
 document.querySelectorAll("[data-view]").forEach(b=>b.onclick=()=>{view=b.dataset.view;fit()});
 document.querySelectorAll("[data-mode]").forEach(b=>b.onclick=()=>{mode=b.dataset.mode;appearance()});
+document.querySelectorAll("[data-muscles]").forEach(b=>b.onclick=()=>{muscleMode=b.dataset.muscles;appearance()});
 document.querySelectorAll("[data-axis]").forEach(b=>b.onclick=()=>{
  axisMode=b.dataset.axis;
  document.querySelectorAll("[data-axis]").forEach(k=>k.classList.toggle("on",k.dataset.axis===axisMode));
@@ -778,6 +849,7 @@ window.__armQA={
  sourceWorldCenter:id=>{const r=rig.get(id);scene.updateMatrixWorld(true);return r?vecCenter(r.source).toArray():null},
  visible:()=>[...rig.values()].filter(r=>r.mesh.visible).length,
  gripReady:()=>gripReady,gripVisible:()=>gripVisible,gripPlan:()=>gripPlan,
+ muscleCount:()=>muscleOverlays.length,muscleMode:()=>muscleMode,muscleNames:()=>muscleOverlays.map(x=>x.name),
  thumbFit:()=>thumbFit,
  handleCenter:()=>{scene.updateMatrixWorld(true);return dumbbell?.root.getWorldPosition(new THREE.Vector3()).toArray()},
  handleAxis:()=>{scene.updateMatrixWorld(true);return dumbbell?.root.localToWorld(new THREE.Vector3(1,0,0)).sub(dumbbell.root.localToWorld(new THREE.Vector3())).normalize().toArray()},
