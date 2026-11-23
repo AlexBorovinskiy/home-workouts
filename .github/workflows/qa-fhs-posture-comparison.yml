@@ -39,7 +39,7 @@ jobs:
           const read=()=>page.evaluate(()=>{
             const q=window.__fhsPostureComparisonQA;
             return {ready:q.ready(),counts:q.counts(),layout:q.layout(),view:q.view(),
-              p:q.currentPercentile(),box:q.bbox()};
+              p:q.currentPercentile(),box:q.bbox(),framing:q.framing()};
           });
           try{
             await page.goto('http://127.0.0.1:8791/opensim-lab/posture-comparison.html',{waitUntil:'domcontentloaded'});
@@ -52,6 +52,8 @@ jobs:
               throw Error('Source pose comparison failed '+JSON.stringify(a));
             if(a.box.max.some(x=>!Number.isFinite(x))||a.box.min.some(x=>!Number.isFinite(x)))
               throw Error('Missing bone dimensions');
+            if(a.framing.maxAbsX>.93||a.framing.maxAbsY>.93)
+              throw Error('Side-by-side spines clipped outside mobile canvas '+JSON.stringify(a.framing));
             await page.locator('#scene').screenshot({path:'qa-fhs-posture-mobile/FHS-110-and-989-source-spines-side-by-side.png'});
             await page.locator('[data-layout="overlay"]').click();
             if((await read()).layout!=='overlay')throw Error('Overlay failed');
