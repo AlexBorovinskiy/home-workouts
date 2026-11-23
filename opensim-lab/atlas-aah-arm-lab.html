@@ -401,8 +401,13 @@ function contactCloud(id,frame){
 }
 function collectContactClouds(frame){
  const clouds={};
- for(const [digit,parts] of Object.entries(contactDigits))
-  clouds[digit]=parts.flatMap(id=>contactCloud(id,frame));
+ for(const [digit,parts] of Object.entries(contactDigits)){
+  // Proximal phalanx bases are NEAR the palm even when the hand is OPEN.
+  // They must not count as grasping the bar. Measure the mid/distal digit
+  // surfaces (for the thumb both available phalanges).
+  const contactParts=digit==="thumb"?parts:parts.slice(1);
+  clouds[digit]=contactParts.flatMap(id=>contactCloud(id,frame));
+}
  clouds.palm=["RA4M2","RA4M3","RA4M4","RA4M5"].flatMap(id=>contactCloud(id,frame));
  return clouds;
 }
@@ -447,8 +452,10 @@ function planDumbbellGrip(){
  const clouds=collectContactClouds(frame);
  const radius=handleDiameterMm/2000;
  let best=null;
- for(let yy=-.022;yy<=.021;yy+=.004){
-  for(let zz=.009;zz<=.077;zz+=.004){
+ // The axis must lie DISTAL to the MCP bases, inside the digit arcs,
+ // not across the palm near the wrist. Source units are metres.
+ for(let yy=.018;yy<=.084;yy+=.003){
+  for(let zz=.012;zz<=.083;zz+=.003){
    const score=fitScore(clouds,yy,zz,radius);
    if(!best||score.cost<best.score.cost)best={y:yy,z:zz,score};
   }
@@ -493,7 +500,7 @@ function updateContactReport(){
  const fmt=n=>Math.round(n*1000)+" мм";
  const parts=Object.keys(contactDigits).map(d=>label(d)+": "+fmt(stats.gap[d]));
  $("#contactReport").textContent=
-  "Расстояние кости → металл (по выборке поверхности): "+(valid.length)+"/5 пальцев в пределах 2–24 мм; "+
+  "Средние/концевые фаланги → металл (выборка вершин): "+(valid.length)+"/5 пальцев в пределах 2–24 мм; "+
   "минимальный зазор "+fmt(worst)+". "+
   ($("#showContact").checked?parts.join(" · ")+". ":"")+
   "Мягкие ткани не моделируются — фактический контакт не подтверждён.";
