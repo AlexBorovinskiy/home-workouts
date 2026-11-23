@@ -1,0 +1,549 @@
+{
+  "schema": "fhs-anatomical-attachment-audit-v1",
+  "sourceModel": "FHS_dataset_4.x - Copia/Male/Age4049/110_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+  "source": "OpenSim FHS 2026 scientific dataset https://zenodo.org/records/18259702",
+  "dataMethod": "Original OpenSim joint hierarchy and minimum 3D VTP vertex separation from Model.assemble.",
+  "validity": "Diagnostic only: joint topology and mesh proximity do not establish biomechanical validity, movement, muscle forces, or safety.",
+  "ribs": [
+    {
+      "rib": "rib1_R",
+      "expectedVertebra": "thoracic1",
+      "nearestDistanceMm": {
+        "thoracic1": 2.74,
+        "thoracic2": 19.27
+      },
+      "ribFrameOriginM": [
+        -0.03941,
+        0.52823,
+        0.01581
+      ]
+    },
+    {
+      "rib": "rib1_L",
+      "expectedVertebra": "thoracic1",
+      "nearestDistanceMm": {
+        "thoracic1": 2.8,
+        "thoracic2": 19.35
+      },
+      "ribFrameOriginM": [
+        -0.03941,
+        0.52823,
+        -0.01581
+      ]
+    },
+    {
+      "rib": "rib2_R",
+      "expectedVertebra": "thoracic2",
+      "nearestDistanceMm": {
+        "thoracic1": 2.14,
+        "thoracic2": 2.04,
+        "thoracic3": 18.79
+      },
+      "ribFrameOriginM": [
+        -0.04242,
+        0.51203,
+        0.01011
+      ]
+    },
+    {
+      "rib": "rib2_L",
+      "expectedVertebra": "thoracic2",
+      "nearestDistanceMm": {
+        "thoracic1": 2.09,
+        "thoracic2": 1.93,
+        "thoracic3": 19.17
+      },
+      "ribFrameOriginM": [
+        -0.04242,
+        0.51203,
+        -0.01011
+      ]
+    },
+    {
+      "rib": "rib3_R",
+      "expectedVertebra": "thoracic3",
+      "nearestDistanceMm": {
+        "thoracic2": 1.45,
+        "thoracic3": 2.67,
+        "thoracic4": 19.33
+      },
+      "ribFrameOriginM": [
+        -0.04666,
+        0.49524,
+        0.01125
+      ]
+    },
+    {
+      "rib": "rib3_L",
+      "expectedVertebra": "thoracic3",
+      "nearestDistanceMm": {
+        "thoracic2": 1.19,
+        "thoracic3": 2.4,
+        "thoracic4": 20.21
+      },
+      "ribFrameOriginM": [
+        -0.04666,
+        0.49524,
+        -0.01125
+      ]
+    },
+    {
+      "rib": "rib4_R",
+      "expectedVertebra": "thoracic4",
+      "nearestDistanceMm": {
+        "thoracic3": 2.01,
+        "thoracic4": 3.75,
+        "thoracic5": 19.14
+      },
+      "ribFrameOriginM": [
+        -0.05049,
+        0.4765,
+        0.01257
+      ]
+    },
+    {
+      "rib": "rib4_L",
+      "expectedVertebra": "thoracic4",
+      "nearestDistanceMm": {
+        "thoracic3": 1.53,
+        "thoracic4": 3.98,
+        "thoracic5": 19.14
+      },
+      "ribFrameOriginM": [
+        -0.05049,
+        0.4765,
+        -0.01257
+      ]
+    },
+    {
+      "rib": "rib5_R",
+      "expectedVertebra": "thoracic5",
+      "nearestDistanceMm": {
+        "thoracic4": 2.18,
+        "thoracic5": 6,
+        "thoracic6": 26.2
+      },
+      "ribFrameOriginM": [
+        -0.05376,
+        0.45607,
+        0.01484
+      ]
+    },
+    {
+      "rib": "rib5_L",
+      "expectedVertebra": "thoracic5",
+      "nearestDistanceMm": {
+        "thoracic4": 2.65,
+        "thoracic5": 6,
+        "thoracic6": 26.2
+      },
+      "ribFrameOriginM": [
+        -0.05376,
+        0.45607,
+        -0.01484
+      ]
+    },
+    {
+      "rib": "rib6_R",
+      "expectedVertebra": "thoracic6",
+      "nearestDistanceMm": {
+        "thoracic5": 3.64,
+        "thoracic6": 5.63,
+        "thoracic7": 22.77
+      },
+      "ribFrameOriginM": [
+        -0.05605,
+        0.43266,
+        0.01438
+      ]
+    },
+    {
+      "rib": "rib6_L",
+      "expectedVertebra": "thoracic6",
+      "nearestDistanceMm": {
+        "thoracic5": 3.64,
+        "thoracic6": 5.63,
+        "thoracic7": 22.77
+      },
+      "ribFrameOriginM": [
+        -0.05605,
+        0.43266,
+        -0.01438
+      ]
+    },
+    {
+      "rib": "rib7_R",
+      "expectedVertebra": "thoracic7",
+      "nearestDistanceMm": {
+        "thoracic6": 3.1,
+        "thoracic7": 4.87,
+        "thoracic8": 26.08
+      },
+      "ribFrameOriginM": [
+        -0.05478,
+        0.40973,
+        0.01439
+      ]
+    },
+    {
+      "rib": "rib7_L",
+      "expectedVertebra": "thoracic7",
+      "nearestDistanceMm": {
+        "thoracic6": 3.1,
+        "thoracic7": 4.87,
+        "thoracic8": 26.08
+      },
+      "ribFrameOriginM": [
+        -0.05478,
+        0.40973,
+        -0.01439
+      ]
+    },
+    {
+      "rib": "rib8_R",
+      "expectedVertebra": "thoracic8",
+      "nearestDistanceMm": {
+        "thoracic7": 2.89,
+        "thoracic8": 3.2,
+        "thoracic9": 21.54
+      },
+      "ribFrameOriginM": [
+        -0.05294,
+        0.38625,
+        0.01339
+      ]
+    },
+    {
+      "rib": "rib8_L",
+      "expectedVertebra": "thoracic8",
+      "nearestDistanceMm": {
+        "thoracic7": 2.89,
+        "thoracic8": 3.2,
+        "thoracic9": 21.54
+      },
+      "ribFrameOriginM": [
+        -0.05294,
+        0.38625,
+        -0.01339
+      ]
+    },
+    {
+      "rib": "rib9_R",
+      "expectedVertebra": "thoracic9",
+      "nearestDistanceMm": {
+        "thoracic8": 2.14,
+        "thoracic9": 1.2,
+        "thoracic10": 23.74
+      },
+      "ribFrameOriginM": [
+        -0.0501,
+        0.36163,
+        0.01348
+      ]
+    },
+    {
+      "rib": "rib9_L",
+      "expectedVertebra": "thoracic9",
+      "nearestDistanceMm": {
+        "thoracic8": 2.14,
+        "thoracic9": 1.2,
+        "thoracic10": 23.74
+      },
+      "ribFrameOriginM": [
+        -0.0501,
+        0.36163,
+        -0.01348
+      ]
+    },
+    {
+      "rib": "rib10_R",
+      "expectedVertebra": "thoracic10",
+      "nearestDistanceMm": {
+        "thoracic9": 3.77,
+        "thoracic10": 3.39,
+        "thoracic11": 25.35
+      },
+      "ribFrameOriginM": [
+        -0.04678,
+        0.33531,
+        0.01562
+      ]
+    },
+    {
+      "rib": "rib10_L",
+      "expectedVertebra": "thoracic10",
+      "nearestDistanceMm": {
+        "thoracic9": 3.77,
+        "thoracic10": 3.39,
+        "thoracic11": 25.35
+      },
+      "ribFrameOriginM": [
+        -0.04678,
+        0.33531,
+        -0.01562
+      ]
+    },
+    {
+      "rib": "rib11_R",
+      "expectedVertebra": "thoracic11",
+      "nearestDistanceMm": {
+        "thoracic10": 10.88,
+        "thoracic11": 1.32,
+        "thoracic12": 19.83
+      },
+      "ribFrameOriginM": [
+        -0.03829,
+        0.29782,
+        0.01541
+      ]
+    },
+    {
+      "rib": "rib11_L",
+      "expectedVertebra": "thoracic11",
+      "nearestDistanceMm": {
+        "thoracic10": 10.88,
+        "thoracic11": 1.32,
+        "thoracic12": 19.83
+      },
+      "ribFrameOriginM": [
+        -0.03829,
+        0.29782,
+        -0.01541
+      ]
+    },
+    {
+      "rib": "rib12_R",
+      "expectedVertebra": "thoracic12",
+      "nearestDistanceMm": {
+        "thoracic11": 10.27,
+        "thoracic12": 1.11
+      },
+      "ribFrameOriginM": [
+        -0.03789,
+        0.26742,
+        0.01967
+      ]
+    },
+    {
+      "rib": "rib12_L",
+      "expectedVertebra": "thoracic12",
+      "nearestDistanceMm": {
+        "thoracic11": 10.27,
+        "thoracic12": 1.11
+      },
+      "ribFrameOriginM": [
+        -0.03789,
+        0.26742,
+        -0.01967
+      ]
+    }
+  ],
+  "ribLinks": [
+    {
+      "joint": "T12_r12R_CVjnt",
+      "parent": "thoracic12",
+      "child": "rib12_R"
+    },
+    {
+      "joint": "T11_r11R_CVjnt",
+      "parent": "thoracic11",
+      "child": "rib11_R"
+    },
+    {
+      "joint": "T10_r10R_CVjnt",
+      "parent": "thoracic10",
+      "child": "rib10_R"
+    },
+    {
+      "joint": "T9_r9R_CVjnt",
+      "parent": "thoracic9",
+      "child": "rib9_R"
+    },
+    {
+      "joint": "T8_r8R_CVjnt",
+      "parent": "thoracic8",
+      "child": "rib8_R"
+    },
+    {
+      "joint": "T7_r7R_CVjnt",
+      "parent": "thoracic7",
+      "child": "rib7_R"
+    },
+    {
+      "joint": "T6_r6R_CVjnt",
+      "parent": "thoracic6",
+      "child": "rib6_R"
+    },
+    {
+      "joint": "T5_r5R_CVjnt",
+      "parent": "thoracic5",
+      "child": "rib5_R"
+    },
+    {
+      "joint": "T4_r4R_CVjnt",
+      "parent": "thoracic4",
+      "child": "rib4_R"
+    },
+    {
+      "joint": "T3_r3R_CVjnt",
+      "parent": "thoracic3",
+      "child": "rib3_R"
+    },
+    {
+      "joint": "T2_r2R_CVjnt",
+      "parent": "thoracic2",
+      "child": "rib2_R"
+    },
+    {
+      "joint": "T1_r1R_CVjnt",
+      "parent": "thoracic1",
+      "child": "rib1_R"
+    },
+    {
+      "joint": "T12_r12L_CVjnt",
+      "parent": "thoracic12",
+      "child": "rib12_L"
+    },
+    {
+      "joint": "T11_r11L_CVjnt",
+      "parent": "thoracic11",
+      "child": "rib11_L"
+    },
+    {
+      "joint": "T10_r10L_CVjnt",
+      "parent": "thoracic10",
+      "child": "rib10_L"
+    },
+    {
+      "joint": "T9_r9L_CVjnt",
+      "parent": "thoracic9",
+      "child": "rib9_L"
+    },
+    {
+      "joint": "T8_r8L_CVjnt",
+      "parent": "thoracic8",
+      "child": "rib8_L"
+    },
+    {
+      "joint": "T7_r7L_CVjnt",
+      "parent": "thoracic7",
+      "child": "rib7_L"
+    },
+    {
+      "joint": "T6_r6L_CVjnt",
+      "parent": "thoracic6",
+      "child": "rib6_L"
+    },
+    {
+      "joint": "T5_r5L_CVjnt",
+      "parent": "thoracic5",
+      "child": "rib5_L"
+    },
+    {
+      "joint": "T4_r4L_CVjnt",
+      "parent": "thoracic4",
+      "child": "rib4_L"
+    },
+    {
+      "joint": "T3_r3L_CVjnt",
+      "parent": "thoracic3",
+      "child": "rib3_L"
+    },
+    {
+      "joint": "T2_r2L_CVjnt",
+      "parent": "thoracic2",
+      "child": "rib2_L"
+    },
+    {
+      "joint": "T1_r1L_CVjnt",
+      "parent": "thoracic1",
+      "child": "rib1_L"
+    }
+  ],
+  "shoulderLinks": [
+    {
+      "name": "r1R_sterR_jnt",
+      "type": "CustomJoint",
+      "parentBody": "rib1_R",
+      "childBody": "sternum"
+    },
+    {
+      "name": "sterR_clavR_jnt",
+      "type": "WeldJoint",
+      "parentBody": "sternum",
+      "childBody": "clavicle_R"
+    },
+    {
+      "name": "clavR_scapR_jnt",
+      "type": "WeldJoint",
+      "parentBody": "clavicle_R",
+      "childBody": "scapula_R"
+    },
+    {
+      "name": "shoulder_R",
+      "type": "CustomJoint",
+      "parentBody": "scapula_R",
+      "childBody": "humerus_R"
+    },
+    {
+      "name": "sterL_clavL_jnt",
+      "type": "WeldJoint",
+      "parentBody": "sternum",
+      "childBody": "clavicle_L"
+    },
+    {
+      "name": "clavL_scapL_jnt",
+      "type": "WeldJoint",
+      "parentBody": "clavicle_L",
+      "childBody": "scapula_L"
+    },
+    {
+      "name": "shoulder_L",
+      "type": "CustomJoint",
+      "parentBody": "scapula_L",
+      "childBody": "humerus_L"
+    }
+  ],
+  "shoulderGaps": [
+    {
+      "from": "sternum",
+      "to": "clavicle_R",
+      "meshMinDistanceMm": 0.02,
+      "bodyFrameDistanceMm": 0
+    },
+    {
+      "from": "clavicle_R",
+      "to": "scapula_R",
+      "meshMinDistanceMm": 3.45,
+      "bodyFrameDistanceMm": 116.11
+    },
+    {
+      "from": "scapula_R",
+      "to": "humerus_R",
+      "meshMinDistanceMm": 5.74,
+      "bodyFrameDistanceMm": 30.72
+    },
+    {
+      "from": "sternum",
+      "to": "clavicle_L",
+      "meshMinDistanceMm": 0.02,
+      "bodyFrameDistanceMm": 56.55
+    },
+    {
+      "from": "clavicle_L",
+      "to": "scapula_L",
+      "meshMinDistanceMm": 3.45,
+      "bodyFrameDistanceMm": 116.11
+    },
+    {
+      "from": "scapula_L",
+      "to": "humerus_L",
+      "meshMinDistanceMm": 5.74,
+      "bodyFrameDistanceMm": 30.72
+    }
+  ],
+  "limitations": [
+    "Scapula-clavicle welded on both sides; no independent scapulothoracic movement.",
+    "Sternum is linked to right first rib; this is a model topology choice, not full anatomical costal cartilage connections."
+  ]
+}
