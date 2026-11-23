@@ -226,7 +226,7 @@ jobs:
             await page.locator('#scene').screenshot({path:'qa-atlas-arm/support-pushup.png'});
             if(pushup.task!=='pushup'||pushup.extension!==72||
                !pushup.floorVisible||pushup.gripVisible||
-               !pushup.floor||pushup.floor.nearbyZones.length<1||
+               !pushup.floor||!pushup.floor.contactReady||pushup.floor.nearbyZones.length<6||
                Object.values(pushup.floor.gapsMm).some(x=>!Number.isFinite(x)||x<0))
               throw Error('Push-up support not valid '+JSON.stringify(pushup));
             await page.locator('[data-hand-task="side-plank"]').click();
@@ -234,14 +234,14 @@ jobs:
             await page.locator('#scene').screenshot({path:'qa-atlas-arm/support-side-plank.png'});
             if(sidePlank.task!=='side-plank'||sidePlank.extension!==68||
                !sidePlank.floorVisible||sidePlank.gripVisible||
-               !sidePlank.floor||sidePlank.floor.nearbyZones.length<1||
+               !sidePlank.floor||!sidePlank.floor.contactReady||sidePlank.floor.nearbyZones.length<6||
                d(pushup.tip,sidePlank.tip)<.005)
               throw Error('Side plank support not distinct '+JSON.stringify(sidePlank));
             await page.locator('#wristExtension').fill('80');
             const extended=await supportRead();
             await page.locator('#scene').screenshot({path:'qa-atlas-arm/support-wrist-80.png'});
             if(extended.extension!==80||d(sidePlank.tip,extended.tip)<.004||
-               !extended.floorVisible)
+               !extended.floorVisible||extended.floor.nearbyZones.length<6)
               throw Error('Wrist control not applied '+JSON.stringify(extended));
             await page.locator('[data-hand-task="grip"]').click();
             await page.locator('#gripNow').click();
