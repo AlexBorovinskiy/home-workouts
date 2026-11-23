@@ -3,6 +3,8 @@ on:
   push:
     paths:
       - 'opensim-lab/export_original_mesh_frames.py'
+      - 'opensim-lab/original-anatomy.html'
+      - 'opensim-lab/assets/fhs-original-frames.json'
       - '.github/workflows/qa-fhs-mesh-frames.yml'
   workflow_dispatch:
 permissions:
@@ -95,15 +97,19 @@ jobs:
             const report=await page.evaluate(()=>{
               const api=window.__fhsGeometryQA;
               return {stats:api.stats(),head:api.box('head'),hands:api.box('hands'),
-                      spine:api.box('spine'),sampleNames:api.meshNames().slice(0,15)};
+                      spine:api.box('spine'),ribs:api.box('ribs'),pelvis:api.box('pelvis'),
+                      sampleNames:api.meshNames().slice(0,15)};
             });
-            if(report.stats.head<8||report.stats.hands<45||report.stats.triangles<15000||errors.length)
+            if(report.stats.head!==9||report.stats.hands!==54||
+               report.stats.ribs!==24||report.stats.pelvis!==2||
+               report.stats.total!==118||report.stats.triangles<200000||errors.length)
               throw Error('Unexpected original mesh counts: '+JSON.stringify({report,errors}));
-            for(const [group,obj] of Object.entries({head:report.head,hands:report.hands,spine:report.spine})){
+            for(const [group,obj] of Object.entries({head:report.head,hands:report.hands,spine:report.spine,ribs:report.ribs,pelvis:report.pelvis})){
               if(obj.size.some(x=>!Number.isFinite(x)||x>4)||obj.size.every(x=>x<.002))
                 throw Error('Unreasonable geometry bounds: '+JSON.stringify({group,obj}));
             }
             await page.locator('#sceneCanvas').screenshot({path:'qa-fhs-original/whole.png'});
+            console.log('FHS_TORSO_IMAGE '+(await page.locator('#sceneCanvas').screenshot({type:'jpeg',quality:55})).toString('base64'));
             await page.locator('[data-view="head"]').click();
             await page.waitForTimeout(200);
             await page.locator('#sceneCanvas').screenshot({path:'qa-fhs-original/head.png'});
