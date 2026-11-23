@@ -60,6 +60,13 @@ jobs:
                open.axisMode!=='anatomic'||Math.abs(open.axis[0])!==1||
                !open.gripReady||!open.gripVisible||!open.contact||open.handleDiameter!==24)
               throw Error('Initial arm retarget invalid '+JSON.stringify(open)+' : '+await page.locator('#status').innerText());
+            // Verify real 3D orientation optimization and post-thumb contact.
+            if(!Number.isFinite(open.gripPlan.thetaDeg)||!Number.isFinite(open.gripPlan.phiDeg)||
+               Math.abs(open.gripPlan.thetaDeg)>30||Math.abs(open.gripPlan.phiDeg)>18||
+               open.gripPlan.wrappedDigits<3||open.gripPlan.contactCount<3||
+               open.contact.penetrations!==0||
+               Object.values(open.contact.contact).filter(Boolean).length<3)
+              throw Error('Grip angle/contact optimizer produced an invalid initial pose: '+JSON.stringify(open.gripPlan)+' '+JSON.stringify(open.contact));
             await page.locator('#scene').screenshot({path:'qa-atlas-arm/atlas-AAH-dumbbell-grip-initial.png'});
             const gripped=open;
             await page.locator('#releaseGrip').click();
@@ -123,9 +130,24 @@ jobs:
             if(back.elbow!==0||back.finger!==0||d(straight.wrist,back.wrist)>.0005||
               d(straight.index,back.index)>.0005)
               throw Error('Right arm does not return to atlas neutral pose '+JSON.stringify(back));
+            // Test both manual angular degrees of freedom and automatic reset.
+            await page.locator('#handleYaw').fill('12');
+            await page.locator('#handlePitch').fill('6');
+            const manualAngle=await read();
+            if(manualAngle.gripPlan.thetaDeg!==12||manualAngle.gripPlan.phiDeg!==6||
+               d(manualAngle.handleAxis,back.handleAxis)<.015)
+              throw Error('Manual 3D handle orientation not reflected in grip pose '+JSON.stringify(manualAngle.gripPlan));
+            await page.locator('[data-view="hand"]').click();
+            await page.locator('#scene').screenshot({path:'qa-atlas-arm/hand-manual-handle-angles.png'});
+            await page.locator('#autoGrip').click();
+            const autoAngle=await read();
+            if(!autoAngle.gripPlan||!Number.isFinite(autoAngle.gripPlan.thetaDeg)||
+               !Number.isFinite(autoAngle.gripPlan.phiDeg))
+              throw Error('Automatic handle-angle re-optimization failed');
             if(errors.length)throw Error('Uncaught browser exceptions '+JSON.stringify(errors));
             writeFileSync('qa-atlas-arm/report.json',JSON.stringify({
               open,released,straight,curled,flex,reset:back,grip:gripped.gripPlan,
+              manualAngle:manualAngle.gripPlan,autoAngle:autoAngle.gripPlan,
               fingerMovedM:fingerMoved,wristMovedM:wristMoved,
               lateralShiftM:lateralShift,forwardShiftM:forwardShift,
               humerusMovedM:humerusMoved,errors},null,2));
