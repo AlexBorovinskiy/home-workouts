@@ -97,6 +97,45 @@ jobs:
                 JSON.stringify({thumbOpposed,thumbAAH,thumbZero,thumbRestored}));
             await page.locator('[data-muscles="both"]').click();
             await page.locator('#scene').screenshot({path:'qa-atlas-arm/thumb-opposition-muscles.png'});
+            // Refit must affect PIP/DIP only; first ray, thumb tip and prop
+            // are reference anchors and must remain numerically unchanged.
+            const fingerSnapshot=()=>page.evaluate(()=>{
+              const q=window.__armQA;
+              return {thumb:q.meshWorldPosition('RA6D1'),
+                handle:q.handleCenter(),handleAxis:q.handleAxis(),
+                fingers:['RA7D2','RA7D3','RA7D4','RA7D5'].map(q.meshWorldPosition),
+                fit:q.fingerFit(),corrections:q.fingerCorrections(),
+                contact:q.contact(),mode:q.fingerFitMode()};
+            });
+            await page.locator('[data-muscles="bones"]').click();
+            const refinedDigits=await fingerSnapshot();
+            await page.locator('[data-finger-fit="original"]').click();
+            const originalDigits=await fingerSnapshot();
+            await page.locator('#scene').screenshot({path:'qa-atlas-arm/four-fingers-before.png'});
+            await page.locator('[data-finger-fit="refined"]').click();
+            const restoredDigits=await fingerSnapshot();
+            await page.locator('#scene').screenshot({path:'qa-atlas-arm/four-fingers-after.png'});
+            await page.locator('#fingerFitStrength').fill('0');
+            const zeroFingers=await fingerSnapshot();
+            await page.locator('#fingerFitStrength').fill('100');
+            const fullFingers=await fingerSnapshot();
+            await page.locator('[data-muscles="both"]').click();
+            await page.locator('#scene').screenshot({path:'qa-atlas-arm/four-fingers-muscles.png'});
+            const digitShifts=refinedDigits.fingers.map((p,i)=>d(p,originalDigits.fingers[i]));
+            if(!refinedDigits.fit||!refinedDigits.corrections||
+               d(refinedDigits.thumb,originalDigits.thumb)>.0008||
+               d(refinedDigits.handle,originalDigits.handle)>.0008||
+               d(refinedDigits.handleAxis,originalDigits.handleAxis)>.0008||
+               d(refinedDigits.thumb,restoredDigits.thumb)>.0008||
+               d(refinedDigits.handle,restoredDigits.handle)>.0008||
+               refinedDigits.fingers.some((p,i)=>d(p,fullFingers.fingers[i])>.0008)||
+               originalDigits.fingers.some((p,i)=>d(p,zeroFingers.fingers[i])>.0008)||
+               refinedDigits.contact.penetrations>0)
+              throw Error('Independent finger refinement invalid: '+JSON.stringify({
+               digitShifts,refinedDigits,originalDigits,restoredDigits,zeroFingers,fullFingers}));
+            console.log('FINGER_FIT_CHECK',JSON.stringify({changed:refinedDigits.fit.changed,
+              digitShiftsMm:digitShifts.map(d=>+(d*1000).toFixed(2)),
+              fit:refinedDigits.fit.digits}));
             await page.locator('#releaseGrip').click();
             await page.locator('#scene').screenshot({path:'qa-atlas-arm/atlas-AAH-dumbbell-released.png'});
             const released=await read();
@@ -177,6 +216,7 @@ jobs:
               open,released,straight,curled,flex,reset:back,grip:gripped.gripPlan,
               manualAngle:manualAngle.gripPlan,autoAngle:autoAngle.gripPlan,
               thumbOpposed,thumbAAH,thumbZero,thumbRestored,
+              refinedDigits,originalDigits,restoredDigits,zeroFingers,fullFingers,digitShifts,
               fingerMovedM:fingerMoved,wristMovedM:wristMoved,
               lateralShiftM:lateralShift,forwardShiftM:forwardShift,
               humerusMovedM:humerusMoved,errors},null,2));
