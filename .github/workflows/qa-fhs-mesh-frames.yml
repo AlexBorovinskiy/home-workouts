@@ -66,6 +66,15 @@ jobs:
                     'translation':f.findtext('translation'),'orientation':f.findtext('orientation')}
                   for f in joint.findall('./frames/*')
                 ]})
+          all_links=[]
+          for joint in model_xml.findall('./JointSet/objects/*'):
+            all_links.append({
+              'name':joint.get('name',''), 'type':joint.tag,
+              'parent':joint.findtext('socket_parent_frame'), 'child':joint.findtext('socket_child_frame'),
+              'frames':[{'name':f.get('name'),'socket':f.findtext('socket_parent'),'translation':f.findtext('translation')}
+                        for f in joint.findall('./frames/*')]
+            })
+          print('FHS_ALL_JOINT_LINKS',json.dumps(all_links))
           print('FHS_SOURCE_CONNECTIONS',json.dumps(link_rows))
           print('FHS_SOURCE_PATH',name)
           PY
