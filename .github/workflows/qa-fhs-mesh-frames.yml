@@ -52,6 +52,21 @@ jobs:
               'strips':[(x.get('Name'),x.get('format'),len((x.text or '').split())) for x in piece.findall('./Strips/DataArray')],
               'polys':[(x.get('Name'),x.get('format'),len((x.text or '').split())) for x in piece.findall('./Polys/DataArray')]
             }))
+          model_xml=ET.fromstring(z.read(name)).find('Model')
+          link_rows=[]
+          for joint in model_xml.findall('./JointSet/objects/*'):
+            joint_name=joint.get('name','')
+            if any(k in joint_name.lower() for k in ('rib','clav','scap','stern','should','thorac','humer')):
+              link_rows.append({
+                'name':joint_name,'type':joint.tag,
+                'parent':joint.findtext('socket_parent_frame'),
+                'child':joint.findtext('socket_child_frame'),
+                'offsets':[
+                  {'name':f.get('name'), 'socket_parent':f.findtext('socket_parent'),
+                    'translation':f.findtext('translation'),'orientation':f.findtext('orientation')}
+                  for f in joint.findall('./frames/*')
+                ]})
+          print('FHS_SOURCE_CONNECTIONS',json.dumps(link_rows))
           print('FHS_SOURCE_PATH',name)
           PY
       - name: Read native OpenSim transforms with exact body names
