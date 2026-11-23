@@ -1,0 +1,198 @@
+<!doctype html><html lang="ru"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b2838"><link rel="icon" href="data:,">
+<title>Анатомическая лаборатория · целостный скелет Écorché</title>
+<style>
+:root{color-scheme:dark;--ink:#edf8f3;--muted:#accacf;--mint:#9de4d4;--line:#456e7a;--panel:#153b4a}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(155deg,#174551,#082638 50%,#081e2d);color:var(--ink);font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+main{max-width:1180px;margin:auto;padding:16px 12px 55px}
+header{display:flex;justify-content:space-between;align-items:center;gap:12px;color:var(--mint);letter-spacing:.08em;font-size:11px;font-weight:800}
+header a{border:1px solid var(--line);border-radius:10px;padding:9px 11px;color:var(--ink);text-decoration:none;letter-spacing:0;font-size:12px}
+h1{font-size:clamp(24px,4vw,36px);margin:22px 0 10px;line-height:1.2;letter-spacing:-.035em}
+.lead{color:var(--muted);max-width:950px;line-height:1.75;margin:0 0 16px}
+.layout{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(295px,.8fr);gap:12px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:12px}
+.stage{height:min(78vh,740px);min-height:450px;position:relative;touch-action:none;background:radial-gradient(ellipse at 50% 45%,#2d5560 0%,#092a3c 72%)}
+canvas{display:block;width:100%;height:100%;touch-action:none}
+.hud{position:absolute;left:11px;top:11px;right:11px;pointer-events:none;border:1px solid #5f9695;border-radius:10px;padding:8px 10px;background:#082c3ae6;width:max-content;max-width:calc(100% - 22px);font-size:11px}
+.hint{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);pointer-events:none;background:#062b3bbd;border-radius:30px;padding:8px 11px;color:#c1dddd;font-size:11px;white-space:nowrap}
+.panel{padding:15px}h2{font-size:17px;margin:0 0 9px}h3{font-size:11px;letter-spacing:.07em;color:var(--muted);text-transform:uppercase;margin:15px 0 8px}
+p{font-size:12px;color:var(--muted);line-height:1.75}
+.actions{display:flex;flex-wrap:wrap;gap:7px}
+button{min-height:42px;border-radius:9px;padding:9px 11px;font:inherit;font-weight:650;color:var(--ink);background:#275467;border:1px solid #608791;cursor:pointer}
+button.on{background:var(--mint);border-color:var(--mint);color:#103640}
+.box{border:1px solid #4c7681;background:#0a2e3e;border-radius:10px;padding:11px;font-size:12px;line-height:1.7}
+.warn{border-radius:10px;padding:12px;border:1px solid #836c51;background:#3c382f;color:#f8dfbd;font-size:12px;line-height:1.65}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.stat{text-align:center;background:#0c2f3c;border-radius:9px;padding:9px 3px}.stat strong{font-size:23px;display:block}.stat span{color:var(--muted);font-size:10px}
+a{color:var(--mint)}
+@media(max-width:760px){.layout{grid-template-columns:1fr}.stage{height:61vh;min-height:420px}.panel{padding:13px}}
+</style></head>
+<body><main>
+<header><span>HOME WORKOUTS · ANATOMY RESEARCH</span><a href="./fhs-aah-assembly.html">К сохранённому скелету</a></header>
+<h1>Новая основа: один целостный анатомический скелет</h1>
+<p class="lead">Это отдельный эксперимент с готовой моделью <b>Écorché</b> на основе BodyParts3D и Z-Anatomy. Здесь мы впервые изучаем <b>целостное взаимное расположение костей</b>, прежде чем переносить движения OpenSim. Прежняя версия FHS + MASI + AAH + Rajagopal не заменена.</p>
+<div class="layout">
+<div>
+<section class="card">
+<div class="stage" id="stage">
+<canvas id="scene" aria-label="Анатомический цельный 3D-скелет из опубликованной модели Écorché"></canvas>
+<div id="hud" class="hud">Écorché · BodyParts3D / Z-Anatomy · исходная геометрия</div>
+<div class="hint">Пальцем вращать · двумя приближать · коснись кости</div>
+</div>
+</section>
+<section class="card panel">
+<h2>Статус и ограничения</h2>
+<div class="warn">Это анатомический <b>визуальный референс</b>, а не готовая модель движений. Она не имеет суставного рига, поэтому руки и пальцы пока не анимируются. Геометрия — из научно организованных BodyParts3D и Z-Anatomy, но сама Écorché не проходила независимую клиническую валидацию. Оригинальные файлы FHS и OpenSim не затронуты.</div>
+<p>Источник: <a href="https://github.com/Charleeh/ecorche" target="_blank" rel="noopener">Écorché (CC BY-SA 4.0)</a>. Первичные данные: BodyParts3D © The Database Center for Life Science и Z-Anatomy, Gauthier Kervyn. 3D-файл загружается непосредственно из опубликованного авторского репозитория. Для анатомической сверки: <a href="https://openstax.org/books/anatomy-and-physiology-2e/pages/7-3-the-vertebral-column" target="_blank" rel="noopener">OpenStax: позвоночник</a>, <a href="https://openstax.org/books/anatomy-and-physiology-2e/pages/8-2-bones-of-the-upper-limb" target="_blank" rel="noopener">кости кисти</a>.</p>
+</section>
+</div>
+<aside>
+<section class="card panel">
+<h2>Изучить анатомию</h2>
+<div id="status" class="box">Загружаю авторский 3D-атлас…</div>
+<h3>Слои</h3>
+<div class="actions"><button data-layer="bones" class="on">Только кости</button><button data-layer="muscles">Кости и мышцы</button></div>
+<h3>Повернуть модель</h3>
+<div class="actions">
+<button data-view="front" class="on">Спереди</button><button data-view="side">Сбоку</button><button data-view="back">Сзади</button>
+</div>
+<h3>Рассмотреть отдел</h3>
+<div class="actions">
+<button data-focus="all" class="on">Весь скелет</button>
+<button data-focus="skull">Череп</button>
+<button data-focus="spine">Позвоночник</button>
+<button data-focus="chest">Грудная клетка</button>
+<button data-focus="pelvis">Таз</button>
+<button data-focus="hand">Правая кисть</button>
+<button data-focus="foot">Правая стопа</button>
+</div>
+<h3>Выбранная кость</h3>
+<div id="selected" class="box">Коснись кости. Покажу её оригинальное анатомическое название и источник.</div>
+<h3>Что присутствует в исходном наборе</h3>
+<div class="stats">
+<div class="stat"><strong id="boneCount">—</strong><span>названных костных сеток</span></div>
+<div class="stat"><strong id="ribCount">—</strong><span>отдельных рёбер</span></div>
+<div class="stat"><strong id="neckCount">—</strong><span>шейных позвонков</span></div>
+</div>
+<p>В отличие от прежней гибридной сборки, все эти структуры изначально расположены в одной исходной системе координат. Это не доказывает идеальную анатомию, но устраняет ошибки наших межмодельных стыков на этапе визуального эталона.</p>
+<h3>Следующий научный контроль</h3>
+<div class="box">Сопоставить расположение головы, шейного отдела, рёбер, лопаток, таза, суставов и фаланг с анатомическими иллюстрациями; лишь затем решать, можно ли перенести движения AAH и OpenSim.</div>
+</section>
+</aside>
+</div>
+</main>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from "three";
+import {OrbitControls} from "three/addons/controls/OrbitControls.js";
+import {GLTFLoader} from "three/addons/loaders/GLTFLoader.js";
+import {MeshoptDecoder} from "three/addons/libs/meshopt_decoder.module.js";
+const $=s=>document.querySelector(s),canvas=$("#scene"),stage=$("#stage");
+const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(37,1,.02,25);
+const renderer=new THREE.WebGLRenderer({canvas,alpha:true,antialias:true,preserveDrawingBuffer:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.4));renderer.outputColorSpace=THREE.SRGBColorSpace;
+renderer.setClearColor(0x092a3b,0);
+scene.add(new THREE.HemisphereLight(0xe3f4f4,0x40657b,2.2));
+const light=new THREE.DirectionalLight(0xfff2df,2.1);light.position.set(2,4,4);scene.add(light);
+const fill=new THREE.DirectionalLight(0xc3dfed,.8);fill.position.set(-3,2,-3);scene.add(fill);
+const controls=new OrbitControls(camera,canvas);controls.enableDamping=true;controls.minDistance=.18;controls.maxDistance=8;controls.maxPolarAngle=Math.PI*.95;
+const src="https://raw.githubusercontent.com/Charleeh/ecorche/320805e06aee51e2e6f6b22533eb2a59d43f2d4d/model/ecorche.meshopt.glb";
+let atlas=null,all=[],bones=[],muscles=[],layer="bones",view="front",focus="all",ready=false,selected=null;
+const raycaster=new THREE.Raycaster(),mouse=new THREE.Vector2(),pointer={x:0,y:0};
+const boxFor=objects=>{const b=new THREE.Box3();objects.forEach(o=>{if(o.visible)b.expandByObject(o)});return b};
+const nameOf=o=>o.userData?.name||o.name;
+function isBone(o){return o.isMesh&&o.userData?.layer==="skeleton"&&o.userData?.tissue==="bone"}
+function isSkeleton(o){return o.isMesh&&o.userData?.layer==="skeleton"}
+function isMuscle(o){return o.isMesh&&["deep muscles","superficial muscles"].includes(o.userData?.layer)}
+const regions={
+ all:()=>true,
+ skull:n=>/skull|temporal|occipital|frontal|parietal|sphenoid|mandible|maxilla|ethmoid|zygomatic|lacrimal|palatine|nasal|vomer|hyoid|inferior nasal|incus|stapes|malleus/i.test(n),
+ spine:n=>/vertebra|atlas|axis|sacrum|coccyx|intervertebral/i.test(n),
+ chest:n=>/rib|sternum|costal cartilage|xiphoid|manubrium/i.test(n),
+ pelvis:n=>/hip bone|sacrum|ilium|ischium|pubis/i.test(n),
+ hand:n=>/right.*(finger|thumb|carpal|metacarpal|scaphoid|lunate|trapezoid|trapezium|capitate|hamate|pisiform|triquetr)/i.test(n),
+ foot:n=>/(right.*(toe|tarsal|metatarsal|talus|calcaneus|cuboid|navicular|cuneiform|sesamoid))/i.test(n)
+};
+function fit(){
+ if(!ready)return;
+ atlas.updateMatrixWorld(true);
+ let objects=focus==="all"?bones.filter(o=>o.visible):bones.filter(o=>regions[focus](nameOf(o)));
+ if(objects.length===0)objects=bones;
+ const b=boxFor(objects);
+ if(b.isEmpty())return;
+ const center=b.getCenter(new THREE.Vector3()),size=b.getSize(new THREE.Vector3());
+ const tan=Math.tan(THREE.MathUtils.degToRad(camera.fov/2));
+ const aspect=Math.max(.4,camera.aspect);
+ const dist=1.55*Math.max(size.y/(2*tan),size.x/(2*tan*aspect),size.z/(2*tan*aspect),.075);
+ const dir=view==="back"?new THREE.Vector3(0,.06,-1):view==="side"?new THREE.Vector3(1,.06,.03):new THREE.Vector3(0,.06,1);
+ controls.target.copy(center);
+ camera.position.copy(center).add(dir.normalize().multiplyScalar(Math.max(dist,.24)));
+ camera.lookAt(center);controls.update();
+ document.querySelectorAll("[data-view]").forEach(b=>b.classList.toggle("on",b.dataset.view===view));
+ document.querySelectorAll("[data-focus]").forEach(b=>b.classList.toggle("on",b.dataset.focus===focus));
+}
+function showLayer(){
+ for(const item of all){
+  item.visible=isSkeleton(item)||(layer==="muscles"&&isMuscle(item));
+  if(item.material){
+   if(!item.userData.__originalMaterial)item.userData.__originalMaterial=item.material;
+   if(isMuscle(item))item.material.opacity=.27;
+  }
+ }
+ document.querySelectorAll("[data-layer]").forEach(b=>b.classList.toggle("on",b.dataset.layer===layer));
+}
+function choose(o){
+ selected=o;
+ if(!o){$("#selected").textContent="Коснись любой кости, чтобы узнать её название.";return}
+ $("#selected").textContent=nameOf(o)+" · "+(o.userData.fma||"без FMA")+
+  " · источник: "+(o.userData.source||"не указан")+".";
+}
+const loader=new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+function validate(){
+ if(bones.length!==198)throw Error("Ожидалось 198 отдельное костных сеток, найдено "+bones.length);
+ const n=bones.map(nameOf),rib=n.filter(x=>/\b(?:left|right).*rib\b/i.test(x)).length;
+ const neck=n.filter(x=>/\b(?:cervical vertebra|Atlas|Axis)\b/i.test(x)).length;
+ if(rib!==24||neck!==7)throw Error("Не совпадает количество рёбер/шейных позвонков: "+rib+"/"+neck);
+ if(!n.includes("Mandible")||!n.includes("Left femur")||!n.includes("Right femur"))throw Error("Не хватает основных анатомических структур");
+ const toe=n.filter(x=>/phalanx.*toe/i.test(x)).length;
+ const finger=n.filter(x=>/phalanx.*finger|phalanx.*thumb/i.test(x)).length;
+ if(toe<20||finger<20)throw Error("В атласе не хватает отдельных фаланг: "+toe+"/"+finger);
+ $("#boneCount").textContent=String(bones.length);
+ $("#ribCount").textContent=String(rib);
+ $("#neckCount").textContent=String(neck);
+ $("#status").textContent="Загружен единый 3D-атлас: "+bones.length+" названных костных поверхностей, "+rib+" рёбер, "+neck+" шейных позвонков, "+muscles.length+" мышечных поверхностей. Кисти и стопы содержат отдельные фаланги.";
+}
+loader.load(src,gltf=>{
+ try{
+ atlas=gltf.scene;scene.add(atlas);atlas.updateMatrixWorld(true);
+ atlas.traverse(o=>{if(o.isMesh){all.push(o);if(isBone(o))bones.push(o);if(isMuscle(o))muscles.push(o)}});
+ validate();ready=true;showLayer();fit();
+ $("#hud").textContent="Écorché · "+bones.length+" исходных костных сеток · CC BY-SA 4.0";
+ }catch(e){console.error(e);$("#status").textContent="Ошибка проверки источника: "+e.message}
+},e=>{if(e.total)$("#status").textContent="Загружено "+Math.round(100*e.loaded/e.total)+"% научной 3D-модели…";},
+e=>{console.error(e);$("#status").textContent="Не удалось загрузить опубликованный 3D-атлас: "+(e.message||e)});
+document.querySelectorAll("[data-layer]").forEach(b=>b.onclick=()=>{layer=b.dataset.layer;showLayer()});
+document.querySelectorAll("[data-view]").forEach(b=>b.onclick=()=>{view=b.dataset.view;fit()});
+document.querySelectorAll("[data-focus]").forEach(b=>b.onclick=()=>{focus=b.dataset.focus;fit()});
+canvas.addEventListener("pointerdown",e=>{pointer.x=e.clientX;pointer.y=e.clientY});
+canvas.addEventListener("pointerup",e=>{
+ if(!ready||Math.hypot(e.clientX-pointer.x,e.clientY-pointer.y)>7)return;
+ const rect=canvas.getBoundingClientRect();
+ mouse.set((e.clientX-rect.left)/rect.width*2-1,-(e.clientY-rect.top)/rect.height*2+1);
+ raycaster.setFromCamera(mouse,camera);
+ const hit=raycaster.intersectObjects(bones.filter(o=>o.visible),false)[0];
+ choose(hit?.object||null);
+});
+new ResizeObserver(()=>{renderer.setSize(stage.clientWidth,stage.clientHeight,false);camera.aspect=stage.clientWidth/Math.max(1,stage.clientHeight);camera.updateProjectionMatrix()}).observe(stage);
+(function animate(){requestAnimationFrame(animate);controls.update();renderer.render(scene,camera)})();
+window.__atlasQA={
+ ready:()=>ready,bones:()=>bones.length,muscles:()=>muscles.length,
+ ribs:()=>bones.filter(o=>/\b(?:left|right).*rib\b/i.test(nameOf(o))).length,
+ cervical:()=>bones.filter(o=>/\b(?:cervical vertebra|Atlas|Axis)\b/i.test(nameOf(o))).length,
+ finger:()=>bones.filter(o=>/phalanx.*finger|phalanx.*thumb/i.test(nameOf(o))).length,
+ toe:()=>bones.filter(o=>/phalanx.*toe/i.test(nameOf(o))).length,
+ layer:()=>layer,view:()=>view,focus:()=>focus,
+ bbox:()=>{const b=boxFor(bones);return {height:b.max.y-b.min.y,width:b.max.x-b.min.x}},
+ chooseName:n=>{const o=bones.find(o=>nameOf(o)===n);if(o)choose(o);return !!o}
+};
+</script></body></html>
