@@ -77,7 +77,9 @@ a{color:var(--accent)}
 <label style="margin-top:10px">Диаметр рукоятки <strong id="handleDiameterValue">24 мм</strong></label>
 <input id="handleDiameter" type="range" min="24" max="36" step="2" value="24" disabled aria-label="Диаметр рукоятки">
 <label style="margin-top:8px">Смещение относительно ладони <strong id="handleOffsetValue">0 мм</strong></label>
-<input id="handleOffset" type="range" min="-15" max="15" step="1" value="0" disabled aria-label="Смещение рукоятки к ладони">
+<input id="handleOffset" type="range" min="-15" max="15" step="1" value="0" disabled aria-label="Смещение рукоятки вдоль ладони">
+<label style="margin-top:8px">Глубина рукоятки <strong id="handleDepthValue">0 мм</strong></label>
+<input id="handleDepth" type="range" min="-20" max="20" step="1" value="0" disabled aria-label="Смещение рукоятки по нормали ладони">
 <div id="contactReport" class="status" style="margin-top:8px">Измеряю положение пальцев относительно металлической рукоятки…</div>
 <p>Рукоять не должна проходить сквозь фаланги: проверяется расстояние до костной поверхности с запасом для мягких тканей. Это пока визуальный захват без силы, веса и физики контакта.</p>
 <h3>Сгибание пальцев · AAH</h3>
@@ -172,7 +174,7 @@ const landmarks=[
 let atlas=null,original=[],bones=[],rig=new Map(),poseFrames=null,elbowFrames=null,registration=null;
 let elbow=0,finger=0,pose="curl",mode="rig",view="rightarm",ready=false,sourceAtlas=null,axisMode="anatomic";
 let dumbbell=null,gripBase=null,gripFrame=null,gripPlan=null,gripVisible=false,gripReady=false;
-let handleDiameterMm=24,handleOffsetMm=0,contactResult=null,thumbCorrection=null,thumbFit=null;
+let handleDiameterMm=24,handleOffsetMm=0,handleDepthMm=0,contactResult=null,thumbCorrection=null,thumbFit=null;
 const sourceCenters=new Map(),targetCenters=new Map(),sourceRest=new Map(),jointPivots=new Map();
 const contactDigits={
  index:["RA5P2","RA6M2","RA7D2"],
@@ -451,8 +453,10 @@ function fitScore(clouds,y,z,radius){
   const free=shortest-radius;
   gap[digit]=free;
   if(digit==="palm"){
-   // The bar rests against soft tissue ABOVE the metacarpals.
-   cost+=8*Math.pow(Math.max(0,.006-free),2);
+   // Anchor the handle near the real metacarpal surfaces, separated
+   // by soft tissue. Previously distance was not penalized at all.
+   cost+=42*Math.pow(free-.008,2);
+   if(free<.002)cost+=210*Math.pow(.002-free,2);
    continue;
   }
   if(free<.004){cost+=350*Math.pow(.004-free,2);penetrations++}
@@ -460,7 +464,7 @@ function fitScore(clouds,y,z,radius){
   else cost+=2.2*Math.pow(free-.010,2);
   contact[digit]=free>=.004&&free<=.024;
  }
- cost+=.014*(z-.032)**2+.007*(y-.005)**2;
+ cost+=6*(z-.018)**2+7*(y-.014)**2;
  return {cost,penetrations,near,gap,contact};
 }
 function planDumbbellGrip(){
@@ -481,8 +485,8 @@ function planDumbbellGrip(){
  let best=null;
  // The axis must lie DISTAL to the MCP bases, inside the digit arcs,
  // not across the palm near the wrist. Source units are metres.
- for(let yy=.018;yy<=.084;yy+=.003){
-  for(let zz=.012;zz<=.083;zz+=.003){
+ for(let yy=-.009;yy<=.033;yy+=.003){
+  for(let zz=.003;zz<=.051;zz+=.003){
    const score=fitScore(clouds,yy,zz,radius);
    if(!best||score.cost<best.score.cost)best={y:yy,z:zz,score};
   }
@@ -493,7 +497,7 @@ function planDumbbellGrip(){
  const coarse={y:best.y,z:best.z};
  for(let yy=coarse.y-.004;yy<=coarse.y+.004001;yy+=.001){
   for(let zz=coarse.z-.004;zz<=coarse.z+.004001;zz+=.001){
-   if(yy<.012||zz<.008)continue;
+   if(yy<-.014||yy>.037||zz<.001||zz>.056)continue;
    const score=fitScore(clouds,yy,zz,radius);
    if(score.cost<best.score.cost)best={y:yy,z:zz,score};
   }
@@ -501,7 +505,7 @@ function planDumbbellGrip(){
  const R=M4().makeBasis(frame.x,frame.y,frame.z);
  R.setPosition(frame.origin);
  gripFrame=frame;
- gripPlan={y:best.y,z:best.z,score:best.score,origin:frame.origin.toArray(),
+ gripPlan={y:best.y,z:best.z,score:best.score,palmGapMm:best.score.gap.palm*1000,origin:frame.origin.toArray(),
            x:frame.x.toArray(),normal:frame.z.toArray()};
  gripBase=R.multiply(M4().makeTranslation(0,best.y,best.z));
  elbow=prior.elbow;pose=prior.pose;finger=prior.finger;
@@ -548,7 +552,7 @@ function calculateThumbOpposition(){
 }
 function setDumbbellPose(E){
  if(!dumbbell||!gripBase)return;
- const shift=M4().makeTranslation(0,handleOffsetMm/1000,0);
+ const shift=M4().makeTranslation(0,handleOffsetMm/1000,handleDepthMm/1000);
  dumbbell.root.matrix.copy(E).multiply(gripBase).multiply(shift);
  dumbbell.root.matrixWorldNeedsUpdate=true;
  dumbbell.root.visible=gripVisible&&mode==="rig";
@@ -574,9 +578,10 @@ function updateContactReport(){
  const label=d=>({index:"указ.",middle:"средн.",ring:"безым.",little:"мизин.",thumb:"больш."})[d];
  const fmt=n=>Math.round(n*1000)+" мм";
  const parts=Object.keys(contactDigits).map(d=>label(d)+": "+fmt(stats.gap[d]));
+ const palmInfo="ладонь → металл: "+fmt(stats.gap.palm)+"; ";
  $("#contactReport").textContent=
   "Средние/концевые фаланги → металл (выборка вершин): "+(valid.length)+"/5 пальцев с костным зазором 4–24 мм; "+
-  "минимальный зазор "+fmt(worst)+". "+
+  palmInfo+"минимальный зазор "+fmt(worst)+". "+
   ($("#showContact").checked?parts.join(" · ")+". ":"")+
   "Большой палец: пробная оппозиция "+(thumbFit?.angleDegrees||0).toFixed(0)+"°. "+
   "Мягкие ткани не моделируются — фактический контакт не подтверждён.";
@@ -707,7 +712,7 @@ async function init(){
     throw Error("Слишком большое рассогласование анатомических ориентиров: ручную анимацию блокируем. "+$("#accuracyText").textContent);
   ready=true;gripReady=true;
   $("#elbow").disabled=false;$("#finger").disabled=false;
-  $("#handleDiameter").disabled=false;$("#handleOffset").disabled=false;
+  $("#handleDiameter").disabled=false;$("#handleOffset").disabled=false;$("#handleDepth").disabled=false;
   gripVisible=true;elbow=75;pose="cylinder";finger=1;
   $("#elbow").value="75";$("#finger").value="100";
   document.querySelectorAll("[data-pose]").forEach(b=>b.classList.toggle("on",b.dataset.pose==="cylinder"));
@@ -744,7 +749,11 @@ $("#hideDumbbell").onclick=()=>{
 $("#handleDiameter").oninput=e=>{
  if(!ready)return;handleDiameterMm=Number(e.target.value);
  $("#handleDiameterValue").textContent=handleDiameterMm+" мм";
- updateDumbbellRadius();updateContactReport();
+ updateDumbbellRadius();planDumbbellGrip();calculateThumbOpposition();applyPose();fit();
+};
+$("#handleDepth").oninput=e=>{
+ if(!ready)return;handleDepthMm=Number(e.target.value);
+ $("#handleDepthValue").textContent=handleDepthMm+" мм";applyPose();
 };
 $("#handleOffset").oninput=e=>{
  if(!ready)return;handleOffsetMm=Number(e.target.value);
