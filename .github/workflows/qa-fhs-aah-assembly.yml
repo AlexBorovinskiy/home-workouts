@@ -70,7 +70,7 @@ jobs:
               throw Error('Assembly loading failed: '+await page.locator('#status').innerText());
             const open=await read();
             if(open.fhs!==118||open.aah!==54||open.left!==27||open.right!==27||
-              open.neck.length!==8||open.ribProxies!==24||open.ribSegments<24||
+              open.neck.length!==9||open.ribProxies!==24||open.ribSegments<24||
               open.ribMode!=='masi'||open.masiRibCount!==1||
               !open.legsReady||open.legCount!==14||!open.legVisible||
               open.legSource!=='RajagopalLaiUhlrich2023'||
@@ -83,6 +83,7 @@ jobs:
                Math.abs(legDropR-legDropL)>.02||open.legBBox.min[1]>open.footR[1]+.15)
               throw Error('Implausible or mismatched leg positions '+JSON.stringify({legDropR,legDropL,box:open.legBBox}));
             const yc=open.centers.map(c=>c[1]);
+            if(!open.neck.includes('jaw')||!open.neck.includes('skull')||!open.neck.includes('cerv7'))throw Error('Missing real mandible/skull/cervical mesh');
             if((Math.max(...yc)-Math.min(...yc))<.075)
               throw Error('Neck vertebrae still stacked in one place '+JSON.stringify(yc));
             await page.locator('[data-neck="fhs"]').click();
