@@ -6,6 +6,7 @@ on:
       - 'opensim-lab/audit_anatomy_connections.py'
       - 'opensim-lab/audit_cervical_geometry.py'
       - 'opensim-lab/original-anatomy.html'
+      - 'opensim-lab/assets/fhs-cervical-audit.json'
       - 'opensim-lab/assets/fhs-anatomical-audit.json'
       - 'opensim-lab/assets/fhs-original-frames.json'
       - '.github/workflows/qa-fhs-mesh-frames.yml'
@@ -191,6 +192,51 @@ jobs:
             console.log('FHS_ATTACHMENT_VIEWER_QA '+JSON.stringify({rib:ribLinkText,shoulder:shoulderText}));
             await page.locator('#attachmentSelect').selectOption('');
 
+            // Cervical geometry must be transparently diagnosed as invalid
+            // instead of silently showing overlapping C1-C7 as real neck.
+            await page.waitForFunction(()=>Boolean(window.__fhsGeometryQA?.cervicalAudit()),null,{timeout:30000});
+            const neckSource=await page.evaluate(()=>{
+              const j=window.__fhsGeometryQA.cervicalAudit();
+              const ys=Object.values(j.cervical).map(o=>o.centerM[1]);
+              return {order:j.craniocaudalOrderByBoundingBoxCenter,rangeMm:(Math.max(...ys)-Math.min(...ys))*1000,
+                sameRigidBody:j.sameRigidBody};
+            });
+            if(neckSource.rangeMm>10||neckSource.sameRigidBody!=='head_neck'||neckSource.order.length!==7)
+              throw Error('Cervical source audit unexpectedly changed: '+JSON.stringify(neckSource));
+            const originalCentres=await page.evaluate(()=>Object.fromEntries(
+              Object.entries(window.__fhsGeometryQA.cervicalData().cervical).map(([k,v])=>[k,v.center])));
+            await page.locator('#cervicalFocus').click();
+            await page.waitForTimeout(250);
+            const sourceText=await page.locator('#cervicalInfo').innerText();
+            if(!sourceText.includes('исходные наложенные')||!sourceText.includes('независимая'))
+              throw Error('Cervical source warning absent: '+sourceText);
+            await page.locator('#sceneCanvas').screenshot({path:'qa-fhs-original/cervical-original-overlap.png'});
+            console.log('FHS_CERVICAL_SOURCE_IMAGE '+(await page.locator('#sceneCanvas').screenshot({type:'jpeg',quality:65})).toString('base64'));
+
+            await page.locator('#cervicalSpread').click();
+            await page.waitForTimeout(250);
+            const explodedText=await page.locator('#cervicalInfo').innerText();
+            const exploded=await page.evaluate(()=>({
+              mode:window.__cervicalMode,
+              centres:Object.fromEntries(Object.entries(window.__fhsGeometryQA.cervicalData().cervical).map(([k,v])=>[k,v.center]))
+            }));
+            const xs=Object.values(exploded.centres).map(c=>c[0]);
+            if(!exploded.mode?.exploded||Math.max(...xs)-Math.min(...xs)<.45||
+               !explodedText.includes('ИСКУССТВЕННАЯ'))
+              throw Error('Diagnostic cervical separation failed: '+JSON.stringify({exploded,explodedText}));
+            await page.locator('#sceneCanvas').screenshot({path:'qa-fhs-original/cervical-exploded.png'});
+            console.log('FHS_CERVICAL_EXPLODED_IMAGE '+(await page.locator('#sceneCanvas').screenshot({type:'jpeg',quality:65})).toString('base64'));
+
+            await page.locator('#cervicalExit').click();
+            const restored=await page.evaluate(()=>Object.fromEntries(
+              Object.entries(window.__fhsGeometryQA.cervicalData().cervical).map(([k,v])=>[k,v.center])));
+            for(const key of Object.keys(originalCentres)){
+              if(restored[key].some((v,i)=>Math.abs(v-originalCentres[key][i])>1e-7))
+                throw Error('Cervical exit did not restore native position '+key);
+            }
+            console.log('FHS_CERVICAL_VIEWER_QA '+JSON.stringify({
+              source:neckSource,unfoldingMm:Math.round((Math.max(...xs)-Math.min(...xs))*1000),
+              restoredNativePositions:true}));
             // A reload must restore the original scientific archive from IndexedDB
             // without asking the user to re-download or re-select the ZIP.
             await page.reload({waitUntil:'domcontentloaded'});
