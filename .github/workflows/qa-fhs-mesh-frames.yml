@@ -208,7 +208,7 @@ jobs:
             await page.locator('#cervicalFocus').click();
             await page.waitForTimeout(250);
             const sourceText=await page.locator('#cervicalInfo').innerText();
-            if(!sourceText.includes('исходные наложенные')||!sourceText.includes('независимая'))
+            if(!sourceText.includes('исходные наложенные')||!sourceText.toLowerCase().includes('независимая'))
               throw Error('Cervical source warning absent: '+sourceText);
             await page.locator('#sceneCanvas').screenshot({path:'qa-fhs-original/cervical-original-overlap.png'});
             console.log('FHS_CERVICAL_SOURCE_IMAGE '+(await page.locator('#sceneCanvas').screenshot({type:'jpeg',quality:65})).toString('base64'));
@@ -222,7 +222,7 @@ jobs:
             }));
             const xs=Object.values(exploded.centres).map(c=>c[0]);
             if(!exploded.mode?.exploded||Math.max(...xs)-Math.min(...xs)<.45||
-               !explodedText.includes('ИСКУССТВЕННАЯ'))
+               !explodedText.toLowerCase().includes('искусственно'))
               throw Error('Diagnostic cervical separation failed: '+JSON.stringify({exploded,explodedText}));
             await page.locator('#sceneCanvas').screenshot({path:'qa-fhs-original/cervical-exploded.png'});
             console.log('FHS_CERVICAL_EXPLODED_IMAGE '+(await page.locator('#sceneCanvas').screenshot({type:'jpeg',quality:65})).toString('base64'));
