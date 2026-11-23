@@ -458,7 +458,7 @@ function placeSupport(){
  // a false flat palm with fingertips 40–50 mm above the support.
  const distal=["RA7D2","RA7D3","RA7D4","RA7D5"]
   .map(c).reduce((acc,p)=>acc.add(p),new THREE.Vector3()).multiplyScalar(.25);
- const longitudinal=distal.clone().sub(w).normalize();
+ const longitudinal=distal.clone().sub(palm).normalize();
  const across=m2.clone().sub(m5);
  across.addScaledVector(longitudinal,-across.dot(longitudinal)).normalize();
  const normal=across.clone().cross(longitudinal).normalize();
