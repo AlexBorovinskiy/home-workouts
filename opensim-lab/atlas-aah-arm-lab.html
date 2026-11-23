@@ -485,8 +485,8 @@ function calculateThumbOpposition(){
  // Move the distal thumb phalanx toward the bar by an anatomical
  // first-metacarpal (CMC) root rotation around the atlas joint proxy.
  // This is ONLY a bounded visual IK retarget; not measured tendon force.
- const old={finger,elbow,pose};
- thumbCorrection=null;
+ const old={finger,elbow,pose,gripVisible};
+ thumbCorrection=null;gripVisible=true;
  elbow=0;finger=1;pose="cylinder";applyPose();
  scene.updateMatrixWorld(true);
  const rootPivot=jointPivots.get("RA4M1")?.pivot;
@@ -516,7 +516,7 @@ function calculateThumbOpposition(){
            sourceTip:tip.toArray(),targetTip:desired.toArray()};
  finger=1;applyPose();
  thumbFit.actualTip=vecCenter(rig.get("RA6D1").mesh).toArray();
- finger=old.finger;elbow=old.elbow;pose=old.pose;applyPose();
+ finger=old.finger;elbow=old.elbow;pose=old.pose;gripVisible=old.gripVisible;applyPose();
  return thumbFit;
 }
 function setDumbbellPose(E){
