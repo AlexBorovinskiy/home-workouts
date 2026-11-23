@@ -25,7 +25,8 @@ def xml_inventory(path):
     elementCounts=dict(Counter(x.tag for x in model.iter()))
     muscles=list(model.findall("./ForceSet/objects/*"))
     meshes=model.findall(".//Mesh")
-    geom_files=sorted(set(v.text.strip() for v in model.findall(".//mesh_file") if v.text and v.text.strip()))
+    geom_files=sorted(set(v.text.strip() for tag in (".//mesh_file",".//geometry_file")
+                           for v in model.findall(tag) if v.text and v.text.strip()))
     important=[n.get("name") for n in body_items if re.search(r"cerv|neck|skull|head|scap|clav|humer|tib|fem|torso|thorax|pelvis|rib",n.get("name",""),re.I)]
     linklist=[]
     for joint in joint_objects:
