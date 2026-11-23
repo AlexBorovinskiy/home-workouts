@@ -4,6 +4,7 @@ on:
     paths:
       - 'opensim-lab/export_original_mesh_frames.py'
       - 'opensim-lab/audit_anatomy_connections.py'
+      - 'opensim-lab/audit_cervical_geometry.py'
       - 'opensim-lab/original-anatomy.html'
       - 'opensim-lab/assets/fhs-anatomical-audit.json'
       - 'opensim-lab/assets/fhs-original-frames.json'
@@ -95,6 +96,14 @@ jobs:
             --archive /tmp/fhs-original.zip \
             --archive-relative "$(cat /tmp/archive-relative-name.txt)" \
             --output qa-fhs-original/anatomical-connections.json
+      - name: Audit every original C1-C7 mesh and native spacing to skull and T1
+        shell: bash
+        run: |
+          python opensim-lab/audit_cervical_geometry.py \
+            --model /tmp/sample-fhs.osim \
+            --archive /tmp/fhs-original.zip \
+            --archive-relative "$(cat /tmp/archive-relative-name.txt)" \
+            --output qa-fhs-original/cervical-geometry-audit.json
       - name: Assert orthonormal body frames
         shell: bash
         run: |
