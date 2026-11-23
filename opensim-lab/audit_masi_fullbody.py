@@ -79,8 +79,14 @@ def audit(model_path):
     joints = []
     for i in range(jset.getSize()):
         j = jset.get(i)
+        jp = j.getParentFrame().getTransformInGround(state).p()
+        jc = j.getChildFrame().getTransformInGround(state).p()
+        pxyz, cxyz = xyz(jp), xyz(jc)
+        distance = (sum((a-b)**2 for a,b in zip(pxyz,cxyz))**.5)*1000
         joints.append({"name": j.getName(), "type": j.getConcreteClassName(),
-                       "parentBody": frame_name(j, "parent"), "childBody": frame_name(j, "child")})
+                       "parentBody": frame_name(j, "parent"), "childBody": frame_name(j, "child"),
+                       "parentJointOriginM": pxyz, "childJointOriginM": cxyz,
+                       "jointFrameOriginSeparationMm": round(distance, 4)})
     cervical_y = [frames[n]["positionM"][1] for n in REQUIRED_NECK]
     ordered_neck = all(a > b for a, b in zip(cervical_y, cervical_y[1:]))
     kine = test_kinematics(str(model_path))
