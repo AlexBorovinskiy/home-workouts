@@ -1,0 +1,44 @@
+name: Inspect MASI scientific replacement model
+on:
+  push:
+    paths:
+      - 'opensim-lab/inspect_masi_source.py'
+      - '.github/workflows/qa-masi-source.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      MASI_DOWNLOAD_LIMIT_MB: '200'
+      MASI_REPORT_PATH: 'qa-masi-source/masi-inventory.json'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Retrieve publisher dataset metadata and inspect archives
+        run: python opensim-lab/inspect_masi_source.py
+      - name: Verify source and provenance
+        run: |
+          python - <<'PY'
+          import json
+          j=json.load(open('qa-masi-source/masi-inventory.json'))
+          assert j['articleId']==4249808 and j['version']==2
+          assert len(j['files'])>0
+          print('MASI_METADATA_QA',json.dumps({
+             'doi':j['doi'],'fileNames':[x['name'] for x in j['files']],
+             'fileSizesMb':[round(x['size']/1048576,2) for x in j['files']],
+             'archiveStatuses':[(x['file'],x['inspection']['status']) for x in j['archives']],
+             'nativeOpenSimLoaded':j['nativeOpenSimLoaded'],
+             'FHSmodelModified':j['FHSmodelModified']
+          }))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: masi-publisher-metadata-only
+          path: qa-masi-source/
+          retention-days: 7
