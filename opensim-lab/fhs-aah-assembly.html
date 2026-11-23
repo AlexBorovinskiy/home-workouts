@@ -37,7 +37,7 @@ label{font-size:12px;color:#e5f2ef}
 <body><main>
 <header><span>HOME WORKOUTS · OPENSIM</span><a href="./aah-hand.html">К отдельной кисти</a></header>
 <h1>Единая сборка: туловище и подвижные кисти</h1>
-<p class="lead">Реальная геометрия <b>FHS</b>: голова, позвоночник, рёбра, плечевой пояс и руки. Вместо неподвижных кистей FHS можно включить суставные кисти <b>AAH</b> с движением всех пальцев. Совмещение выполняется по общей геометрии полулунной кости запястья, без ручного перемещения.</p>
+<p class="lead">Скелет <b>FHS</b>: 17 грудных и поясничных позвонков, 24 исходные осевые линии рёбер, плечи и руки. Отдельно восстанавливаются семь шейных позвонков и череп из <b>MASI</b>, а суставные кисти — из <b>AAH</b>. Совмещения двух независимых моделей пока диагностические, а не подтверждённая биомеханика.</p>
 <div class="layout">
 <div>
 <section class="card"><div class="stage" id="stage">
@@ -47,7 +47,7 @@ label{font-size:12px;color:#e5f2ef}
 </div></section>
 <section class="card panel">
 <h2>Ограничения этой сборки</h2>
-<div class="warn">Это пока <b>совмещённая визуализация</b>, а не одна валидированная динамическая модель OpenSim. Совпадение полулунной кости задаёт точное начальное положение, но другие кости запястья и фаланги в исходных моделях расположены по-разному. Суставные оси запястья, силы, массы и мышечные крепления ещё не согласованы. Шея FHS остаётся упрощённой, отдельные ноги добавим позднее.</div>
+<div class="warn">Это пока <b>совмещённая визуализация</b>, а не одна валидированная динамическая модель OpenSim. Совпадение полулунной кости задаёт точное начальное положение, но другие кости запястья и фаланги в исходных моделях расположены по-разному. Суставные оси запястья, силы, массы и мышечные крепления ещё не согласованы. Шея MASI C1–C7 показана в исходных позах с визуальным совмещением C7–T1, но её межмодельные суставы и мышцы не валидированы. Рёбра FHS в оригинале представлены линиями; объёмная толщина добавлена только для наглядности, не является анатомическим измерением. Ноги добавим отдельно.</div>
 <p><a href="https://zenodo.org/records/18259702" target="_blank" rel="noopener">Исходный архив FHS</a> · <a href="https://github.com/nishbo/ms_arm_and_hand" target="_blank" rel="noopener">Источник AAH (MIT)</a>. Файл ZIP FHS используется только на устройстве; 3D-сетки AAH загружаются непосредственно из открытого авторского репозитория.</p>
 </section>
 </div>
@@ -81,11 +81,17 @@ label{font-size:12px;color:#e5f2ef}
 <button data-view="right">Правая кисть</button>
 <button data-view="left">Левая кисть</button>
 </div>
+<h3>Шея и череп</h3>
+<div class="buttons">
+<button data-neck="masi" class="on">MASI · 7 позвонков</button>
+<button data-neck="fhs">Исходная FHS</button>
+</div>
+<p id="neckStatus">Подготавливаю исходную геометрию MASI C1–C7. У FHS шейные позвонки находятся в одном жёстком теле и в выбранном экземпляре расположены некорректно.</p>
 <h3>Видимость</h3>
-<label class="check"><input id="ribs" type="checkbox" checked> Рёбра и грудина</label>
+<label class="check"><input id="ribs" type="checkbox" checked> Рёбра (объёмный показ исходных линий) и грудина</label>
 <label class="check"><input id="spine" type="checkbox" checked> Позвоночник</label>
 <label class="check"><input id="shoulders" type="checkbox" checked> Плечи и предплечья</label>
-<label class="check"><input id="head" type="checkbox" checked> Голова и шея FHS</label>
+<label class="check"><input id="head" type="checkbox" checked> Череп и шея</label>
 <label class="check"><input id="pelvis" type="checkbox" checked> Таз</label>
 <div class="buttons" style="margin-top:9px"><button id="reset">Сбросить ракурс</button></div>
 <h3>Состав сцены</h3>
@@ -115,10 +121,14 @@ const c={bone:0xdddcce,spine:0x9ad2c6,rib:0xc7c7b9,arm:0xbdb3dc,hand:0x9de3cf,pe
 const fhsRoot=new THREE.Group(),handRoot=new THREE.Group();scene.add(fhsRoot,handRoot);
 const group={head:new THREE.Group(),spine:new THREE.Group(),ribs:new THREE.Group(),shoulders:new THREE.Group(),pelvis:new THREE.Group(),rigidHands:new THREE.Group()};
 Object.values(group).forEach(g=>fhsRoot.add(g));
+const neckRoot=new THREE.Group(),neckScaffold=new THREE.Group();
+neckRoot.add(neckScaffold);fhsRoot.add(neckRoot);neckRoot.visible=false;
 const aahGroup={right:new THREE.Group(),left:new THREE.Group()};Object.values(aahGroup).forEach(g=>handRoot.add(g));
 let fhs=null,aah=null,mode="aah",pose="curl",bend=0,view="front",loadedFhs=false,loadedAAH=false,loadAAHStarted=false;
-const handMesh={right:new Map(),left:new Map()},fhsMeshes=[];
+let neckMode="masi",neckReady=false,neckLoadStarted=false,ribProxies=0,ribSegments=0,neckJointResidualMm=null;
+const neckBones=new Map(),handMesh={right:new Map(),left:new Map()},fhsMeshes=[];
 const sourceAAH="https://raw.githubusercontent.com/nishbo/ms_arm_and_hand/main/AAH%20Model/Geometry/";
+const sourceMASI="https://raw.githubusercontent.com/MyoHub/myoconverter/main/models/osim/Neck6D/Geometry/";
 function fit(){
  if(!loadedFhs)return;
  const b=new THREE.Box3();
@@ -128,6 +138,7 @@ function fit(){
   for(const obj of meshes)b.expandByObject(obj);
  }else{
   for(const g of Object.values(group))if(g.visible)b.expandByObject(g);
+  if(neckRoot.visible)b.expandByObject(neckRoot);
   if(mode==="aah"&&loadedAAH)for(const g of Object.values(aahGroup))b.expandByObject(g);
  }
  if(b.isEmpty())return;
@@ -178,6 +189,36 @@ function parseVtp(text,name){
  if(!edges)geo.computeVertexNormals();
  return {geo,edges};
 }
+// Source FHS rib VTP files contain anatomical line paths, not bone surface polygons.
+ // Render a low-poly cylindrical proxy on each original segment: the line path is
+ // unchanged, but the display radius is illustrative (3 mm before FHS scaling).
+function ribPathAsVisibleTubes(original){
+ const idx=original.getIndex(),pos=original.getAttribute("position");
+ if(!idx||idx.count%2!==0)throw Error("Неполные сегменты осевой линии ребра");
+ const n=idx.count/2;
+ const geo=new THREE.CylinderGeometry(.003,.003,1,7,1,false);
+ const material=new THREE.MeshStandardMaterial({color:0xdad6c8,roughness:.69,side:THREE.DoubleSide});
+ const inst=new THREE.InstancedMesh(geo,material,n);
+ const p=new THREE.Vector3(),q=new THREE.Vector3(),middle=new THREE.Vector3();
+ const axis=new THREE.Vector3(0,1,0),direction=new THREE.Vector3(),quaternion=new THREE.Quaternion(),matrix=new THREE.Matrix4();
+ let nonzero=0;
+ for(let k=0;k<n;k++){
+  p.fromBufferAttribute(pos,idx.getX(k*2));q.fromBufferAttribute(pos,idx.getX(k*2+1));
+  direction.subVectors(q,p);const length=direction.length();
+  if(length>1e-10){
+   middle.copy(p).add(q).multiplyScalar(.5);
+   quaternion.setFromUnitVectors(axis,direction.multiplyScalar(1/length));
+   matrix.compose(middle,quaternion,new THREE.Vector3(1,length,1));
+   nonzero++;
+  }else matrix.makeScale(0,0,0);
+  inst.setMatrixAt(k,matrix);
+ }
+ inst.instanceMatrix.needsUpdate=true;
+ inst.computeBoundingBox();inst.computeBoundingSphere();
+ inst.userData.visualRibTube=true;inst.userData.segments=nonzero;
+ original.dispose();ribSegments+=nonzero;ribProxies++;
+ return inst;
+}
 function disposeGroup(g){for(const m of [...g.children]){g.remove(m);m.geometry?.dispose();m.material?.dispose()}}
 function status(s){$("#status").textContent=s}
 async function getJSON(path){const r=await fetch(path);if(!r.ok)throw Error(path+" HTTP "+r.status);return r.json()}
@@ -188,7 +229,7 @@ async function readFHSZIP(buffer){
  const path=fhs.archiveRelativeOsimPath;
  if(!zip.file(path))throw Error("В архиве нет исследовательской модели "+path);
  const prefix=path.slice(0,path.lastIndexOf("/Male/"))+"/Geometry/";
- let count=0,ribs=0;
+ let count=0,ribs=0;ribProxies=0;ribSegments=0;fhsMeshes.length=0;
  for(const g of Object.values(group))disposeGroup(g);
  for(const [body,defs] of Object.entries(fhs.anatomyMeshes)){
   const cat=category(body);if(!cat)continue;
@@ -203,7 +244,9 @@ async function readFHSZIP(buffer){
    const mat=edges?new THREE.LineBasicMaterial({color:c.rib}):
     new THREE.MeshStandardMaterial({color:c[cat==="rigidHands"?"hand":cat==="head"?"bone":cat==="ribs"?"rib":cat==="shoulders"?"arm":cat]||c.bone,
       roughness:.7,metalness:.01,side:THREE.DoubleSide,transparent:cat==="rigidHands",opacity:cat==="rigidHands"?.75:1});
-   const mesh=edges?new THREE.LineSegments(geo,mat):new THREE.Mesh(geo,mat);
+   const isRibLine=edges&&/^rib\d+_[RL]$/.test(body);
+   const mesh=isRibLine?ribPathAsVisibleTubes(geo):edges?new THREE.LineSegments(geo,mat):new THREE.Mesh(geo,mat);
+   if(isRibLine)mat.dispose();
    mesh.position.copy(V(frame.origin));mesh.quaternion.copy(rot);mesh.scale.set(...desc.scaleFactors);
    mesh.userData={body,file:desc.file,cat};
    target.add(mesh);fhsMeshes.push(mesh);
@@ -216,6 +259,7 @@ async function readFHSZIP(buffer){
  loadedFhs=true;status("FHS готов: "+count+" исходных сеток. "+(loadedAAH?"AAH подключена.":"Загружаю подвижные кисти AAH."));
  updateVisibility();fit();
  await startAAH();
+ await startNeck();
 }
 async function cacheRead(){
  if(!("indexedDB" in window))return null;
@@ -322,7 +366,11 @@ function updateVisibility(){
  const replace=mode==="aah"&&loadedAAH;
  group.rigidHands.visible=!replace;
  for(const g of Object.values(aahGroup))g.visible=replace;
- group.head.visible=$("#head").checked;group.spine.visible=$("#spine").checked;
+ const showNeck=$("#head").checked;
+ group.head.visible=showNeck&&(!neckReady||neckMode==="fhs");
+ neckRoot.visible=showNeck&&neckReady&&neckMode==="masi";
+ document.querySelectorAll("[data-neck]").forEach(b=>b.classList.toggle("on",b.dataset.neck===neckMode));
+ group.spine.visible=$("#spine").checked;
  group.ribs.visible=$("#ribs").checked;group.shoulders.visible=$("#shoulders").checked;
  group.pelvis.visible=$("#pelvis").checked;
  document.querySelectorAll("[data-hands]").forEach(b=>b.classList.toggle("on",b.dataset.hands===mode));
@@ -337,6 +385,10 @@ $("#file").onchange=async()=>{
  catch(e){console.error(e);status("Ошибка FHS ZIP: "+e.message)}
 };
 document.querySelectorAll("[data-hands]").forEach(b=>b.onclick=()=>{mode=b.dataset.hands;updateVisibility()});
+document.querySelectorAll("[data-neck]").forEach(b=>b.onclick=()=>{
+ neckMode=b.dataset.neck;
+ updateVisibility();fit();
+});
 document.querySelectorAll("[data-pose]").forEach(b=>b.onclick=()=>{
  if(b.dataset.pose==="open"){bend=0;pose="curl"}
  else{pose=b.dataset.pose;bend=1}
@@ -345,7 +397,7 @@ document.querySelectorAll("[data-pose]").forEach(b=>b.onclick=()=>{
 $("#bend").oninput=e=>{bend=Number(e.target.value)/100;applyHands()};
 document.querySelectorAll("[data-view]").forEach(b=>b.onclick=()=>{view=b.dataset.view;fit()});
 for(const id of ["ribs","spine","shoulders","head","pelvis"])$("#"+id).onchange=()=>{updateVisibility();fit()};
-$("#reset").onclick=()=>{view="front";bend=0;pose="curl";mode="aah";applyHands();updateVisibility();fit()};
+$("#reset").onclick=()=>{view="front";bend=0;pose="curl";mode="aah";neckMode="masi";applyHands();updateVisibility();fit()};
 new ResizeObserver(()=>{renderer.setSize(stage.clientWidth,stage.clientHeight,false);camera.aspect=stage.clientWidth/Math.max(1,stage.clientHeight);camera.updateProjectionMatrix()}).observe(stage);
 (function loop(){requestAnimationFrame(loop);orbit.update();renderer.render(scene,camera)})();
 async function init(){
