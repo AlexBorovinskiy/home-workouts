@@ -1,0 +1,62 @@
+name: Export native AAH elbow movement for atlas arm retargeting
+on:
+  push:
+    paths:
+      - 'opensim-lab/export_aah_elbow_retarget.py'
+      - '.github/workflows/build-aah-elbow-retarget.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  export:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 13
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install OpenSim scientific engine
+        run: python -m pip install 'opensim==4.6'
+      - name: Download native source AAH arm model
+        run: |
+          curl -fL --retry 3 --max-time 90 \
+            'https://raw.githubusercontent.com/nishbo/ms_arm_and_hand/main/AAH%20Model/RightArmAndHand_NoMuscles.osim' \
+            -o /tmp/AAH_RightArmAndHand_NoMuscles.osim
+      - name: Export independent OpenSim elbow poses from source joint constraint
+        run: |
+          python opensim-lab/export_aah_elbow_retarget.py \
+            --model /tmp/AAH_RightArmAndHand_NoMuscles.osim \
+            --output opensim-lab/assets/aah-elbow-source-poses.json
+      - name: Verify original OpenSim joint frames move correctly
+        run: |
+          python - <<'PY'
+          import json,math
+          x=json.load(open('opensim-lab/assets/aah-elbow-source-poses.json'))
+          assert x['schema']=='AAH-OpenSim46-elbow-source-poses-v1'
+          assert x['coordinate']=='ra_el_e_f' and x['wristCenterMovementM']>.1
+          assert len(x['samples'])>=4 and len(x['bodyNames'])==30
+          for sample in x['samples']:
+            assert math.isfinite(sample['elbowFlexionDeg'])
+            for name in x['bodyNames']:
+              f=sample['frames'][name]
+              assert len(f['p'])==3 and len(f['R'])==3
+              assert all(math.isfinite(v) for v in f['p'])
+          print('AAH_ELBOW_SOURCE_NATIVE_QA_OK',x['wristCenterMovementM'])
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: source-AAH-elbow-kinematics
+          path: opensim-lab/assets/aah-elbow-source-poses.json
+          retention-days: 30
+      - name: Commit original-data derived AAH elbow poses
+        if: success() && github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add opensim-lab/assets/aah-elbow-source-poses.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Store original OpenSim elbow flexion frames for atlas retarget pilot [skip ci]"
+            git push origin HEAD:main
+          fi
