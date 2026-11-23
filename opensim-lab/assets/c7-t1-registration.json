@@ -1,0 +1,61 @@
+{
+  "schema": "c7-t1-masi-fhs-registration-candidate-v1",
+  "scientificStatus": "DIAGNOSTIC RIGID REGISTRATION ONLY — NOT A VALIDATED HYBRID OR EXERCISE MODEL",
+  "sourceAudit": "GitHub Actions QA scientific C7-T1 neck to spine registration run 45133383232",
+  "sources": {
+    "masi": "https://doi.org/10.6084/m9.figshare.4249808.v2",
+    "fhs": "https://zenodo.org/records/18259702"
+  },
+  "fhsArchiveRelativeOsimPath": "FHS_dataset_4.x - Copia/Male/Age4049/110_SizeScaled_CurvatureAdjust_MuscleAdjust.osim",
+  "method": "Native OpenSim joint-center registration (MASI auxt1jnt to FHS T1_head_neck), orientation initialized by mapping FHS T1 body axes to MASI spine body axes. Both use their own scientific coordinate frames, not calibrated cross-model anatomy.",
+  "rotationMatrix": [
+    [
+      0.9813125199637321,
+      0.1293931161367157,
+      -0.14241895821434847
+    ],
+    [
+      -0.12867872367036196,
+      0.9915838846440532,
+      0.014254325265522397
+    ],
+    [
+      0.14306475539767505,
+      0.004338341922792494,
+      0.9897038216316861
+    ]
+  ],
+  "translationM": [
+    0.42154968352837935,
+    0.9515915436756901,
+    0.5992029798570498
+  ],
+  "scale": 1,
+  "masiAnchorM": [
+    0.44867874040417266,
+    1.482010679316904,
+    0.5954674432368077
+  ],
+  "fhsAnchorM": [
+    -0.04216599785047781,
+    0.5294491741805413,
+    0
+  ],
+  "audit": {
+    "jointAnchorResidualMm": 0,
+    "vertexToVertexMinimumMm": 2.4114,
+    "verticalBoundingBoxGapMm": 0,
+    "verticalBoundingBoxOverlapMm": 13.2562,
+    "bboxCenterSeparationMm": 26.2171,
+    "MasiC7Vertices": 142,
+    "FhsT1Vertices": 212,
+    "FhsVertebrae": 17
+  },
+  "anatomicalCompatibilityVerified": false,
+  "dynamicsValidated": false,
+  "warnings": [
+    "A joint-center match is imposed by registration and is not independent evidence of anatomical correctness.",
+    "Nearest vertex spacing is not a surface-to-surface or facet-joint metric.",
+    "Visualization uses the original FHS geometry loaded from the user's own ZIP; licensed source meshes are not redistributed."
+  ]
+}
