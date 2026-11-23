@@ -103,6 +103,16 @@ a{color:var(--accent)}
 <input type="range" id="finger" min="0" max="100" value="0" step="1" disabled aria-label="Сгибание пальцев">
 <div id="fingerValue" style="font-size:12px;color:var(--muted)">0%</div>
 <label style="margin-top:8px"><input type="checkbox" id="showContact" checked> Отображать расчёт зазоров по пальцам</label>
+<h3>Точная настройка четырёх пальцев</h3>
+<div class="buttons">
+<button data-finger-fit="original">Исходный хват</button>
+<button data-finger-fit="refined" class="on">Подтянуть пальцы</button>
+<button id="refineFingers">Пересчитать</button>
+</div>
+<label style="margin-top:8px">Сила коррекции <strong id="fingerFitStrengthValue">100%</strong></label>
+<input id="fingerFitStrength" type="range" min="0" max="100" step="5" value="100" disabled aria-label="Сила корректировки указательного, среднего, безымянного пальцев и мизинца">
+<div id="fingerFitReport" class="status" style="margin-top:8px">Проверяю изгибы четырёх пальцев относительно рукояти…</div>
+<p>Независимо уточняются только средний и концевой суставы каждого пальца, по исходным осям вращения OpenSim. Большой палец, пястные кости и гантель остаются на месте.</p>
 <h3>Мышцы правой руки · оригинальный Écorché</h3>
 <div class="buttons">
 <button data-muscles="bones" class="on">Кости</button>
@@ -203,6 +213,10 @@ const sourceCenters=new Map(),targetCenters=new Map(),sourceRest=new Map(),joint
 let muscleMode="bones",muscleOverlays=[],muscleSkin=null;
 let gripDigitProgress=null,gripPlanning=false,manualGripAngles=null,gripTesting=false;
 let thumbMode="opposition",thumbStrength=1;
+let fingerFitMode="refined",fingerFitStrength=1,fingerCorrections=null,fingerFitting=false;
+let fingerFitReport=null;
+const fingerAxes=new Map();
+const fourDigits=["index","middle","ring","little"];
 const contactDigits={
  index:["RA5P2","RA6M2","RA7D2"],
  middle:["RA5P3","RA6M3","RA7D3"],
@@ -362,6 +376,18 @@ function atlasJointRotation(body,parent,steps,u=finger){
  return registration.rot.clone().multiply(delta)
   .multiply(registration.rot.clone().invert()).normalize();
 }
+// Hinge directions recovered from exported OpenSim cylinder poses, in
+// atlas-neutral coordinates. Small corrections extend its sampled poses.
+function initializeFingerAxes(){
+ fingerAxes.clear();
+ const steps=poseFrames.right.trajectories.cylinder;
+ for(const digit of fourDigits)for(const id of contactDigits[digit].slice(1)){
+  const q=atlasJointRotation(id,jointParents[id],steps,1);
+  if(q.w<0)q.set(-q.x,-q.y,-q.z,-q.w);
+  const axis=new THREE.Vector3(q.x,q.y,q.z);
+  if(axis.lengthSq()>1e-10)fingerAxes.set(id,axis.normalize());
+ }
+}
 function applyPose(){
  if(!ready)return;
  const q=getElbowWorld();
@@ -399,6 +425,15 @@ function applyPose(){
     .multiply(M4().makeTranslation(-P.x,-P.y,-P.z));
    J.premultiply(B);
   }
+  const extra=fingerCorrections?.[digit]?.[body];
+  if(extra&&fingerAxes.has(body)&&gripVisible&&pose==="cylinder"&&mode==="rig"&&
+      (fingerFitting||fingerFitMode==="refined")){
+   const angle=THREE.MathUtils.degToRad(extra*finger*fingerFitStrength);
+   const B=M4().makeTranslation(P.x,P.y,P.z)
+    .multiply(M4().makeRotationAxis(fingerAxes.get(body),angle))
+    .multiply(M4().makeTranslation(-P.x,-P.y,-P.z));
+   J.premultiply(B);
+  }
   const transform=relativeMotion(j.parent).clone().multiply(J);
   memo.set(body,transform);return transform;
  };
@@ -411,7 +446,7 @@ function applyPose(){
  setDumbbellPose(E);
  updateMusclePose();
  scene.updateMatrixWorld(true);
- if(gripReady&&!gripPlanning&&!gripTesting){updateGripButtons();updateContactReport()}
+ if(gripReady&&!gripPlanning&&!gripTesting&&!fingerFitting){updateGripButtons();updateContactReport()}
  if(!gripPlanning){$("#elbowValue").textContent=elbow+"°";
   $("#fingerValue").textContent=Math.round(finger*100)+"%";}
 }
@@ -525,9 +560,9 @@ function fitScore(clouds,y,z,radius){
 // orthonormal MCP palm frame, avoiding hardcoded camera/world rotations.
 // theta = diagonal in palm plane, phi = out-of-palm tilt (degrees).
 function planDumbbellGrip(){
- const prior={finger,pose,elbow,gripDigitProgress,gripPlanning,thumbCorrection};
+ const prior={finger,pose,elbow,gripDigitProgress,gripPlanning,thumbCorrection,fingerCorrections};
  let completed=false;
- gripPlanning=true;gripDigitProgress=null;thumbCorrection=null;
+ gripPlanning=true;gripDigitProgress=null;thumbCorrection=null;fingerCorrections=null;
  elbow=0;pose="cylinder";finger=0;
  try{
   applyPose();
@@ -679,7 +714,7 @@ function planDumbbellGrip(){
  }finally{
   elbow=prior.elbow;pose=prior.pose;finger=prior.finger;
   gripPlanning=prior.gripPlanning;
-  if(!completed){gripDigitProgress=prior.gripDigitProgress;thumbCorrection=prior.thumbCorrection}
+  if(!completed){gripDigitProgress=prior.gripDigitProgress;thumbCorrection=prior.thumbCorrection;fingerCorrections=prior.fingerCorrections}
   applyPose();
  }
 }
@@ -1017,6 +1052,111 @@ function updateMusclePose(){
  }
  // Mesh vertices follow weighted animated bones in the GPU skinning shader.
 }
+// PIP/DIP search with a fixed handle and fixed thumb. The baseline is an
+// eligible candidate and survives whenever an improvement would penetrate
+// the bar. Sampled bone surface clearances are only an approximation.
+function refineFourFingers(){
+ if(!ready||!gripReady||!thumbFit)return null;
+ const saved={finger,elbow,pose,gripVisible,fingerFitMode,fingerFitStrength,fingerFitting,
+  fingerCorrections};
+ finger=1;elbow=0;pose="cylinder";gripVisible=true;
+ fingerFitMode="refined";fingerFitStrength=1;fingerFitting=true;fingerCorrections={};
+ const handlePos=new THREE.Vector3().setFromMatrixPosition(gripBase);
+ const handleAxis=new THREE.Vector3().setFromMatrixColumn(gripBase,0).normalize();
+ const radius=handleDiameterMm/2000;
+ const point=new THREE.Vector3();
+ const gapToBar=p=>{
+  const rel=p.clone().sub(handlePos),along=rel.dot(handleAxis);
+  const out=Math.sqrt(Math.max(0,rel.lengthSq()-along*along));
+  return Math.hypot(out,Math.max(0,Math.abs(along)-.073))-radius;
+ };
+ const sampleBone=id=>{
+  const mesh=rig.get(id).mesh,attr=mesh.geometry.getAttribute("position");
+  const stride=Math.max(1,Math.floor(attr.count/80));
+  let gap=Infinity;
+  for(let i=0;i<attr.count;i+=stride){
+   point.fromBufferAttribute(attr,i).applyMatrix4(mesh.matrixWorld);
+   gap=Math.min(gap,gapToBar(point));
+  }
+  return gap;
+ };
+ const radial=p=>{
+  const rel=p.clone().sub(handlePos);
+  return rel.addScaledVector(handleAxis,-rel.dot(handleAxis)).normalize();
+ };
+ const evaluate=(digit)=>{
+  const bones=contactDigits[digit];
+  const gaps=bones.map(sampleBone);
+  const prox=vecCenter(rig.get(bones[0]).mesh);
+  const dist=vecCenter(rig.get(bones[2]).mesh);
+  const wrap=THREE.MathUtils.radToDeg(Math.acos(
+   THREE.MathUtils.clamp(radial(prox).dot(radial(dist)),-1,1)));
+  const wrapTarget={index:82,middle:90,ring:90,little:88}[digit];
+  const deficit=Math.max(0,wrapTarget-wrap)/50;
+  const score=2400*Math.pow(Math.max(0,.003-Math.min(...gaps)),2)+
+   18*Math.pow(gaps[2]-.006,2)+8*Math.pow(gaps[1]-.006,2)+
+   2*Math.pow(gaps[0]-.008,2)+
+   .00035*deficit*deficit;
+  return {gapMm:gaps.map(x=>x*1000),minGapMm:Math.min(...gaps)*1000,
+   wrapDeg:wrap,score};
+ };
+ const result={};
+ let changed=0;
+ try{
+  for(const digit of fourDigits){
+   const bones=contactDigits[digit].slice(1);
+   if(!bones.every(id=>fingerAxes.has(id))){
+    result[digit]={status:"unavailable",reason:"нет подходящих исходных суставных осей"};
+    continue;
+   }
+   const tryPose=(pip,dip)=>{
+    fingerCorrections[digit]={[bones[0]]:pip,[bones[1]]:dip};
+    applyPose();scene.updateMatrixWorld(true);
+    const m=evaluate(digit);
+    // Favor small deviations from the measured OpenSim trajectory.
+    return {...m,pip,dip,total:m.score+.000002*(pip*pip+dip*dip)/100};
+   };
+   let best=tryPose(0,0),baseline={...best};
+   for(const pip of [-10,0,10,20,30])for(const dip of [-10,0,10,20,30]){
+    const c=tryPose(pip,dip);
+    if(c.minGapMm<3||c.minGapMm>25)continue;
+    if(c.total<best.total-1e-9)best=c;
+   }
+   const coarse={...best};
+   for(const d1 of [-5,0,5])for(const d2 of [-5,0,5]){
+    const c=tryPose(THREE.MathUtils.clamp(coarse.pip+d1,-15,35),
+      THREE.MathUtils.clamp(coarse.dip+d2,-15,35));
+    if(c.minGapMm<3||c.minGapMm>25)continue;
+    if(c.total<best.total-1e-9)best=c;
+   }
+   if(best.minGapMm<3||best.total>baseline.total)best=baseline;
+   fingerCorrections[digit]={[bones[0]]:best.pip,[bones[1]]:best.dip};
+   applyPose();scene.updateMatrixWorld(true);
+   const adjusted=best.pip!==0||best.dip!==0;
+   if(adjusted)changed++;
+   result[digit]={status:adjusted?"adjusted":"baseline",pipDeg:best.pip,
+    dipDeg:best.dip,original:baseline,refined:best};
+  }
+  fingerFitReport={digits:result,changed,method:"AAH-axis-PIP-DIP-with-clearance"};
+  const labels={index:"Указ.",middle:"Средн.",ring:"Безым.",little:"Мизин."};
+  $("#fingerFitReport").textContent=fourDigits.map(d=>{
+   const v=result[d];
+   if(v.status==="unavailable")return labels[d]+": без коррекции (нет оси)";
+   return labels[d]+": "+v.pipDeg+"° / "+v.dipDeg+
+     "°; обхват "+v.original.wrapDeg.toFixed(0)+"° → "+v.refined.wrapDeg.toFixed(0)+
+     "°; минимальный костный зазор "+v.refined.minGapMm.toFixed(1).replace(".",",")+" мм";
+  }).join("; ")+". Большой палец и гантель не изменялись.";
+  return fingerFitReport;
+ }catch(e){
+  fingerCorrections=saved.fingerCorrections;
+  throw e;
+ }finally{
+  finger=saved.finger;elbow=saved.elbow;pose=saved.pose;gripVisible=saved.gripVisible;
+  fingerFitMode=saved.fingerFitMode;fingerFitStrength=saved.fingerFitStrength;
+  fingerFitting=saved.fingerFitting;
+  applyPose();
+ }
+}
 function showMuscleLayers(){
  const show=mode==="rig"&&muscleMode!=="bones";
  const close=view==="hand";
@@ -1142,6 +1282,7 @@ async function init(){
   registration=deriveRegistration();
   sourceAtlas=elbowPivotFromOriginal();
   buildAtlasFingerJoints();
+  initializeFingerAxes();
   makeDumbbell();
   // Internal pose sampling requires ready rig data before the initial grip
   // plan; the grip itself stays hidden until its verification completes.
@@ -1163,7 +1304,9 @@ async function init(){
   $("#handleDiameter").disabled=false;$("#handleOffset").disabled=false;$("#handleDepth").disabled=false;
    $("#handleYaw").disabled=false;$("#handlePitch").disabled=false;
    $("#thumbStrength").disabled=false;
+   $("#fingerFitStrength").disabled=false;
   gripVisible=true;elbow=75;pose="cylinder";finger=1;
+  refineFourFingers();
   $("#elbow").value="75";$("#finger").value="100";
   document.querySelectorAll("[data-pose]").forEach(b=>b.classList.toggle("on",b.dataset.pose==="cylinder"));
   applyPose();
@@ -1200,7 +1343,7 @@ $("#hideDumbbell").onclick=()=>{
 $("#handleDiameter").oninput=e=>{
  if(!ready)return;handleDiameterMm=Number(e.target.value);
  $("#handleDiameterValue").textContent=handleDiameterMm+" мм";
- updateDumbbellRadius();planDumbbellGrip();calculateThumbOpposition();applyPose();fit();
+ updateDumbbellRadius();planDumbbellGrip();calculateThumbOpposition();refineFourFingers();applyPose();fit();
 };
 $("#autoGrip").onclick=()=>{
  if(!ready)return;
@@ -1208,7 +1351,7 @@ $("#autoGrip").onclick=()=>{
  handleOffsetMm=0;handleDepthMm=0;
  $("#handleOffset").value="0";$("#handleDepth").value="0";
  $("#handleOffsetValue").textContent="0 мм";$("#handleDepthValue").textContent="0 мм";
- planDumbbellGrip();calculateThumbOpposition();applyPose();fit();
+ planDumbbellGrip();calculateThumbOpposition();refineFourFingers();applyPose();fit();
 };
 for(const id of ["handleYaw","handlePitch"]){
  const slider=$("#"+id);
@@ -1218,9 +1361,21 @@ for(const id of ["handleYaw","handlePitch"]){
   if(!ready)return;
   manualGripAngles={theta:Number($("#handleYaw").value),
                     phi:Number($("#handlePitch").value)};
-  planDumbbellGrip();calculateThumbOpposition();applyPose();fit();
+  planDumbbellGrip();calculateThumbOpposition();refineFourFingers();applyPose();fit();
  };
 }
+document.querySelectorAll("[data-finger-fit]").forEach(b=>b.onclick=()=>{
+ fingerFitMode=b.dataset.fingerFit;
+ document.querySelectorAll("[data-finger-fit]").forEach(x=>x.classList.toggle(
+  "on",x.dataset.fingerFit===fingerFitMode));
+ applyPose();
+});
+$("#fingerFitStrength").oninput=e=>{
+ fingerFitStrength=Number(e.target.value)/100;
+ $("#fingerFitStrengthValue").textContent=Math.round(fingerFitStrength*100)+"%";
+ applyPose();
+};
+$("#refineFingers").onclick=()=>{if(!ready)return;refineFourFingers();applyPose()};
 document.querySelectorAll("[data-thumb]").forEach(b=>b.onclick=()=>{
  thumbMode=b.dataset.thumb;
  document.querySelectorAll("[data-thumb]").forEach(x=>x.classList.toggle("on",x.dataset.thumb===thumbMode));
@@ -1274,6 +1429,8 @@ window.__armQA={
   return {name:item.name,rest:rest.toArray(),posed:posed.toArray(),displacementMm:rest.distanceTo(posed)*1000};
  },
  thumbFit:()=>thumbFit,thumbMode:()=>thumbMode,thumbStrength:()=>thumbStrength,
+ fingerFit:()=>fingerFitReport,fingerCorrections:()=>fingerCorrections,
+ fingerFitMode:()=>fingerFitMode,fingerAxes:()=>[...fingerAxes.keys()],
  handleCenter:()=>{scene.updateMatrixWorld(true);return dumbbell?.root.getWorldPosition(new THREE.Vector3()).toArray()},
  handleAxis:()=>{scene.updateMatrixWorld(true);return dumbbell?.root.localToWorld(new THREE.Vector3(1,0,0)).sub(dumbbell.root.localToWorld(new THREE.Vector3())).normalize().toArray()},
  handleDiameter:()=>handleDiameterMm,contact:()=>contactResult,
