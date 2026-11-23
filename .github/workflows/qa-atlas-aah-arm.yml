@@ -69,6 +69,34 @@ jobs:
               throw Error('Grip angle/contact optimizer produced an invalid initial pose: '+JSON.stringify(open.gripPlan)+' '+JSON.stringify(open.contact));
             await page.locator('#scene').screenshot({path:'qa-atlas-arm/atlas-AAH-dumbbell-grip-initial.png'});
             const gripped=open;
+            // Oppositional thumb must move independently of index finger and prop.
+            const thumbRead=()=>page.evaluate(()=>{
+              const q=window.__armQA;
+              return {thumb:q.meshWorldPosition('RA6D1'),index:q.meshWorldPosition('RA7D2'),
+                handle:q.handleCenter(),fit:q.thumbFit(),mode:q.thumbMode(),strength:q.thumbStrength()};
+            });
+            await page.locator('[data-view="hand"]').click();
+            await page.locator('[data-muscles="bones"]').click();
+            await page.locator('[data-thumb="opposition"]').click();
+            const thumbOpposed=await thumbRead();
+            await page.locator('#scene').screenshot({path:'qa-atlas-arm/thumb-opposition-bones.png'});
+            await page.locator('[data-thumb="aah"]').click();
+            const thumbAAH=await thumbRead();
+            await page.locator('#scene').screenshot({path:'qa-atlas-arm/thumb-aah-bones.png'});
+            await page.locator('[data-thumb="opposition"]').click();
+            await page.locator('#thumbStrength').fill('0');
+            const thumbZero=await thumbRead();
+            await page.locator('#thumbStrength').fill('100');
+            const thumbRestored=await thumbRead();
+            if(d(thumbOpposed.thumb,thumbAAH.thumb)<.002 ||
+               d(thumbOpposed.index,thumbAAH.index)>.0008 ||
+               d(thumbOpposed.handle,thumbAAH.handle)>.0008 ||
+               d(thumbAAH.thumb,thumbZero.thumb)>.0008 ||
+               d(thumbOpposed.thumb,thumbRestored.thumb)>.0008)
+              throw Error('Independent CMC thumb correction or comparison is invalid '+
+                JSON.stringify({thumbOpposed,thumbAAH,thumbZero,thumbRestored}));
+            await page.locator('[data-muscles="both"]').click();
+            await page.locator('#scene').screenshot({path:'qa-atlas-arm/thumb-opposition-muscles.png'});
             await page.locator('#releaseGrip').click();
             await page.locator('#scene').screenshot({path:'qa-atlas-arm/atlas-AAH-dumbbell-released.png'});
             const released=await read();
@@ -148,6 +176,7 @@ jobs:
             writeFileSync('qa-atlas-arm/report.json',JSON.stringify({
               open,released,straight,curled,flex,reset:back,grip:gripped.gripPlan,
               manualAngle:manualAngle.gripPlan,autoAngle:autoAngle.gripPlan,
+              thumbOpposed,thumbAAH,thumbZero,thumbRestored,
               fingerMovedM:fingerMoved,wristMovedM:wristMoved,
               lateralShiftM:lateralShift,forwardShiftM:forwardShift,
               humerusMovedM:humerusMoved,errors},null,2));
