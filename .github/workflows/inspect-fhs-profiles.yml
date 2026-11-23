@@ -1,0 +1,46 @@
+name: Inspect neutral and subject-specific FHS spinal alignment variants
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inventory:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download original scientific FHS 4.x archive
+        run: curl -fL --retry 3 --max-time 180 'https://zenodo.org/records/18259702/files/FHS_dataset_4.x.zip?download=1' -o /tmp/FHS_4x.zip
+      - name: Identify neutral source candidates and model name variation
+        run: |
+          mkdir -p qa-fhs-profile
+          python - <<'PY'
+          import zipfile,re,json,collections
+          archive='/tmp/FHS_4x.zip'
+          with zipfile.ZipFile(archive) as z:
+            a=sorted(x for x in z.namelist() if x.lower().endswith('.osim'))
+            other=sorted(x for x in z.namelist() if x.lower().endswith(('.txt','.md','.csv','.pdf')))
+          original='FHS_dataset_4.x - Copia/Male/Age4049/110_SizeScaled_CurvatureAdjust_MuscleAdjust.osim'
+          assert original in a
+          same_folder=[x for x in a if '/Male/Age4049/' in x]
+          same_subject=[x for x in a if x.startswith(original.rsplit('/',1)[0]+'/110_')]
+          names=collections.Counter(x.split('/')[-1].split('_',1)[-1] for x in a)
+          more=[x for x in a if any(x0 in x.lower() for x0 in ['base','generic','neutral','baseline'])]
+          result={
+            'schema':'fhs-source-profile-inventory-v1',
+            'originalSelectedModel':original,
+            'totalModels':len(a),'sameAgeSexModels':len(same_folder),
+            'sameSubjectVariants':same_subject,
+            'neutralGenericFilenameCandidates':more[:100],
+            'topModelNamePatterns':names.most_common(20),
+            'sameAgeSexSample':same_folder[:35],
+            'documentationFiles':other[:40],
+            'allOsimBasenames':sorted(set(x.split('/')[-1] for x in a)),
+          }
+          json.dump(result,open('qa-fhs-profile/inventory.json','w'),indent=2)
+          print('FHS_PROFILE_INVENTORY',json.dumps({k:v for k,v in result.items() if k!='allOsimBasenames'}))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: subject-specific-fhs-variation-source
+          path: qa-fhs-profile/inventory.json
