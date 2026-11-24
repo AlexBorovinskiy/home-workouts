@@ -16,3 +16,12 @@ fit_pelvis_block.py compares the original sacral surfaces under a rigid symmetry
 The surface fit is a provisional registration. A low global surface discrepancy does not establish L5/S1 disc contact, sacroiliac biomechanics, standing alignment, or physiological ROM. Candidate is isolated from v0.6. No force, balance, or personalized anthropometry claim.
 
 Viewer: pelvis.html, includes a pelvis/lumbar region and version comparison. Calibration output: pelvis-block.json and sequences-pelvis.json after successful native QA.
+
+## Completed results (2026-11-24)
+Native workflow 45377866490 completed surface fit and all 186 OpenSim frames; publication and browser QA completed in 45378281438. The three Rajagopal pelvic surfaces replace (not overlay) the FHS pelvis/sacrum. All 6 sequences preserved, independent rigid replay maximum residual 0.001215 mm, native hip center separation 154.52 mm. The browser comparison loaded all 134 objects and had no runtime errors.
+- Donor-to-FHS sacral surface p95: 36.73 mm at original placement, 49.83 mm with pivot-only alignment, 9.75 mm with rigid surface fit.
+- Residual between the aggregate back and L5/S1 model pivots: 27.20 mm after fit; this is NOT a measured physical disc gap.
+- Fit introduces -14.01° sagittal rotation. In the neutral export the right hip-to-ankle angle from vertical changes 0.46° to 14.46°; the right heel frame moves posteriorly 221.75 mm. L5 is unchanged. No standing balance/contact solve has been done.
+- Mobile screenshots confirm native femoral heads appear better seated relative to the pelvis; visual impression does not validate cartilage contact or L5–sacrum contact.
+
+**Decision:** retain Rajagopal native pelvis/hip geometry; reject the experimental v0.7 neutral posture as a validated standing baseline. Preserve v0.6. Next test must use actual endplate landmarks and constrained neutral pose, not another unconstrained global surface fit. No anthropometric scaling yet.
