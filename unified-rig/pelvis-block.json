@@ -1,0 +1,168 @@
+{
+  "status": "experimental rigid sacrum registration; anatomical contact unverified",
+  "baseline": {
+    "donorToFHS": {
+      "medianMm": 7.592561889125276,
+      "p95Mm": 36.725369628523985,
+      "maxMm": 41.92351339569084
+    },
+    "fhsToDonor": {
+      "medianMm": 6.106633437219107,
+      "p95Mm": 22.320146128914143,
+      "maxMm": 35.55485769055873
+    },
+    "discPivotResidualMm": 65.51123297985288,
+    "translationM": [
+      0.0,
+      0.04129604644,
+      0.0
+    ],
+    "rotation": [
+      [
+        1.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        1.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        1.0
+      ]
+    ]
+  },
+  "pivotOnly": {
+    "donorToFHS": {
+      "medianMm": 27.586022208329272,
+      "p95Mm": 49.828395359648724,
+      "maxMm": 59.224816262144664
+    },
+    "fhsToDonor": {
+      "medianMm": 9.118115783541437,
+      "p95Mm": 24.89505573309536,
+      "maxMm": 30.59149136833399
+    },
+    "discPivotResidualMm": 0.0,
+    "translationM": [
+      0.018107907120000002,
+      -0.021662871484897803,
+      0.0
+    ],
+    "rotation": [
+      [
+        1.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        1.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        1.0
+      ]
+    ]
+  },
+  "surfaceFit": {
+    "donorToFHS": {
+      "medianMm": 5.5432205305818645,
+      "p95Mm": 9.749446563666337,
+      "maxMm": 14.967099151097992
+    },
+    "fhsToDonor": {
+      "medianMm": 3.1120791950421225,
+      "p95Mm": 5.823796117414711,
+      "maxMm": 8.549815530322835
+    },
+    "discPivotResidualMm": 27.20487740222281,
+    "translationM": [
+      -0.0008138168523708067,
+      -0.016674052344377736,
+      0.0
+    ],
+    "rotation": [
+      [
+        0.970267818758256,
+        0.24203379904900926,
+        0.0
+      ],
+      [
+        -0.24203379904900926,
+        0.970267818758256,
+        -0.0
+      ],
+      [
+        -0.0,
+        0.0,
+        1.0
+      ]
+    ]
+  },
+  "donorBackPivotLocalM": [
+    -0.1007,
+    0.0814999999999999,
+    0.0
+  ],
+  "fhsDiscPivotLocalM": [
+    -0.08259209288,
+    0.0598371285151021,
+    0.0
+  ],
+  "pelvisSubtreeBodies": [
+    "pelvis",
+    "femur_r",
+    "tibia_r",
+    "patella_r",
+    "talus_r",
+    "calcn_r",
+    "toes_r",
+    "femur_l",
+    "tibia_l",
+    "patella_l",
+    "talus_l",
+    "calcn_l",
+    "toes_l"
+  ],
+  "pelvisSubtreeJoints": [
+    "pelvis_sacrum",
+    "hip_r",
+    "walker_knee_r",
+    "patellofemoral_r",
+    "ankle_r",
+    "subtalar_r",
+    "mtp_r",
+    "hip_l",
+    "walker_knee_l",
+    "patellofemoral_l",
+    "ankle_l",
+    "subtalar_l",
+    "mtp_l"
+  ],
+  "scale": 1,
+  "meshSource": "https://raw.githubusercontent.com/opensim-org/opensim-models/master/Models/Rajagopal/Geometry/sacrum.vtp",
+  "fitRotationDeg": -14.00660797258562,
+  "fitMultiStartCosts": [
+    0.10095029634772879,
+    0.10095031732131968,
+    0.10095030271403592
+  ],
+  "rigidReplayQA": {
+    "frames": 186,
+    "maxInternalDistanceDriftM": 2.220446049250313e-16,
+    "nativeHipCentersPreserved": true
+  },
+  "anatomicallyValidated": false,
+  "nativeReplayQA": {
+    "frames": 186,
+    "maxPositionResidualM": 1.2145694337712412e-06,
+    "maxRotationMatrixResidual": 9.827609537271798e-08,
+    "allOriginalMotionsPreserved": true
+  }
+}
