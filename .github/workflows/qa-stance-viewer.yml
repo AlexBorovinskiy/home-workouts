@@ -1,0 +1,65 @@
+name: QA neutral stance mobile viewer
+on:
+  workflow_run:
+    workflows: ["QA corrected native neutral stance"]
+    types: [completed]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --prefix /tmp/stance-browser --no-audit --no-fund playwright-core@1.56.1
+      - name: Test native leg and pelvis surfaces in actual mobile browser
+        run: |
+          mkdir -p qa-stance
+          python3 -m http.server 8783 --bind 127.0.0.1 >/tmp/stance-http.log 2>&1 &
+          node --input-type=module <<'NODE'
+          import {chromium} from '/tmp/stance-browser/node_modules/playwright-core/index.mjs';
+          import {writeFileSync} from 'node:fs';
+          const browser=await chromium.launch({channel:'chrome',headless:true,args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+          const page=await browser.newPage({viewport:{width:430,height:932},isMobile:true,hasTouch:true,deviceScaleFactor:1});
+          const errors=[];page.on('pageerror',e=>errors.push(e.message));
+          try{
+            await page.goto('http://127.0.0.1:8783/unified-rig/stance.html',{waitUntil:'domcontentloaded',timeout:90000});
+            await page.waitForFunction(()=>window.__unifiedSurfaceQA?.version==='stance',null,{timeout:120000});
+            const reports={};
+            await page.locator('#region').selectOption('all');
+            for(const v of ['pelvis','stance']){
+              await page.locator('#version').selectOption(v);
+              await page.waitForFunction(x=>window.__unifiedSurfaceQA.version===x,v);
+              await page.locator('#sequence').selectOption('pronation');
+              await page.locator('#phase').evaluate(e=>{e.value=0;e.dispatchEvent(new Event('input'))});
+              const q=await page.evaluate(()=>{const q=window.__unifiedSurfaceQA;const f=q.data.sequences[0].frames[0];const angle=s=>{let h=f.bodies[q.data.bodyNames.indexOf('femur_'+s)],a=f.bodies[q.data.bodyNames.indexOf('talus_'+s)];return Math.atan2(h[0]-a[0],h[1]-a[1])*180/Math.PI};return {version:q.version,angleR:angle('r'),angleL:angle('l'),nativeMeshes:q.meshes.filter(m=>m.visible&&m.userData.group==='NativePelvis').length,stats:q.stats,errors:q.errors}});
+              if(q.nativeMeshes!==3||q.errors.length||q.stats.Rajagopal.ok!==q.stats.Rajagopal.total)throw Error(JSON.stringify(q));
+              if(v==='stance'&&Math.max(Math.abs(q.angleR),Math.abs(q.angleL))>2)throw Error('Neutral angle failed');
+              reports[v]=q;
+              await page.locator('[data-view="side"]').click();await page.waitForTimeout(450);
+              await page.locator('#stage').screenshot({path:'qa-stance/'+v+'-side.png'});
+              await page.locator('[data-view="front"]').click();await page.waitForTimeout(450);
+              await page.locator('#stage').screenshot({path:'qa-stance/'+v+'-front.png'});
+            }
+            await page.locator('#sequence').selectOption('legs');
+            await page.locator('#phase').evaluate(e=>{e.value=e.max;e.dispatchEvent(new Event('input'))});
+            await page.locator('[data-view="side"]').click();await page.waitForTimeout(450);
+            await page.locator('#stage').screenshot({path:'qa-stance/stance-flexion.png'});
+            if(errors.length)throw Error(errors.join(';'));
+            writeFileSync('qa-stance/report.json',JSON.stringify({reports,passed:true,scope:'native geometry; FHS ZIP not loaded'},null,2));
+            console.log('STANCE_VIEWER_QA_SUCCESS');
+          }catch(e){writeFileSync('qa-stance/failure.txt',String(e)+'\n'+errors.join('\n'));await page.screenshot({path:'qa-stance/failure.png'}).catch(()=>{});throw e}
+          finally{await browser.close()}
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: corrected-stance-mobile-qa
+          path: qa-stance/
