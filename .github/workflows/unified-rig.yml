@@ -7,6 +7,7 @@ on:
       - 'unified-rig/assemble_candidate.py'
       - 'unified-rig/sample_motion.py'
       - 'unified-rig/sample_sequences.py'
+      - 'unified-rig/calibrate_interfaces.py'
       - '.github/workflows/unified-rig.yml'
   workflow_dispatch:
 permissions:
@@ -20,7 +21,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: pip install opensim==4.6
+      - run: pip install opensim==4.6 scipy
       - name: Download original sources
         run: |
           curl -fL --retry 2 --max-time 160 'https://zenodo.org/records/18259702/files/FHS_dataset_4.x.zip?download=1' -o /tmp/fhs.zip
@@ -46,6 +47,10 @@ jobs:
         run: python unified-rig/sample_motion.py inventory/candidate/candidate.osim inventory/motion.json
       - name: Solve coordinated diagnostic movements
         run: python unified-rig/sample_sequences.py inventory/candidate/candidate.osim inventory/sequences.json
+      - name: Build separate interface calibration candidate
+        run: |
+          python unified-rig/calibrate_interfaces.py inventory /tmp/fhs.zip /tmp/legs.osim inventory/calibrated
+          python unified-rig/sample_sequences.py inventory/calibrated/candidate.osim inventory/calibrated/sequences-calibrated.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -61,7 +66,9 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           cp inventory/motion.json unified-rig/motion.json
           cp inventory/sequences.json unified-rig/sequences.json
-          git add unified-rig/topology.json unified-rig/candidate-report.json unified-rig/motion.json unified-rig/sequences.json
+          cp inventory/calibrated/calibration.json unified-rig/calibration.json
+          cp inventory/calibrated/sequences-calibrated.json unified-rig/sequences-calibrated.json
+          git add unified-rig/topology.json unified-rig/candidate-report.json unified-rig/motion.json unified-rig/sequences.json unified-rig/calibration.json unified-rig/sequences-calibrated.json
           if ! git diff --cached --quiet; then
             git commit -m "Publish unified rig diagnostic positions"
             git pull --rebase origin main
