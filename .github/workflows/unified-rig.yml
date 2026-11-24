@@ -1,0 +1,42 @@
+name: Unified rig native mechanism inventory
+on:
+  push:
+    paths:
+      - 'unified-rig/extract_native.py'
+      - '.github/workflows/unified-rig.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  extract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install opensim==4.6
+      - name: Download original sources
+        run: |
+          curl -fL --retry 2 --max-time 160 'https://zenodo.org/records/18259702/files/FHS_dataset_4.x.zip?download=1' -o /tmp/fhs.zip
+          curl -fL --retry 2 'https://ndownloader.figshare.com/files/6929198' -o /tmp/masi-old.osim
+          curl -fL --retry 2 'https://raw.githubusercontent.com/opensim-org/opensim-models/master/Models/Rajagopal/RajagopalLaiUhlrich2023.osim' -o /tmp/legs.osim
+          curl -fL --retry 2 'https://raw.githubusercontent.com/nishbo/ms_arm_and_hand/main/AAH%20Model/RightArmAndHand_NoMuscles.osim' -o /tmp/right.osim
+          curl -fL --retry 2 'https://raw.githubusercontent.com/nishbo/ms_arm_and_hand/main/AAH%20Model/LeftArmAndHand_NoMuscles.osim' -o /tmp/left.osim
+          python opensim-lab/convert_masi_legacy.py --source /tmp/masi-old.osim --output /tmp/masi.osim
+          python - <<'PY'
+          import zipfile
+          from pathlib import Path
+          with zipfile.ZipFile('/tmp/fhs.zip') as z:
+            chosen=next(n for n in z.namelist() if '/Male/Age4049/' in n and n.endswith('/110_SizeScaled_CurvatureAdjust_MuscleAdjust.osim'))
+            Path('/tmp/fhs.osim').write_bytes(z.read(chosen))
+          PY
+      - name: Extract native mechanisms
+        run: python unified-rig/extract_native.py --out inventory fhs=/tmp/fhs.osim masi=/tmp/masi.osim legs=/tmp/legs.osim right=/tmp/right.osim left=/tmp/left.osim
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-mechanism-inventory
+          path: inventory/
+          retention-days: 7
