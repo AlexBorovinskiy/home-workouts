@@ -51,11 +51,11 @@ def main():
         assert (e.findtext('socket_frame') or '..').strip()=='..'
         side='r' if '_r' in name or name.startswith('r_') else 'l'
         assert side not in donor,name
-        donor[side]=mesh(urllib.request.urlopen('https://raw.githubusercontent.com/opensim-org/opensim-models/master/Geometry/'+name,timeout=40).read(),np.fromstring(e.findtext('scale_factors') or '1 1 1',sep=' '))
+        donor[side]=mesh(urllib.request.urlopen('https://raw.githubusercontent.com/opensim-org/opensim-models/master/Models/Rajagopal/Geometry/'+name,timeout=40).read(),np.fromstring(e.findtext('scale_factors') or '1 1 1',sep=' '))
     assert set(fhs)==set(donor)=={'r','l'}
     src=np.concatenate([x.vertices for x in donor.values()]);dst=np.concatenate([x.vertices for x in fhs.values()])
     ss=np.ptp(src,axis=0);ts=np.ptp(dst,axis=0);scale=float(ss@ts/(ss@ss));shift=(dst.max(0)+dst.min(0)-scale*(src.max(0)+src.min(0)))/2
-    result={'method':'bidirectional vertex-to-triangle distance; exploratory robust sphere fits in unsegmented ROIs','scale':scale,'translationM':shift.tolist(),'sides':{},'jointChangesApplied':False}
+    result={'method':'bidirectional vertex-to-triangle distance; exploratory robust sphere fits in unsegmented ROIs','scale':scale,'translationM':shift.tolist(),'sides':{},'jointChangesApplied':False,'donorGeometrySource':'Models/Rajagopal/Geometry (model-specific, not shared OpenSim geometry)'}
     for side in ('r','l'):
         m=donor[side].copy();m.vertices=m.vertices*scale+shift
         n=fhs[side]
