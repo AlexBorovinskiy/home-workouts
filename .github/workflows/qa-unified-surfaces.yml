@@ -1,0 +1,56 @@
+name: QA unified native bone surfaces
+on:
+  push:
+    paths:
+      - 'unified-rig/surfaces.html'
+      - '.github/workflows/qa-unified-surfaces.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --prefix /tmp/surface-qa --no-audit --no-fund playwright-core@1.56.1
+      - name: Download original FHS archive for local browser test
+        run: curl -fL --retry 2 --max-time 240 'https://zenodo.org/records/18259702/files/FHS_dataset_4.x.zip?download=1' -o /tmp/fhs.zip
+      - name: Verify mobile surface viewer and native binding
+        run: |
+          mkdir -p qa-surfaces
+          python3 -m http.server 8774 --bind 127.0.0.1 >/tmp/surface-http.log 2>&1 &
+          node --input-type=module <<'NODE'
+          import {chromium} from '/tmp/surface-qa/node_modules/playwright-core/index.mjs';
+          import {writeFileSync} from 'node:fs';
+          const browser=await chromium.launch({channel:'chrome',headless:true,args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+          const page=await browser.newPage({viewport:{width:430,height:932},isMobile:true,hasTouch:true,deviceScaleFactor:1});
+          const errors=[];page.on('pageerror',e=>errors.push(e.message));
+          try{
+            await page.goto('http://127.0.0.1:8774/unified-rig/surfaces.html',{waitUntil:'domcontentloaded',timeout:90000});
+            await page.waitForFunction(()=>window.__unifiedSurfaceQA,{timeout:120000});
+            await page.locator('#zip').setInputFiles('/tmp/fhs.zip');
+            await page.waitForFunction(()=>{const x=window.__unifiedSurfaceQA?.stats.FHS;return x&&x.ok===x.total&&x.total>40},null,{timeout:150000});
+            await page.waitForTimeout(500);
+            const report=await page.evaluate(()=>{const q=window.__unifiedSurfaceQA;return {stats:q.stats,errors:q.errors,bodyCount:q.data.bodyNames.length,source:'native-segment-transform'}});
+            if(report.stats.MASI.ok!==8||report.stats.AAH.ok!==report.stats.AAH.total||report.stats.Rajagopal.ok!==report.stats.Rajagopal.total||errors.length)throw Error(JSON.stringify({report,errors}));
+            await page.locator('#stage').screenshot({path:'qa-surfaces/axial.png'});
+            await page.locator('#region').selectOption('all');
+            await page.locator('#stage').screenshot({path:'qa-surfaces/full.png'});
+            await page.locator('#sequence').selectOption('pronation');
+            await page.locator('#phase').evaluate(e=>{e.value=e.max;e.dispatchEvent(new Event('input'))});
+            await page.locator('#stage').screenshot({path:'qa-surfaces/pronation.png'});
+            writeFileSync('qa-surfaces/report.json',JSON.stringify(report,null,2));
+            console.log('SURFACE_QA '+JSON.stringify(report));
+          }catch(e){writeFileSync('qa-surfaces/failure.txt',String(e)+'\n'+errors.join('\n'));await page.screenshot({path:'qa-surfaces/failure.png'}).catch(()=>{});throw e}
+          finally{await browser.close()}
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-surface-mobile-qa
+          path: qa-surfaces/
+          retention-days: 7
