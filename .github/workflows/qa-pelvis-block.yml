@@ -1,0 +1,52 @@
+name: QA native pelvis block
+on:
+  push:
+    paths:
+      - 'unified-rig/fit_pelvis_block.py'
+      - '.github/workflows/qa-pelvis-block.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install opensim==4.6 scipy trimesh
+      - name: Restore verified v0.6 native source inventory
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p inventory
+          gh run download 45364940962 -n native-mechanism-inventory -D inventory
+          curl -fL --retry 4 --retry-all-errors --max-time 180 'https://zenodo.org/records/18259702/files/FHS_dataset_4.x.zip?download=1' -o /tmp/fhs.zip
+      - name: Fit the original sacral surfaces
+        run: python unified-rig/fit_pelvis_block.py inventory /tmp/fhs.zip inventory/pelvis-block
+      - name: Solve native model and check against independent rigid prediction
+        run: |
+          python unified-rig/sample_sequences.py inventory/pelvis-block/candidate.osim inventory/pelvis-block/sequences.json
+          python unified-rig/verify_pelvis_block.py inventory/calibrated/sequences-calibrated.json inventory/pelvis-block/sequences.json inventory/pelvis-block/pelvis-block.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-pelvis-block-qa
+          path: inventory/pelvis-block/
+          retention-days: 7
+      - name: Publish verified experimental block only
+        if: success() && github.ref == 'refs/heads/main'
+        run: |
+          cp inventory/pelvis-block/pelvis-block.json unified-rig/pelvis-block.json
+          cp inventory/pelvis-block/sequences.json unified-rig/sequences-pelvis.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add unified-rig/pelvis-block.json unified-rig/sequences-pelvis.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Publish experimental native pelvis block after native movement checks'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
