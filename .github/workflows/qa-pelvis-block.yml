@@ -24,7 +24,11 @@ jobs:
         run: |
           mkdir -p inventory
           gh run download 45364940962 -n native-mechanism-inventory -D inventory
-          curl -fL --retry 4 --retry-all-errors --max-time 180 'https://zenodo.org/records/18259702/files/FHS_dataset_4.x.zip?download=1' -o /tmp/fhs.zip
+          for url in 'https://zenodo.org/api/records/18259702/files/FHS_dataset_4.x.zip/content' 'https://zenodo.org/records/18259702/files/FHS_dataset_4.x.zip?download=1' 'https://zenodo.org/records/18259702/files/FHS_dataset_4.x.zip'; do
+            if curl -fL --retry 1 --retry-all-errors --max-time 160 "$url" -o /tmp/fhs.zip && echo 'd2db8c587afb5d1ee0c8081f84c43f8e  /tmp/fhs.zip' | md5sum -c -; then break; fi
+            rm -f /tmp/fhs.zip
+          done
+          test -s /tmp/fhs.zip
       - name: Fit the original sacral surfaces
         run: python unified-rig/fit_pelvis_block.py inventory /tmp/fhs.zip inventory/pelvis-block
       - name: Solve native model and check against independent rigid prediction
