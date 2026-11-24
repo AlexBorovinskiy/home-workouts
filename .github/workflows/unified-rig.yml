@@ -6,6 +6,7 @@ on:
       - 'unified-rig/select_topology.py'
       - 'unified-rig/assemble_candidate.py'
       - 'unified-rig/sample_motion.py'
+      - 'unified-rig/sample_sequences.py'
       - '.github/workflows/unified-rig.yml'
   workflow_dispatch:
 permissions:
@@ -43,6 +44,8 @@ jobs:
         run: python unified-rig/assemble_candidate.py --inventory inventory --out inventory/candidate fhs=/tmp/fhs.osim masi=/tmp/masi.osim legs=/tmp/legs.osim right=/tmp/right.osim left=/tmp/left.osim
       - name: Sample independent native coordinate movements
         run: python unified-rig/sample_motion.py inventory/candidate/candidate.osim inventory/motion.json
+      - name: Solve coordinated diagnostic movements
+        run: python unified-rig/sample_sequences.py inventory/candidate/candidate.osim inventory/sequences.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -57,7 +60,8 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           cp inventory/motion.json unified-rig/motion.json
-          git add unified-rig/topology.json unified-rig/candidate-report.json unified-rig/motion.json
+          cp inventory/sequences.json unified-rig/sequences.json
+          git add unified-rig/topology.json unified-rig/candidate-report.json unified-rig/motion.json unified-rig/sequences.json
           if ! git diff --cached --quiet; then
             git commit -m "Publish unified rig diagnostic positions"
             git pull --rebase origin main
