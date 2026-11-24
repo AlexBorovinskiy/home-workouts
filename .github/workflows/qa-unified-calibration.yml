@@ -1,0 +1,79 @@
+name: QA calibrated native bone surfaces
+on:
+  push:
+    paths:
+      - 'unified-rig/calibration.json'
+      - 'unified-rig/sequences-calibrated.json'
+      - '.github/workflows/qa-unified-calibration.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check that calibration has been published
+        id: ready
+        run: |
+          if test -s unified-rig/calibration.json && test -s unified-rig/sequences-calibrated.json; then echo 'ready=true' >> "$GITHUB_OUTPUT"; else echo 'ready=false' >> "$GITHUB_OUTPUT"; fi
+      - if: steps.ready.outputs.ready == 'true'
+        run: npm install --prefix /tmp/calibration-qa --no-audit --no-fund playwright-core@1.56.1
+      - if: steps.ready.outputs.ready == 'true'
+        run: curl -fL --retry 2 --max-time 240 'https://zenodo.org/records/18259702/files/FHS_dataset_4.x.zip?download=1' -o /tmp/fhs.zip
+      - name: Inspect baseline and calibrated frames in mobile browser
+        if: steps.ready.outputs.ready == 'true'
+        run: |
+          mkdir -p qa-calibration
+          python3 -m http.server 8775 --bind 127.0.0.1 >/tmp/calibration-http.log 2>&1 &
+          node --input-type=module <<'NODE'
+          import {chromium} from '/tmp/calibration-qa/node_modules/playwright-core/index.mjs';
+          import {readFileSync,writeFileSync} from 'node:fs';
+          const base=JSON.parse(readFileSync('unified-rig/sequences.json'));
+          const cal=JSON.parse(readFileSync('unified-rig/sequences-calibrated.json'));
+          const report=JSON.parse(readFileSync('unified-rig/calibration.json'));
+          if(base.bodyNames.join()!==cal.bodyNames.join()||base.jointNames.join()!==cal.jointNames.join())throw Error('Topology changed');
+          if(report.interfaces.length<3||report.interfaces.some(x=>x.afterResidualMm>.01||x.afterOrientationDeg>.01))throw Error('Interface gate failed');
+          if(base.sequences.some(x=>!cal.sequences.some(y=>y.id===x.id)))throw Error('Motion lost after calibration');
+          const browser=await chromium.launch({channel:'chrome',headless:true,args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+          const page=await browser.newPage({viewport:{width:430,height:932},isMobile:true,hasTouch:true,deviceScaleFactor:1});
+          const errors=[];page.on('pageerror',e=>errors.push(e.message));
+          try{
+            await page.goto('http://127.0.0.1:8775/unified-rig/calibration.html',{waitUntil:'domcontentloaded',timeout:90000});
+            await page.waitForFunction(()=>!!window.__unifiedSurfaceQA,null,{timeout:120000});
+            await page.locator('#zip').setInputFiles('/tmp/fhs.zip');
+            await page.waitForFunction(()=>{const x=window.__unifiedSurfaceQA?.stats.FHS;return x&&x.ok===x.total&&x.total>40},null,{timeout:150000});
+            for(const version of ['baseline','calibrated']){
+              const response=version==='calibrated'?page.waitForResponse(r=>r.url().endsWith('/calibration.json')&&r.ok()):Promise.resolve();
+              await page.locator('#version').selectOption(version);await response;
+              await page.waitForTimeout(600);
+              if(await page.locator('#version').inputValue()!==version)throw Error('Comparison switch failed');
+              for(const view of ['front','side','back']){
+                await page.locator('[data-view="'+view+'"]').click();
+                await page.waitForTimeout(250);
+                await page.locator('#stage').screenshot({path:'qa-calibration/'+version+'-'+view+'.png'});
+              }
+              await page.locator('#sequence').selectOption('arms');
+              await page.locator('#phase').evaluate(e=>{e.value=e.max;e.dispatchEvent(new Event('input'))});
+              await page.locator('[data-view="back"]').click();
+              await page.waitForTimeout(250);
+              await page.locator('#stage').screenshot({path:'qa-calibration/'+version+'-arms.png'});
+              await page.locator('#sequence').selectOption('pronation');
+            }
+            const q=await page.evaluate(()=>({stats:window.__unifiedSurfaceQA.stats,errors:window.__unifiedSurfaceQA.errors}));
+            if(errors.length||q.errors.length)throw Error(JSON.stringify({errors,q}));
+            writeFileSync('qa-calibration/report.json',JSON.stringify({interfaces:report.interfaces,hip:report.hip,stats:q.stats,passed:true},null,2));
+            console.log('CALIBRATION_BROWSER_QA_SUCCESS');
+          }catch(e){writeFileSync('qa-calibration/failure.txt',String(e));await page.screenshot({path:'qa-calibration/failure.png'}).catch(()=>{});throw e}
+          finally{await browser.close()}
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.ready.outputs.ready == 'true'
+        with:
+          name: calibrated-surface-comparison
+          path: qa-calibration/
+          retention-days: 7
