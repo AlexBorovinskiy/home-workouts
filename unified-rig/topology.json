@@ -1,0 +1,1752 @@
+{
+  "status": "topology-only; registration and combined OpenSim solve pending",
+  "joints": [
+    {
+      "source": "fhs",
+      "joint": "ground_sacrum",
+      "parent": "ground",
+      "child": "sacrum",
+      "coordinates": [
+        "pelvis_list",
+        "pelvis_rotation",
+        "pelvis_tilt",
+        "pelvis_tx",
+        "pelvis_ty",
+        "pelvis_tz"
+      ]
+    },
+    {
+      "source": "fhs",
+      "joint": "pelvis_sacrum",
+      "parent": "sacrum",
+      "child": "pelvis",
+      "coordinates": []
+    },
+    {
+      "source": "fhs",
+      "joint": "L5_S1_IVDjnt",
+      "parent": "sacrum",
+      "child": "lumbar5",
+      "coordinates": [
+        "L5_S1_AR",
+        "L5_S1_FE",
+        "L5_S1_LB"
+      ]
+    },
+    {
+      "source": "fhs",
+      "joint": "L4_L5_IVDjnt",
+      "parent": "lumbar5",
+      "child": "lumbar4",
+      "coordinates": [
+        "L4_L5_AR",
+        "L4_L5_FE",
+        "L4_L5_LB"
+      ]
+    },
+    {
+      "source": "fhs",
+      "joint": "L3_L4_IVDjnt",
+      "parent": "lumbar4",
+      "child": "lumbar3",
+      "coordinates": [
+        "L3_L4_AR",
+        "L3_L4_FE",
+        "L3_L4_LB"
+      ]
+    },
+    {
+      "source": "fhs",
+      "joint": "L2_L3_IVDjnt",
+      "parent": "lumbar3",
+      "child": "lumbar2",
+      "coordinates": [
+        "L2_L3_AR",
+        "L2_L3_FE",
+        "L2_L3_LB"
+      ]
+    },
+    {
+      "source": "fhs",
+      "joint": "L1_L2_IVDjnt",
+      "parent": "lumbar2",
+      "child": "lumbar1",
+      "coordinates": [
+        "L1_L2_AR",
+        "L1_L2_FE",
+        "L1_L2_LB"
+      ]
+    },
+    {
+      "source": "fhs",
+      "joint": "T12_L1_IVDjnt",
+      "parent": "lumbar1",
+      "child": "thoracic12",
+      "coordinates": [
+        "T12_L1_AR",
+        "T12_L1_FE",
+        "T12_L1_LB"
+      ]
+    },
+    {
+      "source": "fhs",
+      "joint": "T11_T12_IVDjnt",
+      "parent": "thoracic12",
+      "child": "thoracic11",
+      "coordinates": [
+        "T11_T12_AR",
+        "T11_T12_FE",
+        "T11_T12_LB"
+      ]
+    },
+    {
+      "source": "fhs",
+      "joint": "T10_T11_IVDjnt",
+      "parent": "thoracic11",
+      "child": "thoracic10",
+      "coordinates": [
+        "T10_T11_AR",
+        "T10_T11_FE",
+        "T10_T11_LB"
+      ]
+    },
+    {
+      "source": "fhs",
+      "joint": "T9_T10_IVDjnt",
+      "parent": "thoracic10",
+      "child": "thoracic9",
+      "coordinates": [
+        "T9_T10_AR",
+        "T9_T10_FE",
+        "T9_T10_LB"
+      ]
+    },
+    {
+      "source": "fhs",
+      "joint": "T8_T9_IVDjnt",
+      "parent": "thoracic9",
+      "child": "thoracic8",
+      "coordinates": [
+        "T8_T9_AR",
+        "T8_T9_FE",
+        "T8_T9_LB"
+      ]
+    },
+    {
+      "source": "fhs",
+      "joint": "T7_T8_IVDjnt",
+      "parent": "thoracic8",
+      "child": "thoracic7",
+      "coordinates": [
+        "T7_T8_AR",
+        "T7_T8_FE",
+        "T7_T8_LB"
+      ]
+    },
+    {
+      "source": "fhs",
+      "joint": "T6_T7_IVDjnt",
+      "parent": "thoracic7",
+      "child": "thoracic6",
+      "coordinates": [
+        "T6_T7_AR",
+        "T6_T7_FE",
+        "T6_T7_LB"
+      ]
+    },
+    {
+      "source": "fhs",
+      "joint": "T5_T6_IVDjnt",
+      "parent": "thoracic6",
+      "child": "thoracic5",
+      "coordinates": [
+        "T5_T6_AR",
+        "T5_T6_FE",
+        "T5_T6_LB"
+      ]
+    },
+    {
+      "source": "fhs",
+      "joint": "T4_T5_IVDjnt",
+      "parent": "thoracic5",
+      "child": "thoracic4",
+      "coordinates": [
+        "T4_T5_AR",
+        "T4_T5_FE",
+        "T4_T5_LB"
+      ]
+    },
+    {
+      "source": "fhs",
+      "joint": "T3_T4_IVDjnt",
+      "parent": "thoracic4",
+      "child": "thoracic3",
+      "coordinates": [
+        "T3_T4_AR",
+        "T3_T4_FE",
+        "T3_T4_LB"
+      ]
+    },
+    {
+      "source": "fhs",
+      "joint": "T2_T3_IVDjnt",
+      "parent": "thoracic3",
+      "child": "thoracic2",
+      "coordinates": [
+        "T2_T3_AR",
+        "T2_T3_FE",
+        "T2_T3_LB"
+      ]
+    },
+    {
+      "source": "fhs",
+      "joint": "T1_T2_IVDjnt",
+      "parent": "thoracic2",
+      "child": "thoracic1",
+      "coordinates": [
+        "T1_T2_AR",
+        "T1_T2_FE",
+        "T1_T2_LB"
+      ]
+    },
+    {
+      "source": "fhs",
+      "joint": "T12_r12R_CVjnt",
+      "parent": "thoracic12",
+      "child": "rib12_R",
+      "coordinates": [
+        "T12_r12R_X",
+        "T12_r12R_Y",
+        "T12_r12R_Z"
+      ]
+    },
+    {
+      "source": "fhs",
+      "joint": "T11_r11R_CVjnt",
+      "parent": "thoracic11",
+      "child": "rib11_R",
+      "coordinates": [
+        "T11_r11R_X",
+        "T11_r11R_Y",
+        "T11_r11R_Z"
+      ]
+    },
+    {
+      "source": "fhs",
+      "joint": "T10_r10R_CVjnt",
+      "parent": "thoracic10",
+      "child": "rib10_R",
+      "coordinates": [
+        "T10_r10R_X",
+        "T10_r10R_Y",
+        "T10_r10R_Z"
+      ]
+    },
+    {
+      "source": "fhs",
+      "joint": "T9_r9R_CVjnt",
+      "parent": "thoracic9",
+      "child": "rib9_R",
+      "coordinates": [
+        "T9_r9R_X",
+        "T9_r9R_Y",
+        "T9_r9R_Z"
+      ]
+    },
+    {
+      "source": "fhs",
+      "joint": "T8_r8R_CVjnt",
+      "parent": "thoracic8",
+      "child": "rib8_R",
+      "coordinates": [
+        "T8_r8R_X",
+        "T8_r8R_Y",
+        "T8_r8R_Z"
+      ]
+    },
+    {
+      "source": "fhs",
+      "joint": "T7_r7R_CVjnt",
+      "parent": "thoracic7",
+      "child": "rib7_R",
+      "coordinates": [
+        "T7_r7R_X",
+        "T7_r7R_Y",
+        "T7_r7R_Z"
+      ]
+    },
+    {
+      "source": "fhs",
+      "joint": "T6_r6R_CVjnt",
+      "parent": "thoracic6",
+      "child": "rib6_R",
+      "coordinates": [
+        "T6_r6R_X",
+        "T6_r6R_Y",
+        "T6_r6R_Z"
+      ]
+    },
+    {
+      "source": "fhs",
+      "joint": "T5_r5R_CVjnt",
+      "parent": "thoracic5",
+      "child": "rib5_R",
+      "coordinates": [
+        "T5_r5R_X",
+        "T5_r5R_Y",
+        "T5_r5R_Z"
+      ]
+    },
+    {
+      "source": "fhs",
+      "joint": "T4_r4R_CVjnt",
+      "parent": "thoracic4",
+      "child": "rib4_R",
+      "coordinates": [
+        "T4_r4R_X",
+        "T4_r4R_Y",
+        "T4_r4R_Z"
+      ]
+    },
+    {
+      "source": "fhs",
+      "joint": "T3_r3R_CVjnt",
+      "parent": "thoracic3",
+      "child": "rib3_R",
+      "coordinates": [
+        "T3_r3R_X",
+        "T3_r3R_Y",
+        "T3_r3R_Z"
+      ]
+    },
+    {
+      "source": "fhs",
+      "joint": "T2_r2R_CVjnt",
+      "parent": "thoracic2",
+      "child": "rib2_R",
+      "coordinates": [
+        "T2_r2R_X",
+        "T2_r2R_Y",
+        "T2_r2R_Z"
+      ]
+    },
+    {
+      "source": "fhs",
+      "joint": "T1_r1R_CVjnt",
+      "parent": "thoracic1",
+      "child": "rib1_R",
+      "coordinates": [
+        "T1_r1R_X",
+        "T1_r1R_Y",
+        "T1_r1R_Z"
+      ]
+    },
+    {
+      "source": "fhs",
+      "joint": "T12_r12L_CVjnt",
+      "parent": "thoracic12",
+      "child": "rib12_L",
+      "coordinates": [
+        "T12_r12L_X",
+        "T12_r12L_Y",
+        "T12_r12L_Z"
+      ]
+    },
+    {
+      "source": "fhs",
+      "joint": "T11_r11L_CVjnt",
+      "parent": "thoracic11",
+      "child": "rib11_L",
+      "coordinates": [
+        "T11_r11L_X",
+        "T11_r11L_Y",
+        "T11_r11L_Z"
+      ]
+    },
+    {
+      "source": "fhs",
+      "joint": "T10_r10L_CVjnt",
+      "parent": "thoracic10",
+      "child": "rib10_L",
+      "coordinates": [
+        "T10_r10L_X",
+        "T10_r10L_Y",
+        "T10_r10L_Z"
+      ]
+    },
+    {
+      "source": "fhs",
+      "joint": "T9_r9L_CVjnt",
+      "parent": "thoracic9",
+      "child": "rib9_L",
+      "coordinates": [
+        "T9_r9L_X",
+        "T9_r9L_Y",
+        "T9_r9L_Z"
+      ]
+    },
+    {
+      "source": "fhs",
+      "joint": "T8_r8L_CVjnt",
+      "parent": "thoracic8",
+      "child": "rib8_L",
+      "coordinates": [
+        "T8_r8L_X",
+        "T8_r8L_Y",
+        "T8_r8L_Z"
+      ]
+    },
+    {
+      "source": "fhs",
+      "joint": "T7_r7L_CVjnt",
+      "parent": "thoracic7",
+      "child": "rib7_L",
+      "coordinates": [
+        "T7_r7L_X",
+        "T7_r7L_Y",
+        "T7_r7L_Z"
+      ]
+    },
+    {
+      "source": "fhs",
+      "joint": "T6_r6L_CVjnt",
+      "parent": "thoracic6",
+      "child": "rib6_L",
+      "coordinates": [
+        "T6_r6L_X",
+        "T6_r6L_Y",
+        "T6_r6L_Z"
+      ]
+    },
+    {
+      "source": "fhs",
+      "joint": "T5_r5L_CVjnt",
+      "parent": "thoracic5",
+      "child": "rib5_L",
+      "coordinates": [
+        "T5_r5L_X",
+        "T5_r5L_Y",
+        "T5_r5L_Z"
+      ]
+    },
+    {
+      "source": "fhs",
+      "joint": "T4_r4L_CVjnt",
+      "parent": "thoracic4",
+      "child": "rib4_L",
+      "coordinates": [
+        "T4_r4L_X",
+        "T4_r4L_Y",
+        "T4_r4L_Z"
+      ]
+    },
+    {
+      "source": "fhs",
+      "joint": "T3_r3L_CVjnt",
+      "parent": "thoracic3",
+      "child": "rib3_L",
+      "coordinates": [
+        "T3_r3L_X",
+        "T3_r3L_Y",
+        "T3_r3L_Z"
+      ]
+    },
+    {
+      "source": "fhs",
+      "joint": "T2_r2L_CVjnt",
+      "parent": "thoracic2",
+      "child": "rib2_L",
+      "coordinates": [
+        "T2_r2L_X",
+        "T2_r2L_Y",
+        "T2_r2L_Z"
+      ]
+    },
+    {
+      "source": "fhs",
+      "joint": "T1_r1L_CVjnt",
+      "parent": "thoracic1",
+      "child": "rib1_L",
+      "coordinates": [
+        "T1_r1L_X",
+        "T1_r1L_Y",
+        "T1_r1L_Z"
+      ]
+    },
+    {
+      "source": "fhs",
+      "joint": "r1R_sterR_jnt",
+      "parent": "rib1_R",
+      "child": "sternum",
+      "coordinates": [
+        "SternumRotX",
+        "SternumRotY",
+        "SternumRotZ",
+        "SternumX",
+        "SternumY",
+        "SternumZ"
+      ]
+    },
+    {
+      "source": "masi",
+      "joint": "auxt1jnt",
+      "parent": "thoracic1",
+      "child": "cerv7",
+      "coordinates": [
+        "pitch2",
+        "roll2",
+        "yaw2"
+      ]
+    },
+    {
+      "source": "masi",
+      "joint": "aux7jnt",
+      "parent": "cerv7",
+      "child": "cerv6",
+      "coordinates": [
+        "aux7jnt_r1",
+        "aux7jnt_r2",
+        "aux7jnt_r3"
+      ]
+    },
+    {
+      "source": "masi",
+      "joint": "aux6jnt",
+      "parent": "cerv6",
+      "child": "cerv5",
+      "coordinates": [
+        "aux6jnt_r1",
+        "aux6jnt_r2",
+        "aux6jnt_r3"
+      ]
+    },
+    {
+      "source": "masi",
+      "joint": "aux5jnt",
+      "parent": "cerv5",
+      "child": "cerv4",
+      "coordinates": [
+        "aux5jnt_r1",
+        "aux5jnt_r2",
+        "aux5jnt_r3"
+      ]
+    },
+    {
+      "source": "masi",
+      "joint": "aux4jnt",
+      "parent": "cerv4",
+      "child": "cerv3",
+      "coordinates": [
+        "aux4jnt_r1",
+        "aux4jnt_r2",
+        "aux4jnt_r3"
+      ]
+    },
+    {
+      "source": "masi",
+      "joint": "aux3jnt",
+      "parent": "cerv3",
+      "child": "cerv2",
+      "coordinates": [
+        "aux3jnt_r1",
+        "aux3jnt_r2",
+        "aux3jnt_r3"
+      ]
+    },
+    {
+      "source": "masi",
+      "joint": "aux2jnt",
+      "parent": "cerv2",
+      "child": "cerv1",
+      "coordinates": [
+        "pitch1",
+        "roll1",
+        "yaw1"
+      ]
+    },
+    {
+      "source": "masi",
+      "joint": "aux1jnt",
+      "parent": "cerv1",
+      "child": "skull",
+      "coordinates": [
+        "aux1jnt_r1",
+        "aux1jnt_r2",
+        "aux1jnt_r3"
+      ]
+    },
+    {
+      "source": "masi",
+      "joint": "jawjnt",
+      "parent": "skull",
+      "child": "jaw",
+      "coordinates": []
+    },
+    {
+      "source": "legs",
+      "joint": "hip_r",
+      "parent": "pelvis",
+      "child": "femur_r",
+      "coordinates": [
+        "hip_adduction_r",
+        "hip_flexion_r",
+        "hip_rotation_r"
+      ]
+    },
+    {
+      "source": "legs",
+      "joint": "walker_knee_r",
+      "parent": "femur_r",
+      "child": "tibia_r",
+      "coordinates": [
+        "knee_angle_r"
+      ]
+    },
+    {
+      "source": "legs",
+      "joint": "patellofemoral_r",
+      "parent": "femur_r",
+      "child": "patella_r",
+      "coordinates": [
+        "knee_angle_r_beta"
+      ]
+    },
+    {
+      "source": "legs",
+      "joint": "ankle_r",
+      "parent": "tibia_r",
+      "child": "talus_r",
+      "coordinates": [
+        "ankle_angle_r"
+      ]
+    },
+    {
+      "source": "legs",
+      "joint": "subtalar_r",
+      "parent": "talus_r",
+      "child": "calcn_r",
+      "coordinates": [
+        "subtalar_angle_r"
+      ]
+    },
+    {
+      "source": "legs",
+      "joint": "mtp_r",
+      "parent": "calcn_r",
+      "child": "toes_r",
+      "coordinates": [
+        "mtp_angle_r"
+      ]
+    },
+    {
+      "source": "legs",
+      "joint": "hip_l",
+      "parent": "pelvis",
+      "child": "femur_l",
+      "coordinates": [
+        "hip_adduction_l",
+        "hip_flexion_l",
+        "hip_rotation_l"
+      ]
+    },
+    {
+      "source": "legs",
+      "joint": "walker_knee_l",
+      "parent": "femur_l",
+      "child": "tibia_l",
+      "coordinates": [
+        "knee_angle_l"
+      ]
+    },
+    {
+      "source": "legs",
+      "joint": "patellofemoral_l",
+      "parent": "femur_l",
+      "child": "patella_l",
+      "coordinates": [
+        "knee_angle_l_beta"
+      ]
+    },
+    {
+      "source": "legs",
+      "joint": "ankle_l",
+      "parent": "tibia_l",
+      "child": "talus_l",
+      "coordinates": [
+        "ankle_angle_l"
+      ]
+    },
+    {
+      "source": "legs",
+      "joint": "subtalar_l",
+      "parent": "talus_l",
+      "child": "calcn_l",
+      "coordinates": [
+        "subtalar_angle_l"
+      ]
+    },
+    {
+      "source": "legs",
+      "joint": "mtp_l",
+      "parent": "calcn_l",
+      "child": "toes_l",
+      "coordinates": [
+        "mtp_angle_l"
+      ]
+    },
+    {
+      "source": "right",
+      "joint": "RA_sternoclavicular",
+      "parent": "sternum",
+      "child": "RA_clavicle",
+      "coordinates": [
+        "ra_sternoclavicular_r2_d",
+        "ra_sternoclavicular_r3_d"
+      ]
+    },
+    {
+      "source": "right",
+      "joint": "RA_unrotscap",
+      "parent": "RA_clavicle",
+      "child": "RA_clavphant",
+      "coordinates": [
+        "ra_unrotscap_r2_d",
+        "ra_unrotscap_r3_d"
+      ]
+    },
+    {
+      "source": "right",
+      "joint": "RA_acromioclavicular",
+      "parent": "RA_clavphant",
+      "child": "RA_scapula",
+      "coordinates": [
+        "ra_acromioclavicular_r1_d",
+        "ra_acromioclavicular_r2_d",
+        "ra_acromioclavicular_r3_d"
+      ]
+    },
+    {
+      "source": "right",
+      "joint": "RA_unrothum",
+      "parent": "RA_scapula",
+      "child": "RA_scapphant",
+      "coordinates": [
+        "ra_unrothum_r1_d",
+        "ra_unrothum_r2_d",
+        "ra_unrothum_r3_d"
+      ]
+    },
+    {
+      "source": "right",
+      "joint": "RA_shoulder0",
+      "parent": "RA_scapphant",
+      "child": "RA1H_PHANT",
+      "coordinates": [
+        "ra_sh_elv_angle"
+      ]
+    },
+    {
+      "source": "right",
+      "joint": "RA_shoulder1",
+      "parent": "RA1H_PHANT",
+      "child": "RA1H_PHANT1",
+      "coordinates": [
+        "ra_sh_elv",
+        "ra_shoulder1_r2_d"
+      ]
+    },
+    {
+      "source": "right",
+      "joint": "RA_shoulder2",
+      "parent": "RA1H_PHANT1",
+      "child": "RA1H",
+      "coordinates": [
+        "ra_sh_rot"
+      ]
+    },
+    {
+      "source": "right",
+      "joint": "RA1H_RA2U",
+      "parent": "RA1H",
+      "child": "RA2U",
+      "coordinates": [
+        "ra_el_e_f"
+      ]
+    },
+    {
+      "source": "right",
+      "joint": "RA2U_RA2R",
+      "parent": "RA2U",
+      "child": "RA2R",
+      "coordinates": [
+        "ra_wr_sup_pro"
+      ]
+    },
+    {
+      "source": "right",
+      "joint": "RA2R_RA3L",
+      "parent": "RA2R",
+      "child": "RA3L",
+      "coordinates": [
+        "ra_wr_e_f",
+        "ra_wr_rd_ud"
+      ]
+    },
+    {
+      "source": "right",
+      "joint": "RA3L_RA3S_W",
+      "parent": "RA3L",
+      "child": "RA3S",
+      "coordinates": []
+    },
+    {
+      "source": "right",
+      "joint": "RA3S_RA3P_W",
+      "parent": "RA3L",
+      "child": "RA3P",
+      "coordinates": []
+    },
+    {
+      "source": "right",
+      "joint": "RA3L_RA3Q_W",
+      "parent": "RA3L",
+      "child": "RA3Q",
+      "coordinates": []
+    },
+    {
+      "source": "right",
+      "joint": "RA3L_RA3C",
+      "parent": "RA3L",
+      "child": "RA3C",
+      "coordinates": [
+        "ra_proximal_distal_r1_d",
+        "ra_proximal_distal_r3_d"
+      ]
+    },
+    {
+      "source": "right",
+      "joint": "RA3C_RA3T_W",
+      "parent": "RA3C",
+      "child": "RA3T",
+      "coordinates": []
+    },
+    {
+      "source": "right",
+      "joint": "RA3C_RA3O_W",
+      "parent": "RA3C",
+      "child": "RA3O",
+      "coordinates": []
+    },
+    {
+      "source": "right",
+      "joint": "RA3C_RA3H_W",
+      "parent": "RA3C",
+      "child": "RA3H",
+      "coordinates": []
+    },
+    {
+      "source": "right",
+      "joint": "RA3T_RA4M1_PHANT",
+      "parent": "RA3T",
+      "child": "RA4M1_PHANT",
+      "coordinates": [
+        "ra_cmc1_f_e",
+        "ra_cmc1_opp"
+      ]
+    },
+    {
+      "source": "right",
+      "joint": "RA4M1_PHANT_RA4M1",
+      "parent": "RA4M1_PHANT",
+      "child": "RA4M1",
+      "coordinates": [
+        "ra_cmc1_ad_ab"
+      ]
+    },
+    {
+      "source": "right",
+      "joint": "RA3C_RA4M2_W",
+      "parent": "RA3C",
+      "child": "RA4M2",
+      "coordinates": []
+    },
+    {
+      "source": "right",
+      "joint": "RA3C_RA4M3_W",
+      "parent": "RA3C",
+      "child": "RA4M3",
+      "coordinates": []
+    },
+    {
+      "source": "right",
+      "joint": "RA3C_RA4M4_W",
+      "parent": "RA3C",
+      "child": "RA4M4",
+      "coordinates": []
+    },
+    {
+      "source": "right",
+      "joint": "RA3C_RA4M5_W",
+      "parent": "RA3C",
+      "child": "RA4M5",
+      "coordinates": []
+    },
+    {
+      "source": "right",
+      "joint": "RA4M1_RA5P1",
+      "parent": "RA4M1",
+      "child": "RA5P1",
+      "coordinates": [
+        "ra_mcp1_e_f"
+      ]
+    },
+    {
+      "source": "right",
+      "joint": "RA5P1_RA6D1",
+      "parent": "RA5P1",
+      "child": "RA6D1",
+      "coordinates": [
+        "ra_ip1_e_f"
+      ]
+    },
+    {
+      "source": "right",
+      "joint": "RA4M2_RA5P2",
+      "parent": "RA4M2",
+      "child": "RA5P2",
+      "coordinates": [
+        "ra_mcp2_ad_ab",
+        "ra_mcp2_e_f"
+      ]
+    },
+    {
+      "source": "right",
+      "joint": "RA5P2_RA6M2",
+      "parent": "RA5P2",
+      "child": "RA6M2",
+      "coordinates": [
+        "ra_pip2_e_f"
+      ]
+    },
+    {
+      "source": "right",
+      "joint": "RA6M2_RA7D2",
+      "parent": "RA6M2",
+      "child": "RA7D2",
+      "coordinates": [
+        "ra_dip2_e_f"
+      ]
+    },
+    {
+      "source": "right",
+      "joint": "RA4M3_RA5P3",
+      "parent": "RA4M3",
+      "child": "RA5P3",
+      "coordinates": [
+        "ra_mcp3_e_f",
+        "ra_mcp3_rd_ud"
+      ]
+    },
+    {
+      "source": "right",
+      "joint": "RA5P3_RA6M3",
+      "parent": "RA5P3",
+      "child": "RA6M3",
+      "coordinates": [
+        "ra_pip3_e_f"
+      ]
+    },
+    {
+      "source": "right",
+      "joint": "RA6M3_RA7D3",
+      "parent": "RA6M3",
+      "child": "RA7D3",
+      "coordinates": [
+        "ra_dip3_e_f"
+      ]
+    },
+    {
+      "source": "right",
+      "joint": "RA4M4_RA5P4",
+      "parent": "RA4M4",
+      "child": "RA5P4",
+      "coordinates": [
+        "ra_mcp4_ad_ab",
+        "ra_mcp4_e_f"
+      ]
+    },
+    {
+      "source": "right",
+      "joint": "RA5P4_RA6M4",
+      "parent": "RA5P4",
+      "child": "RA6M4",
+      "coordinates": [
+        "ra_pip4_e_f"
+      ]
+    },
+    {
+      "source": "right",
+      "joint": "RA6M4_RA7D4",
+      "parent": "RA6M4",
+      "child": "RA7D4",
+      "coordinates": [
+        "ra_dip4_e_f"
+      ]
+    },
+    {
+      "source": "right",
+      "joint": "RA4M5_RA5P5",
+      "parent": "RA4M5",
+      "child": "RA5P5",
+      "coordinates": [
+        "ra_mcp5_ad_ab",
+        "ra_mcp5_e_f"
+      ]
+    },
+    {
+      "source": "right",
+      "joint": "RA5P5_RA6M5",
+      "parent": "RA5P5",
+      "child": "RA6M5",
+      "coordinates": [
+        "ra_pip5_e_f"
+      ]
+    },
+    {
+      "source": "right",
+      "joint": "RA6M5_RA7D5",
+      "parent": "RA6M5",
+      "child": "RA7D5",
+      "coordinates": [
+        "ra_dip5_e_f"
+      ]
+    },
+    {
+      "source": "left",
+      "joint": "LA_sternoclavicular",
+      "parent": "sternum",
+      "child": "LA_clavicle",
+      "coordinates": [
+        "la_sternoclavicular_r2_d",
+        "la_sternoclavicular_r3_d"
+      ]
+    },
+    {
+      "source": "left",
+      "joint": "LA_unrotscap",
+      "parent": "LA_clavicle",
+      "child": "LA_clavphant",
+      "coordinates": [
+        "la_unrotscap_r2_d",
+        "la_unrotscap_r3_d"
+      ]
+    },
+    {
+      "source": "left",
+      "joint": "LA_acromioclavicular",
+      "parent": "LA_clavphant",
+      "child": "LA_scapula",
+      "coordinates": [
+        "la_acromioclavicular_r1_d",
+        "la_acromioclavicular_r2_d",
+        "la_acromioclavicular_r3_d"
+      ]
+    },
+    {
+      "source": "left",
+      "joint": "LA_unrothum",
+      "parent": "LA_scapula",
+      "child": "LA_scapphant",
+      "coordinates": [
+        "la_unrothum_r1_d",
+        "la_unrothum_r2_d",
+        "la_unrothum_r3_d"
+      ]
+    },
+    {
+      "source": "left",
+      "joint": "LA_shoulder0",
+      "parent": "LA_scapphant",
+      "child": "LA1H_PHANT",
+      "coordinates": [
+        "la_sh_elv_angle"
+      ]
+    },
+    {
+      "source": "left",
+      "joint": "LA_shoulder1",
+      "parent": "LA1H_PHANT",
+      "child": "LA1H_PHANT1",
+      "coordinates": [
+        "la_sh_elv",
+        "la_shoulder1_r2_d"
+      ]
+    },
+    {
+      "source": "left",
+      "joint": "LA_shoulder2",
+      "parent": "LA1H_PHANT1",
+      "child": "LA1H",
+      "coordinates": [
+        "la_sh_rot"
+      ]
+    },
+    {
+      "source": "left",
+      "joint": "LA1H_LA2U",
+      "parent": "LA1H",
+      "child": "LA2U",
+      "coordinates": [
+        "la_el_e_f"
+      ]
+    },
+    {
+      "source": "left",
+      "joint": "LA2U_LA2R",
+      "parent": "LA2U",
+      "child": "LA2R",
+      "coordinates": [
+        "la_wr_sup_pro"
+      ]
+    },
+    {
+      "source": "left",
+      "joint": "LA2R_LA3L",
+      "parent": "LA2R",
+      "child": "LA3L",
+      "coordinates": [
+        "la_wr_e_f",
+        "la_wr_rd_ud"
+      ]
+    },
+    {
+      "source": "left",
+      "joint": "LA3L_LA3S_W",
+      "parent": "LA3L",
+      "child": "LA3S",
+      "coordinates": []
+    },
+    {
+      "source": "left",
+      "joint": "LA3S_LA3P_W",
+      "parent": "LA3L",
+      "child": "LA3P",
+      "coordinates": []
+    },
+    {
+      "source": "left",
+      "joint": "LA3L_LA3Q_W",
+      "parent": "LA3L",
+      "child": "LA3Q",
+      "coordinates": []
+    },
+    {
+      "source": "left",
+      "joint": "LA3L_LA3C",
+      "parent": "LA3L",
+      "child": "LA3C",
+      "coordinates": [
+        "la_proximal_distal_r1_d",
+        "la_proximal_distal_r3_d"
+      ]
+    },
+    {
+      "source": "left",
+      "joint": "LA3C_LA3T_W",
+      "parent": "LA3C",
+      "child": "LA3T",
+      "coordinates": []
+    },
+    {
+      "source": "left",
+      "joint": "LA3C_LA3O_W",
+      "parent": "LA3C",
+      "child": "LA3O",
+      "coordinates": []
+    },
+    {
+      "source": "left",
+      "joint": "LA3C_LA3H_W",
+      "parent": "LA3C",
+      "child": "LA3H",
+      "coordinates": []
+    },
+    {
+      "source": "left",
+      "joint": "LA3T_LA4M1_PHANT",
+      "parent": "LA3T",
+      "child": "LA4M1_PHANT",
+      "coordinates": [
+        "la_cmc1_f_e",
+        "la_cmc1_opp"
+      ]
+    },
+    {
+      "source": "left",
+      "joint": "LA4M1_PHANT_LA4M1",
+      "parent": "LA4M1_PHANT",
+      "child": "LA4M1",
+      "coordinates": [
+        "la_cmc1_ad_ab"
+      ]
+    },
+    {
+      "source": "left",
+      "joint": "LA3C_LA4M2_W",
+      "parent": "LA3C",
+      "child": "LA4M2",
+      "coordinates": []
+    },
+    {
+      "source": "left",
+      "joint": "LA3C_LA4M3_W",
+      "parent": "LA3C",
+      "child": "LA4M3",
+      "coordinates": []
+    },
+    {
+      "source": "left",
+      "joint": "LA3C_LA4M4_W",
+      "parent": "LA3C",
+      "child": "LA4M4",
+      "coordinates": []
+    },
+    {
+      "source": "left",
+      "joint": "LA3C_LA4M5_W",
+      "parent": "LA3C",
+      "child": "LA4M5",
+      "coordinates": []
+    },
+    {
+      "source": "left",
+      "joint": "LA4M1_LA5P1",
+      "parent": "LA4M1",
+      "child": "LA5P1",
+      "coordinates": [
+        "la_mcp1_e_f"
+      ]
+    },
+    {
+      "source": "left",
+      "joint": "LA5P1_LA6D1",
+      "parent": "LA5P1",
+      "child": "LA6D1",
+      "coordinates": [
+        "la_ip1_e_f"
+      ]
+    },
+    {
+      "source": "left",
+      "joint": "LA4M2_LA5P2",
+      "parent": "LA4M2",
+      "child": "LA5P2",
+      "coordinates": [
+        "la_mcp2_ad_ab",
+        "la_mcp2_e_f"
+      ]
+    },
+    {
+      "source": "left",
+      "joint": "LA5P2_LA6M2",
+      "parent": "LA5P2",
+      "child": "LA6M2",
+      "coordinates": [
+        "la_pip2_e_f"
+      ]
+    },
+    {
+      "source": "left",
+      "joint": "LA6M2_LA7D2",
+      "parent": "LA6M2",
+      "child": "LA7D2",
+      "coordinates": [
+        "la_dip2_e_f"
+      ]
+    },
+    {
+      "source": "left",
+      "joint": "LA4M3_LA5P3",
+      "parent": "LA4M3",
+      "child": "LA5P3",
+      "coordinates": [
+        "la_mcp3_e_f",
+        "la_mcp3_rd_ud"
+      ]
+    },
+    {
+      "source": "left",
+      "joint": "LA5P3_LA6M3",
+      "parent": "LA5P3",
+      "child": "LA6M3",
+      "coordinates": [
+        "la_pip3_e_f"
+      ]
+    },
+    {
+      "source": "left",
+      "joint": "LA6M3_LA7D3",
+      "parent": "LA6M3",
+      "child": "LA7D3",
+      "coordinates": [
+        "la_dip3_e_f"
+      ]
+    },
+    {
+      "source": "left",
+      "joint": "LA4M4_LA5P4",
+      "parent": "LA4M4",
+      "child": "LA5P4",
+      "coordinates": [
+        "la_mcp4_ad_ab",
+        "la_mcp4_e_f"
+      ]
+    },
+    {
+      "source": "left",
+      "joint": "LA5P4_LA6M4",
+      "parent": "LA5P4",
+      "child": "LA6M4",
+      "coordinates": [
+        "la_pip4_e_f"
+      ]
+    },
+    {
+      "source": "left",
+      "joint": "LA6M4_LA7D4",
+      "parent": "LA6M4",
+      "child": "LA7D4",
+      "coordinates": [
+        "la_dip4_e_f"
+      ]
+    },
+    {
+      "source": "left",
+      "joint": "LA4M5_LA5P5",
+      "parent": "LA4M5",
+      "child": "LA5P5",
+      "coordinates": [
+        "la_mcp5_ad_ab",
+        "la_mcp5_e_f"
+      ]
+    },
+    {
+      "source": "left",
+      "joint": "LA5P5_LA6M5",
+      "parent": "LA5P5",
+      "child": "LA6M5",
+      "coordinates": [
+        "la_pip5_e_f"
+      ]
+    },
+    {
+      "source": "left",
+      "joint": "LA6M5_LA7D5",
+      "parent": "LA6M5",
+      "child": "LA7D5",
+      "coordinates": [
+        "la_dip5_e_f"
+      ]
+    }
+  ],
+  "constraints": [
+    {
+      "source": "masi",
+      "name": "aux7jnt_r1_con",
+      "coordinates": [
+        "aux7jnt_r1",
+        "roll2"
+      ]
+    },
+    {
+      "source": "masi",
+      "name": "aux7jnt_r2_con",
+      "coordinates": [
+        "aux7jnt_r2",
+        "yaw2"
+      ]
+    },
+    {
+      "source": "masi",
+      "name": "aux7jnt_r3_con",
+      "coordinates": [
+        "aux7jnt_r3",
+        "pitch2"
+      ]
+    },
+    {
+      "source": "masi",
+      "name": "aux6jnt_r1_con",
+      "coordinates": [
+        "aux6jnt_r1",
+        "roll2"
+      ]
+    },
+    {
+      "source": "masi",
+      "name": "aux6jnt_r2_con",
+      "coordinates": [
+        "aux6jnt_r2",
+        "yaw2"
+      ]
+    },
+    {
+      "source": "masi",
+      "name": "aux6jnt_r3_con",
+      "coordinates": [
+        "aux6jnt_r3",
+        "pitch2"
+      ]
+    },
+    {
+      "source": "masi",
+      "name": "aux5jnt_r1_con",
+      "coordinates": [
+        "aux5jnt_r1",
+        "roll2"
+      ]
+    },
+    {
+      "source": "masi",
+      "name": "aux5jnt_r2_con",
+      "coordinates": [
+        "aux5jnt_r2",
+        "yaw2"
+      ]
+    },
+    {
+      "source": "masi",
+      "name": "aux5jnt_r3_con",
+      "coordinates": [
+        "aux5jnt_r3",
+        "pitch2"
+      ]
+    },
+    {
+      "source": "masi",
+      "name": "aux4jnt_r1_con",
+      "coordinates": [
+        "aux4jnt_r1",
+        "roll2"
+      ]
+    },
+    {
+      "source": "masi",
+      "name": "aux4jnt_r2_con",
+      "coordinates": [
+        "aux4jnt_r2",
+        "yaw2"
+      ]
+    },
+    {
+      "source": "masi",
+      "name": "aux4jnt_r3_con",
+      "coordinates": [
+        "aux4jnt_r3",
+        "pitch2"
+      ]
+    },
+    {
+      "source": "masi",
+      "name": "aux3jnt_r1_con",
+      "coordinates": [
+        "aux3jnt_r1",
+        "roll2"
+      ]
+    },
+    {
+      "source": "masi",
+      "name": "aux3jnt_r2_con",
+      "coordinates": [
+        "aux3jnt_r2",
+        "yaw2"
+      ]
+    },
+    {
+      "source": "masi",
+      "name": "aux3jnt_r3_con",
+      "coordinates": [
+        "aux3jnt_r3",
+        "pitch2"
+      ]
+    },
+    {
+      "source": "masi",
+      "name": "aux1jnt_r1_con",
+      "coordinates": [
+        "aux1jnt_r1",
+        "roll1"
+      ]
+    },
+    {
+      "source": "masi",
+      "name": "aux1jnt_r2_con",
+      "coordinates": [
+        "aux1jnt_r2",
+        "yaw1"
+      ]
+    },
+    {
+      "source": "masi",
+      "name": "aux1jnt_r3_con",
+      "coordinates": [
+        "aux1jnt_r3",
+        "pitch1"
+      ]
+    },
+    {
+      "source": "legs",
+      "name": "patellofemoral_knee_angle_r_con",
+      "coordinates": [
+        "knee_angle_r",
+        "knee_angle_r_beta"
+      ]
+    },
+    {
+      "source": "legs",
+      "name": "patellofemoral_knee_angle_l_con",
+      "coordinates": [
+        "knee_angle_l",
+        "knee_angle_l_beta"
+      ]
+    },
+    {
+      "source": "right",
+      "name": "ra_sternoclavicular_r2_con",
+      "coordinates": [
+        "ra_sh_elv",
+        "ra_sternoclavicular_r2_d"
+      ]
+    },
+    {
+      "source": "right",
+      "name": "ra_sternoclavicular_r3_con",
+      "coordinates": [
+        "ra_sh_elv",
+        "ra_sternoclavicular_r3_d"
+      ]
+    },
+    {
+      "source": "right",
+      "name": "ra_unrotscap_r2_con",
+      "coordinates": [
+        "ra_sh_elv",
+        "ra_unrotscap_r2_d"
+      ]
+    },
+    {
+      "source": "right",
+      "name": "ra_unrotscap_r3_con",
+      "coordinates": [
+        "ra_sh_elv",
+        "ra_unrotscap_r3_d"
+      ]
+    },
+    {
+      "source": "right",
+      "name": "ra_acromioclavicular_r1_con",
+      "coordinates": [
+        "ra_acromioclavicular_r1_d",
+        "ra_sh_elv"
+      ]
+    },
+    {
+      "source": "right",
+      "name": "ra_acromioclavicular_r2_con",
+      "coordinates": [
+        "ra_acromioclavicular_r2_d",
+        "ra_sh_elv"
+      ]
+    },
+    {
+      "source": "right",
+      "name": "ra_acromioclavicular_r3_con",
+      "coordinates": [
+        "ra_acromioclavicular_r3_d",
+        "ra_sh_elv"
+      ]
+    },
+    {
+      "source": "right",
+      "name": "ra_unrothum_r1_con",
+      "coordinates": [
+        "ra_sh_elv",
+        "ra_unrothum_r1_d"
+      ]
+    },
+    {
+      "source": "right",
+      "name": "ra_unrothum_r2_con",
+      "coordinates": [
+        "ra_sh_elv",
+        "ra_unrothum_r2_d"
+      ]
+    },
+    {
+      "source": "right",
+      "name": "ra_unrothum_r3_con",
+      "coordinates": [
+        "ra_sh_elv",
+        "ra_unrothum_r3_d"
+      ]
+    },
+    {
+      "source": "right",
+      "name": "ra_shoulder1_r2_con",
+      "coordinates": [
+        "ra_sh_elv_angle",
+        "ra_shoulder1_r2_d"
+      ]
+    },
+    {
+      "source": "right",
+      "name": "ra_proximal_distal_r1_con",
+      "coordinates": [
+        "ra_proximal_distal_r1_d",
+        "ra_wr_rd_ud"
+      ]
+    },
+    {
+      "source": "right",
+      "name": "ra_proximal_distal_r3_con",
+      "coordinates": [
+        "ra_proximal_distal_r3_d",
+        "ra_wr_e_f"
+      ]
+    },
+    {
+      "source": "left",
+      "name": "la_sternoclavicular_r2_con",
+      "coordinates": [
+        "la_sh_elv",
+        "la_sternoclavicular_r2_d"
+      ]
+    },
+    {
+      "source": "left",
+      "name": "la_sternoclavicular_r3_con",
+      "coordinates": [
+        "la_sh_elv",
+        "la_sternoclavicular_r3_d"
+      ]
+    },
+    {
+      "source": "left",
+      "name": "la_unrotscap_r2_con",
+      "coordinates": [
+        "la_sh_elv",
+        "la_unrotscap_r2_d"
+      ]
+    },
+    {
+      "source": "left",
+      "name": "la_unrotscap_r3_con",
+      "coordinates": [
+        "la_sh_elv",
+        "la_unrotscap_r3_d"
+      ]
+    },
+    {
+      "source": "left",
+      "name": "la_acromioclavicular_r1_con",
+      "coordinates": [
+        "la_acromioclavicular_r1_d",
+        "la_sh_elv"
+      ]
+    },
+    {
+      "source": "left",
+      "name": "la_acromioclavicular_r2_con",
+      "coordinates": [
+        "la_acromioclavicular_r2_d",
+        "la_sh_elv"
+      ]
+    },
+    {
+      "source": "left",
+      "name": "la_acromioclavicular_r3_con",
+      "coordinates": [
+        "la_acromioclavicular_r3_d",
+        "la_sh_elv"
+      ]
+    },
+    {
+      "source": "left",
+      "name": "la_unrothum_r1_con",
+      "coordinates": [
+        "la_sh_elv",
+        "la_unrothum_r1_d"
+      ]
+    },
+    {
+      "source": "left",
+      "name": "la_unrothum_r2_con",
+      "coordinates": [
+        "la_sh_elv",
+        "la_unrothum_r2_d"
+      ]
+    },
+    {
+      "source": "left",
+      "name": "la_unrothum_r3_con",
+      "coordinates": [
+        "la_sh_elv",
+        "la_unrothum_r3_d"
+      ]
+    },
+    {
+      "source": "left",
+      "name": "la_shoulder1_r2_con",
+      "coordinates": [
+        "la_sh_elv_angle",
+        "la_shoulder1_r2_d"
+      ]
+    },
+    {
+      "source": "left",
+      "name": "la_proximal_distal_r1_con",
+      "coordinates": [
+        "la_proximal_distal_r1_d",
+        "la_wr_rd_ud"
+      ]
+    },
+    {
+      "source": "left",
+      "name": "la_proximal_distal_r3_con",
+      "coordinates": [
+        "la_proximal_distal_r3_d",
+        "la_wr_e_f"
+      ]
+    }
+  ],
+  "counts": {
+    "joints": 139,
+    "coordinates": 257,
+    "constraints": 46
+  },
+  "interfaces": {
+    "masi": [
+      "spine",
+      "thoracic1"
+    ],
+    "right": [
+      "Thorax",
+      "sternum"
+    ],
+    "left": [
+      "Thorax",
+      "sternum"
+    ],
+    "legs": [
+      "pelvis",
+      "pelvis"
+    ]
+  },
+  "source_hashes": {
+    "fhs": "0589cf89d1edef838a7f9cea1342b0f736c16bda83abec5b1729c5812ae5ab5f",
+    "masi": "1f6b902a7483f01c8359912ae6512c96b4f6645efe97d33193e5e71d71f0528b",
+    "legs": "8f30d0b64750b87eb7f705907862590535212b4afd7e919faa3fd7d1683d22ec",
+    "right": "0eaa91f0e624d80904f82885a5c91de3a7516fe6eef811fa11cfc3a73b87451b",
+    "left": "1b46a7bbd1a3f1237cac60f64b0bf5bd50dd9f97c17e717d5e0f1edd03bde741"
+  }
+}
