@@ -1,0 +1,29 @@
+{
+  "status": "neutral kinematic correction against v0.6, not anatomical standing validation",
+  "beforeSagittalDeg": {
+    "r": 14.463323529763926,
+    "l": 14.463323529763926
+  },
+  "afterSagittalDeg": {
+    "r": 0.45671140332101695,
+    "l": 0.45671140332080484
+  },
+  "hipDefaultDeg": {
+    "hip_flexion_r": 14.006779535095438,
+    "hip_adduction_r": -5.522387507633122e-06,
+    "hip_rotation_r": -5.026640178741271e-05,
+    "hip_flexion_l": 14.006779535095497,
+    "hip_adduction_l": -5.5223875075182626e-06,
+    "hip_rotation_l": -5.026640891284396e-05
+  },
+  "hipCenterSeparationMm": 154.51999999999998,
+  "maxOrientationResidualRad": 2.99456846905431e-06,
+  "pelvisSacrumLumbarUnchanged": true,
+  "limitations": [
+    "No endplate contact measurement",
+    "No ground contact or balance solve",
+    "No anthropometric scaling"
+  ],
+  "verifiedFrames": 186,
+  "allSixSequencesPreserved": true
+}
