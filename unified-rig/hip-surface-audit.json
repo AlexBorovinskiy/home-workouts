@@ -1,0 +1,157 @@
+{
+  "method": "bidirectional vertex-to-triangle distance; exploratory robust sphere fits in unsegmented ROIs",
+  "scale": 0.8302141073359507,
+  "translationM": [
+    -0.021390460233327517,
+    -0.009675868695028584,
+    0
+  ],
+  "sides": {
+    "r": {
+      "donorVertices": 122,
+      "fhsVertices": 845,
+      "donorToFhs": {
+        "medianMm": 3.4122539549123676,
+        "p95Mm": 11.130173485062327,
+        "maxMm": 15.63008071659924
+      },
+      "fhsToDonor": {
+        "medianMm": 2.3163270276908365,
+        "p95Mm": 8.408846134075109,
+        "maxMm": 16.385384295506345
+      },
+      "originalHipM": [
+        -0.056276,
+        -0.07849,
+        0.07726
+      ],
+      "transferredHypothesisM": [
+        -0.06811158933776548,
+        -0.07483937397982736,
+        0.06414234193277554
+      ],
+      "sphereSensitivity": [
+        {
+          "roiRadiusMm": 40,
+          "vertices": 243,
+          "centerM": [
+            -0.06262861714093976,
+            -0.08222456589223302,
+            0.07250933014999789
+          ],
+          "radiusMm": 36.27834577478645,
+          "radialResidual": {
+            "medianMm": 4.832281656081537,
+            "p95Mm": 12.076487245730014,
+            "maxMm": 14.600608584404922
+          }
+        },
+        {
+          "roiRadiusMm": 50,
+          "vertices": 383,
+          "centerM": [
+            -0.06555845484651057,
+            -0.09013877966816196,
+            0.07060015404044952
+          ],
+          "radiusMm": 44.99999999999999,
+          "radialResidual": {
+            "medianMm": 5.9306330893206045,
+            "p95Mm": 17.743370010087705,
+            "maxMm": 21.250590772445282
+          }
+        },
+        {
+          "roiRadiusMm": 60,
+          "vertices": 510,
+          "centerM": [
+            -0.06456109113880175,
+            -0.09010777516323659,
+            0.0645899351724096
+          ],
+          "radiusMm": 44.99999999999999,
+          "radialResidual": {
+            "medianMm": 6.8623644406447974,
+            "p95Mm": 22.005699313253654,
+            "maxMm": 29.379933844939288
+          }
+        }
+      ]
+    },
+    "l": {
+      "donorVertices": 122,
+      "fhsVertices": 845,
+      "donorToFhs": {
+        "medianMm": 3.412253954912366,
+        "p95Mm": 11.130173485062329,
+        "maxMm": 15.63008071659924
+      },
+      "fhsToDonor": {
+        "medianMm": 2.316327027690836,
+        "p95Mm": 8.408846134075109,
+        "maxMm": 16.385384295506345
+      },
+      "originalHipM": [
+        -0.056276,
+        -0.07849,
+        -0.07726
+      ],
+      "transferredHypothesisM": [
+        -0.06811158933776548,
+        -0.07483937397982736,
+        -0.06414234193277554
+      ],
+      "sphereSensitivity": [
+        {
+          "roiRadiusMm": 40,
+          "vertices": 243,
+          "centerM": [
+            -0.06262861714093976,
+            -0.08222456589223302,
+            -0.07250933014999789
+          ],
+          "radiusMm": 36.27834577478645,
+          "radialResidual": {
+            "medianMm": 4.832281656081537,
+            "p95Mm": 12.076487245730014,
+            "maxMm": 14.600608584404922
+          }
+        },
+        {
+          "roiRadiusMm": 50,
+          "vertices": 383,
+          "centerM": [
+            -0.06555845484651057,
+            -0.09013877966816196,
+            -0.07060015404044952
+          ],
+          "radiusMm": 44.99999999999999,
+          "radialResidual": {
+            "medianMm": 5.9306330893206045,
+            "p95Mm": 17.743370010087705,
+            "maxMm": 21.250590772445282
+          }
+        },
+        {
+          "roiRadiusMm": 60,
+          "vertices": 510,
+          "centerM": [
+            -0.06456109113880175,
+            -0.09010777516323659,
+            -0.0645899351724096
+          ],
+          "radiusMm": 44.99999999999999,
+          "radialResidual": {
+            "medianMm": 6.8623644406447974,
+            "p95Mm": 22.005699313253654,
+            "maxMm": 29.379933844939288
+          }
+        }
+      ]
+    }
+  },
+  "jointChangesApplied": false,
+  "donorGeometrySource": "Models/Rajagopal/Geometry (model-specific, not shared OpenSim geometry)",
+  "runId": 45368630225,
+  "conclusion": "Do not transfer hip centers by whole-pelvis fit or unsegmented sphere fit. Native Rajagopal pelvis/hip pairing should be evaluated as an alternative before any skeletal scaling."
+}
