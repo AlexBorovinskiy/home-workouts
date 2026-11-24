@@ -1,0 +1,70 @@
+name: QA corrected native neutral stance
+on:
+  push:
+    paths:
+      - '.github/workflows/qa-neutral-stance.yml'
+      - 'unified-rig/restore_neutral_stance.py'
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install opensim==4.6 scipy
+      - name: Restore exact verified pelvic candidate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run download 45377866490 -n native-pelvis-block-qa -D /tmp/pelvis
+      - name: Solve neutral hip posture and all native sequences
+        run: |
+          python unified-rig/restore_neutral_stance.py /tmp/pelvis/candidate.osim unified-rig/sequences-calibrated.json /tmp/stance
+          python unified-rig/sample_sequences.py /tmp/stance/candidate.osim /tmp/stance/sequences.json
+          python - <<'PY'
+          import json,numpy as np
+          from pathlib import Path
+          p=Path('/tmp/stance')
+          a=json.loads(Path('unified-rig/sequences-pelvis.json').read_text())
+          b=json.loads((p/'sequences.json').read_text())
+          r=json.loads((p/'stance-report.json').read_text())
+          assert a['bodyNames']==b['bodyNames'] and a['jointNames']==b['jointNames']
+          assert [x['id'] for x in a['sequences']]==[x['id'] for x in b['sequences']] and not b['rejected']
+          i={n:k for k,n in enumerate(b['bodyNames'])}
+          for x,y in zip(a['sequences'],b['sequences']):
+              assert len(x['frames'])==len(y['frames'])==31
+              for f,g in zip(x['frames'],y['frames']):
+                  for n in ['pelvis','sacrum','lumbar5','femur_r','femur_l']:
+                      assert np.linalg.norm(np.array(f['bodies'][i[n]])-g['bodies'][i[n]])<2e-6
+          r['verifiedFrames']=sum(len(x['frames']) for x in b['sequences'])
+          r['allSixSequencesPreserved']=True
+          (p/'stance-report.json').write_text(json.dumps(r,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: corrected-native-stance
+          path: /tmp/stance/
+      - name: Publish corrected neutral stance
+        run: |
+          cp /tmp/stance/stance-report.json unified-rig/stance-report.json
+          cp /tmp/stance/sequences.json unified-rig/sequences-stance.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add unified-rig/stance-report.json unified-rig/sequences-stance.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Publish corrected native neutral stance'
+            for n in 1 2 3; do
+              git pull --rebase origin main
+              if git push origin HEAD:main; then exit 0; fi
+            done
+            exit 1
+          fi
