@@ -4,6 +4,7 @@ No claim of anthropometric or anatomical calibration.
 """
 import argparse, pathlib, json, copy, xml.etree.ElementTree as ET
 import opensim as osim
+import numpy as np
 from select_topology import build
 
 def main():
@@ -18,6 +19,10 @@ def main():
     m=ET.SubElement(root,'Model',name='UnifiedRigCandidate')
     sets={k:ET.SubElement(ET.SubElement(m,k),'objects') for k in ('BodySet','JointSet','ConstraintSet')}
     interfaces=topo['interfaces']
+    fhs=json.loads((a.inventory/'fhs.json').read_text())
+    anchor=next(j for j in fhs['joints'] if j['child']=='head_neck')['parent_world']['p']
+    t1=next(b['world'] for b in fhs['bodies'] if b['name']=='thoracic1')
+    local_anchor=np.asarray(t1['R']).T @ (np.asarray(anchor)-np.asarray(t1['p']))
     for j in topo['joints']:
         src=sources[j['source']]
         body=copy.deepcopy(next(e for e in src.findall('./BodySet/objects/Body') if e.get('name')==j['child']))
@@ -34,6 +39,10 @@ def main():
                 for e in joint.iter():
                     if e.tag.startswith('socket_') and e.text and e.text.strip()=='/bodyset/'+old:
                         e.text='/bodyset/'+new
+                if j['source']=='masi' and j['parent']=='thoracic1':
+                    frames=[f for f in joint.findall('./frames/PhysicalOffsetFrame') if f.findtext('socket_parent')=='/bodyset/thoracic1']
+                    assert len(frames)==1, 'Expected one cervical interface frame'
+                    frames[0].find('translation').text=' '.join(map(str,local_anchor))
         sets['JointSet'].append(joint)
     for c in topo['constraints']:
         sets['ConstraintSet'].append(copy.deepcopy(next(e for e in sources[c['source']].findall('./ConstraintSet/objects/*') if e.get('name')==c['name'])))
@@ -52,6 +61,14 @@ def main():
         {'name':js.get(i).getName(),'parent':pos(js.get(i).getParentFrame()),'child':pos(js.get(i).getChildFrame())} for i in range(js.getSize())],
         'counts':topo['counts'],'anatomicallyValidated':False,'targetHeightCalibrated':False}
     assert js.getSize()==topo['counts']['joints']
+    neck=next(j for j in topo['joints'] if j['source']=='masi' and j['parent']=='thoracic1')
+    neck_frame=js.get(neck['joint']).getParentFrame()
+    t1frame=model.getBodySet().get('thoracic1')
+    t=t1frame.getTransformInGround(state)
+    expected=np.asarray(pos(t1frame))+np.array([[t.R().get(i,k) for k in range(3)] for i in range(3)])@local_anchor
+    residual=float(np.linalg.norm(np.asarray(pos(neck_frame))-expected))
+    assert residual<1e-5, residual
+    result['cervicalAnchorResidualM']=residual
     (a.out/'candidate-report.json').write_text(json.dumps(result,indent=2,allow_nan=False))
     print('UNIFIED_POSITION_ASSEMBLY',result['counts'])
 if __name__=='__main__': main()
