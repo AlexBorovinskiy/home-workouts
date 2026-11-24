@@ -1,0 +1,61 @@
+name: QA pelvis comparison viewer
+on:
+  push:
+    paths:
+      - '.github/workflows/qa-pelvis-viewer.yml'
+  workflow_run:
+    workflows: ["QA native pelvis block"]
+    types: [completed]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Require native pose outputs
+        run: test -s unified-rig/pelvis-block.json && test -s unified-rig/sequences-pelvis.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --prefix /tmp/pelvis-browser --no-audit --no-fund playwright-core@1.56.1
+      - name: Verify mobile view with native geometries
+        run: |
+          mkdir -p qa-pelvis-viewer
+          python3 -m http.server 8781 --bind 127.0.0.1 >/tmp/pelvis-http.log 2>&1 &
+          node --input-type=module <<'NODE'
+          import {chromium} from '/tmp/pelvis-browser/node_modules/playwright-core/index.mjs';
+          import {writeFileSync} from 'node:fs';
+          const browser=await chromium.launch({channel:'chrome',headless:true,args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+          const page=await browser.newPage({viewport:{width:430,height:932},isMobile:true,hasTouch:true,deviceScaleFactor:1});
+          const errors=[];page.on('pageerror',e=>errors.push(e.message));
+          try{
+            await page.goto('http://127.0.0.1:8781/unified-rig/pelvis.html',{waitUntil:'domcontentloaded',timeout:90000});
+            await page.waitForFunction(()=>window.__unifiedSurfaceQA?.version==='pelvis',null,{timeout:120000});
+            const audit=()=>page.evaluate(()=>{const q=window.__unifiedSurfaceQA;return {version:q.version,stats:q.stats,errors:q.errors,visibleNative:q.meshes.filter(m=>m.visible&&m.userData.group==='NativePelvis').map(m=>m.userData.file),frames:q.data.sequences.reduce((a,s)=>a+s.frames.length,0),report:q.pelvisReport}});
+            let a=await audit();if(a.visibleNative.length!==3||a.errors.length||a.frames!==186||!a.report.nativeReplayQA.allOriginalMotionsPreserved)throw Error(JSON.stringify(a));
+            await page.locator('#region').selectOption('pelvic');
+            for(const v of ['front','side','back']){
+              await page.locator('[data-view="'+v+'"]').click();await page.waitForTimeout(350);await page.locator('#stage').screenshot({path:'qa-pelvis-viewer/native-'+v+'.png'});
+            }
+            await page.locator('#sequence').selectOption('legs');
+            await page.locator('#phase').evaluate(e=>{e.value=e.max;e.dispatchEvent(new Event('input'))});
+            await page.locator('[data-view="side"]').click();await page.waitForTimeout(350);await page.locator('#stage').screenshot({path:'qa-pelvis-viewer/native-flexion.png'});
+            await page.locator('#version').selectOption('calibrated');await page.waitForFunction(()=>window.__unifiedSurfaceQA.version==='calibrated');let b=await audit();if(b.visibleNative.length)throw Error('Native pelvic surfaces leaked into v0.6');
+            await page.locator('#version').selectOption('pelvis');await page.waitForFunction(()=>window.__unifiedSurfaceQA.version==='pelvis');let c=await audit();if(c.visibleNative.length!==3||errors.length)throw Error(JSON.stringify({c,errors}));
+            writeFileSync('qa-pelvis-viewer/report.json',JSON.stringify({nativeMeshes:a.visibleNative,frames:a.frames,sourceFit:a.report.surfaceFit,stats:a.stats,passed:true},null,2));
+            console.log('PELVIS_VIEWER_QA_SUCCESS');
+          }catch(e){writeFileSync('qa-pelvis-viewer/failure.txt',String(e)+'\n'+errors.join('\n'));await page.screenshot({path:'qa-pelvis-viewer/failure.png'}).catch(()=>{});throw e}
+          finally{await browser.close()}
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-pelvis-viewer-qa
+          path: qa-pelvis-viewer/
+          retention-days: 7
