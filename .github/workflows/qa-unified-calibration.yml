@@ -20,7 +20,7 @@ jobs:
       - name: Check that calibration has been published
         id: ready
         run: |
-          if test -s unified-rig/calibration.json && test -s unified-rig/sequences-calibrated.json; then echo 'ready=true' >> "$GITHUB_OUTPUT"; else echo 'ready=false' >> "$GITHUB_OUTPUT"; fi
+          if test -s unified-rig/calibration.json && test -s unified-rig/sequences-calibrated.json; then echo 'ready=true' >> "$GITHUB_OUTPUT"; else echo 'Calibration files absent; cannot report success' >&2; exit 1; fi
       - if: steps.ready.outputs.ready == 'true'
         run: npm install --prefix /tmp/calibration-qa --no-audit --no-fund playwright-core@1.56.1
       - if: steps.ready.outputs.ready == 'true'
