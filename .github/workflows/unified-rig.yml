@@ -60,5 +60,6 @@ jobs:
           git add unified-rig/topology.json unified-rig/candidate-report.json unified-rig/motion.json
           if ! git diff --cached --quiet; then
             git commit -m "Publish unified rig diagnostic positions"
+            git pull --rebase origin main
             git push origin HEAD:main
           fi
