@@ -34,8 +34,19 @@ def main():
     def residual(x):
         s=state(x)
         return np.concatenate([Rotation.from_matrix(ref[n].T@tr(s,n)[1]).as_rotvec() for n in ('femur_r','femur_l','calcn_r','calcn_l')])
-    fit=least_squares(residual,x0,bounds=([q.getRangeMin() for q in coords],[q.getRangeMax() for q in coords]),xtol=1e-10,ftol=1e-10,gtol=1e-10,max_nfev=60)
-    s=state(fit.x);assert np.max(abs(residual(fit.x)))<1e-5
+    # The two exported models differ by a pure sagittal rotation at the weld.
+    # Start from that measured rotation, not a near-zero finite difference
+    # (OpenSim assembly can suppress infinitesimal perturbations).
+    guess=x0.copy()
+    for i,side in enumerate(('r','l')):
+        delta=Rotation.from_matrix(ref['femur_'+side]@tr(initial,'femur_'+side)[1].T).as_rotvec()
+        guess[3*i]+=delta[2]
+    def jac(x):
+        h=1e-4
+        return np.column_stack([(residual(x+np.eye(len(x))[i]*h)-residual(x-np.eye(len(x))[i]*h))/(2*h) for i in range(len(x))])
+    print('STANCE_INITIAL_RESIDUAL',residual(guess).tolist(),flush=True)
+    fit=least_squares(residual,guess,jac=jac,bounds=([q.getRangeMin() for q in coords],[q.getRangeMax() for q in coords]),xtol=1e-10,ftol=1e-10,gtol=1e-10,max_nfev=60)
+    s=state(fit.x);assert np.max(abs(residual(fit.x)))<1e-5,(fit.x.tolist(),residual(fit.x).tolist(),fit.message)
     tree=ET.parse(a.model);model=tree.getroot().find('Model')
     for n,v in zip(names,fit.x):
         q=next(q for q in model.findall('./JointSet/objects/*/coordinates/Coordinate') if q.get('name')==n)
