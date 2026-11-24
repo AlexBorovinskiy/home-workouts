@@ -1,0 +1,31 @@
+name: Audit native pelvic surface registration
+on:
+  push:
+    paths:
+      - 'unified-rig/audit_hip_surfaces.py'
+      - '.github/workflows/qa-unified-hip.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install numpy scipy trimesh
+      - run: |
+          curl -fL --retry 2 --max-time 240 'https://zenodo.org/records/18259702/files/FHS_dataset_4.x.zip?download=1' -o /tmp/fhs.zip
+          curl -fL --retry 2 'https://raw.githubusercontent.com/opensim-org/opensim-models/master/Models/Rajagopal/RajagopalLaiUhlrich2023.osim' -o /tmp/legs.osim
+      - run: |
+          mkdir -p qa-hip
+          python unified-rig/audit_hip_surfaces.py /tmp/fhs.zip /tmp/legs.osim qa-hip/report.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pelvic-surface-audit
+          path: qa-hip/
+          retention-days: 7
