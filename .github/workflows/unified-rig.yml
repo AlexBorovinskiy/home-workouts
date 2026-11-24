@@ -4,6 +4,7 @@ on:
     paths:
       - 'unified-rig/extract_native.py'
       - 'unified-rig/select_topology.py'
+      - 'unified-rig/assemble_candidate.py'
       - '.github/workflows/unified-rig.yml'
   workflow_dispatch:
 permissions:
@@ -37,6 +38,8 @@ jobs:
         run: python unified-rig/extract_native.py --out inventory fhs=/tmp/fhs.osim masi=/tmp/masi.osim legs=/tmp/legs.osim right=/tmp/right.osim left=/tmp/left.osim
       - name: Validate unified topology and coordinate dependencies
         run: python unified-rig/select_topology.py inventory inventory/topology.json
+      - name: Assemble mesh-free candidate in OpenSim
+        run: python unified-rig/assemble_candidate.py --inventory inventory --out inventory/candidate fhs=/tmp/fhs.osim masi=/tmp/masi.osim legs=/tmp/legs.osim right=/tmp/right.osim left=/tmp/left.osim
       - uses: actions/upload-artifact@v4
         if: always()
         with:
