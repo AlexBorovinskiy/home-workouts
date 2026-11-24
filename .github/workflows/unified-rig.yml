@@ -5,6 +5,7 @@ on:
       - 'unified-rig/extract_native.py'
       - 'unified-rig/select_topology.py'
       - 'unified-rig/assemble_candidate.py'
+      - 'unified-rig/sample_motion.py'
       - '.github/workflows/unified-rig.yml'
   workflow_dispatch:
 permissions:
@@ -40,6 +41,8 @@ jobs:
         run: python unified-rig/select_topology.py inventory inventory/topology.json
       - name: Assemble mesh-free candidate in OpenSim
         run: python unified-rig/assemble_candidate.py --inventory inventory --out inventory/candidate fhs=/tmp/fhs.osim masi=/tmp/masi.osim legs=/tmp/legs.osim right=/tmp/right.osim left=/tmp/left.osim
+      - name: Sample independent native coordinate movements
+        run: python unified-rig/sample_motion.py inventory/candidate/candidate.osim inventory/motion.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -53,7 +56,8 @@ jobs:
           cp inventory/candidate/candidate-report.json unified-rig/candidate-report.json
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add unified-rig/topology.json unified-rig/candidate-report.json
+          cp inventory/motion.json unified-rig/motion.json
+          git add unified-rig/topology.json unified-rig/candidate-report.json unified-rig/motion.json
           if ! git diff --cached --quiet; then
             git commit -m "Publish unified rig diagnostic positions"
             git push origin HEAD:main
