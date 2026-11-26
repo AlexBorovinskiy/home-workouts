@@ -2,6 +2,7 @@ import { chromium } from 'playwright';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
+import http from 'node:http';
 
 const output = path.resolve('qa-results');
 await fs.mkdir(output,{recursive:true});
@@ -12,7 +13,17 @@ let browser,page,monitor;
 const origin='http://127.0.0.1:8765';
 const statuses=['status','ctStatus','cacheInfo','fhsStorage','thoraxStatus','pelvisStatus','femurStatus','lowerStatus','skullStatus','shoulderStatus','armFitStatus','rigStatus','axisStatus','depthStatus','depthBatchStatus','reportStatus'];
 async function snapshot(){return page.evaluate(ids=>Object.fromEntries(ids.map(id=>[id,document.getElementById(id)?.textContent?.trim()||''])),statuses)}
-async function waitServer(){for(let i=0;i<60;i++){try{if((await fetch(origin+'/')).ok)return}catch{}await new Promise(r=>setTimeout(r,500))}throw Error('Local HTTP server failed')}
+async function waitServer(){
+ for(let i=0;i<60;i++){
+  const ok=await new Promise(resolve=>{
+   const req=http.get(origin+'/',{agent:false},res=>{res.on('error',()=>resolve(false));res.on('end',()=>resolve(res.statusCode===200));res.resume()});
+   req.on('error',()=>resolve(false));req.setTimeout(3000,()=>req.destroy());
+  });
+  if(ok)return;
+  await new Promise(r=>setTimeout(r,500));
+ }
+ throw Error('Local HTTP server failed');
+}
 try{
  await waitServer();
  browser=await chromium.launch({headless:true,args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--disable-dev-shm-usage']});
