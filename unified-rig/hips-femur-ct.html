@@ -1,0 +1,595 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Unified Rig 1.6.2 · таз и КТ-бёдра</title>
+<style>body{margin:0;background:#101827;color:#e5edf7;font:14px system-ui}header,footer{padding:12px}h2{margin:0 0 6px}small{color:#b1c1d5}button,select,input[type=file]{background:#243247;color:white;border:1px solid #526078;border-radius:7px;padding:8px;margin:3px;max-width:95%}a{color:#9cdcff}#stage{height:55vh;min-height:280px;background:#0b1220;position:relative}canvas{width:100%;height:100%;display:block;touch-action:none}#status{white-space:pre-wrap;line-height:1.5}.controls{display:flex;flex-wrap:wrap;align-items:center;gap:6px}label{margin:4px}#phase{flex:1;min-width:80px}</style>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"}}</script></head>
+<body><header><h2>Unified Human Rig · 1.6.2 — таз и КТ-бёдра</h2><small>Таз и бедренные кости одного КТ-донора в опорном кадре. Движение и центры суставов пока прежние; КТ-бёдра используются как статический эталон.</small>
+<div class="controls"><button data-view="front">Спереди</button><button data-view="back">Сзади</button><button data-view="side">Сбоку</button><button data-view="oblique">3/4</button><button id="fit">Вписать</button></div>
+<div class="controls"><select id="sequence" disabled><option>Загрузка…</option></select><button id="play" disabled>▶ Старт</button><input id="phase" type="range" min="0" max="30" value="0" disabled><span id="counter">—</span></div>
+<div class="controls"><select id="region"><option value="all">Всё тело</option><option value="hips" selected>Таз и бёдра</option><option value="pelvic">Таз и поясница</option><option value="pelvisonly">Тазовое кольцо</option><option value="axial">Осевой скелет</option><option value="fhs">Туловище</option><option value="masi">Шея и череп</option><option value="thorax">Грудная клетка</option><option value="upperthorax">Верхняя апертура</option><option value="frontthorax">Грудина и рёбра 1–7</option><option value="lowerthorax">Нижние рёбра 10–12</option><option value="spine">Весь позвоночник</option><option value="junction">Переход C5–T5</option><option value="tl">Переход T10–L3</option><option value="ls">Переход L3–S1 и таз</option><option value="ctblock">Череп и C1–T5</option><option value="right">Правая рука</option><option value="left">Левая рука</option><option value="legs">Ноги</option></select><select id="mode"><option value="solid">Поверхности</option><option value="transparent">Полупрозрачные</option><option value="wire">Сетка</option><option value="none">Без поверхностей</option></select><label><input type="checkbox" id="links" checked> Суставы</label></div>
+<div class="controls"><select id="version" disabled><option value="baseline">Исходная v0.5</option><option value="calibrated">Калибровка v0.6</option><option value="pelvis">Нативный таз v0.7</option><option value="stance">Нейтральная стойка v0.8</option><option value="l5s1">Эксперимент L5–S1 v0.9</option><option value="headneck" selected>Голова и шея v1.0</option></select><label><input id="ribtubes" type="checkbox" checked> Объёмные оси рёбер</label></div><div><a href="https://zenodo.org/records/18259702/files/FHS_dataset_4.x.zip?download=1">Скачать исходный ZIP FHS</a> <input type="file" id="zip" accept=".zip,application/zip"></div><div class="controls"><select id="ctMode" disabled><option value="ct">КТ v1.5</option><option value="original">Исходные поверхности v1.0</option><option value="overlay">Наложение КТ + исходные</option></select><button id="ctLoad" disabled>Загрузить КТ</button><label>Локальные STL C1–L5 + крестец (25 файлов) <input id="ctFiles" type="file" multiple accept=".stl" disabled></label></div><small id="ctStatus">КТ: ожидание исходного рига.</small><details id="ctMeasurements" hidden><summary>Измерения всех 24 переходов</summary><div id="ctTable"></div><small>Минимальные расстояния между выборками точек, не ширина дисков и не проверка столкновений.</small></details><div><a href="head-neck.html">Исходная v1.0</a> · <a href="neck-ct.html">КТ v1.1</a> · <a href="neck-chain.html">КТ v1.2</a> · <a href="cervicothoracic.html">КТ v1.3</a> · <a href="full-spine-ct.html">КТ v1.4</a> · <a href="thorax-ct.html">КТ v1.5.1</a> · <a href="pelvis-ct.html">КТ v1.6.1</a> · <a href="https://bonehub.github.io/Educational-Atlas/">BoneHub CT</a></div><div class="controls"><select id="thoraxMode" disabled><option value="ct">КТ-рёбра и грудина</option><option value="original">Исходные рёбра</option><option value="overlay">Наложение</option></select><button id="thoraxLoad" disabled>Загрузить грудную клетку</button><label>Локальные STL грудной клетки <input id="thoraxFiles" type="file" multiple accept=".stl" disabled></label></div><div class="controls"><button id="clearCTCache">Очистить КТ-кэш</button><small id="cacheInfo">STL сохраняются локально при первой загрузке, если браузер разрешает.</small></div><small id="thoraxStatus">Грудная клетка: ожидание регистрации позвоночника.</small><details id="thoraxDetails" hidden><summary>Контроль 24 рёбер</summary><div id="thoraxTable"></div><small>Расстояния между выборками точек КТ, не проверка суставного контакта. Хрящи отсутствуют.</small></details><div class="controls"><select id="pelvisMode" disabled><option value="ct">КТ тазовые кости</option><option value="original">Исходный таз</option><option value="overlay">Наложение</option></select><button id="pelvisLoad" disabled>Загрузить таз</button><label>Локальные HIP_LEFT/RIGHT <input id="pelvisFiles" type="file" multiple accept=".stl" disabled></label></div><small id="pelvisStatus" aria-live="polite">Таз: ожидание позвоночника.</small><div><progress id="hipProgress" max="20.3" value="0" hidden style="width:95%"></progress></div><small id="hipTransfer"></small><details><summary>Если КТ таза не скачивается</summary><a href="https://huggingface.co/datasets/BoneHub/visible-human-3d-models/resolve/main/visible_human_3d_models/CT/Mesh/01_Male/LOWER_EXTREMITY_LEFT/HIP_LEFT.stl?download=true">HIP_LEFT.stl</a> · <a href="https://huggingface.co/datasets/BoneHub/visible-human-3d-models/resolve/main/visible_human_3d_models/CT/Mesh/01_Male/LOWER_EXTREMITY_RIGHT/HIP_RIGHT.stl?download=true">HIP_RIGHT.stl</a><br>Можно загрузить эти два файла локально, не перезапуская позвоночник.</details><details id="pelvisDetails" hidden><summary>Контроль тазового кольца и бёдер</summary><div id="pelvisTable"></div><small>Расстояния между выборками точек; не проверка контакта, пересечений или центра вертлужной впадины.</small></details><div class="controls"><select id="femurMode" disabled><option value="ct">КТ-бёдра (эталон)</option><option value="original">Исходные бёдра</option><option value="overlay">Наложение</option></select><button id="femurLoad" disabled>Загрузить КТ-бёдра</button><button id="femurRef" disabled>Опорная поза</button><label>Локальные FEMUR_LEFT/RIGHT <input type="file" id="femurFiles" multiple accept=".stl" disabled></label></div><small id="femurStatus" aria-live="polite">Бёдра: ожидание КТ таза.</small><details id="femurDetails" hidden><summary>Сравнение с исходными бёдрами</summary><div id="femurTable"></div><small>Минимум между выборками поверхностей не подтверждает суставной контакт; нижняя область бедра — ориентир, не центр колена.</small></details></header>
+<div id="stage"><canvas id="canvas"></canvas></div><footer><div id="status">Загрузка данных…</div><small>FHS загружается локально из оригинального архива, не публикуется. Объёмные рёбра — трубчатое отображение оригинальных осей FHS, не анатомические костные поверхности. Геометрия MASI — соответствующие файлы MyoHub, идентичность оригиналу не подтверждена. В v0.7 обе тазовые кости и крестец заменены нативными поверхностями Rajagopal. В v0.8 нейтральные координаты бедра рассчитаны по ориентации ног v0.6. v0.9 проверяет устранение пересечений в нейтральной позе; анатомическое соответствие суставов, движения позвоночника под нагрузкой, баланс и рост не подтверждены.</small><p><small>КТ: Alavi &amp; Asseln (2026), <a href="https://doi.org/10.57967/hf/10464">Visible Human 3D Models</a>; Andreassen et al. (2023), <a href="https://doi.org/10.1038/s41597-022-01905-2">Scientific Data</a>; <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>. Изменения: преобразование единиц, ориентация, перенос; форма не деформирована. Регистрация предварительная, не медицинская валидация. При ошибке сохраняется исходная модель.</small></p></footer>
+<script type="module">
+import * as THREE from "three";
+import {OrbitControls} from "three/addons/controls/OrbitControls.js";
+import {STLLoader} from "three/addons/loaders/STLLoader.js";
+const $=s=>document.querySelector(s),stage=$("#stage"),scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(38,1,.003,30);
+const renderer=new THREE.WebGLRenderer({canvas:$("#canvas"),antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.setClearColor(0x0b1220);scene.add(new THREE.HemisphereLight(0xf4f7ff,0x43516b,2.3));const light=new THREE.DirectionalLight(0xfff0db,2.4);light.position.set(3,5,3);scene.add(light);
+const orbit=new OrbitControls(camera,renderer.domElement);orbit.enableDamping=true;orbit.minDistance=.035;orbit.maxDistance=8;
+const root=new THREE.Group(),jointRoot=new THREE.Group();scene.add(root,jointRoot);
+const modules={fhs:0xddd3bb,masi:0xbca8f7,right:0x8bbcf7,left:0x94d3ee,legs:0xe2c296};
+let baselineData,calibratedData,calibrationReport,pelvisData,pelvisReport,stanceData,stanceReport,l5s1Data,l5s1Report,headData,headReport;let currentVersion="headneck";let data,top,seq,frame=0,playing=false,start=null,view="front",fhsManifest,meshes=[],stats={},errors=[],fhsBusy=false;
+const vec=a=>new THREE.Vector3(...a),get=async url=>{const r=await fetch(url);if(!r.ok)throw Error(url+" HTTP "+r.status);return r.json()};
+const versionLabels={baseline:"0.5",calibrated:"0.6",pelvis:"0.7",stance:"0.8",l5s1:"0.9",headneck:"1.0"};
+function status(){document.querySelector("h2").textContent=currentVersion==="headneck"?"Unified Human Rig · 1.6.2 — таз и КТ-бёдра":"Unified Human Rig · "+versionLabels[currentVersion]+" — сравнение";const s=Object.entries(stats).map(([k,v])=>k+": "+v.ok+"/"+v.total+(v.lines?" · линий "+v.lines:"")).join(" | ");$("#status").textContent=(seq?seq.label+" · "+(frame+1)+"/"+seq.frames.length+" · OpenSim\n":"")+s+"\n"+(stats.FHS?.ok?"FHS подключён":"FHS: выберите оригинальный ZIP или используйте ранее сохранённый архив.")+(errors.length?"\nОшибки ("+errors.length+"): "+errors.slice(0,5).join("; "):"");}
+function pelvicBody(n){return /^(pelvis|sacrum|lumbar[1-5]|femur_[rl])$/.test(n)}
+function visible(m,n){const r=$("#region").value;return r==="hips"?/^(pelvis|sacrum|lumbar[345]|femur_[rl])$/.test(n):r==="pelvisonly"?/^(pelvis|sacrum)$/.test(n):r==="thorax"?/^(thoracic(?:[1-9]|1[0-2])|rib(?:[1-9]|1[0-2])_[RL]|sternum)$/.test(n):r==="upperthorax"?/^(cerv[67]|thoracic[1-3]|rib[1-3]_[RL]|sternum)$/.test(n):r==="frontthorax"?/^(rib[1-7]_[RL]|sternum)$/.test(n):r==="lowerthorax"?/^(thoracic1[0-2]|rib1[0-2]_[RL]|lumbar[12])$/.test(n):r==="spine"?/^(cerv[1-7]|thoracic(?:[1-9]|1[0-2])|lumbar[1-5]|sacrum)$/.test(n):r==="tl"?/^(thoracic1[0-2]|lumbar[1-3])$/.test(n):r==="ls"?/^(lumbar[3-5]|sacrum|pelvis)$/.test(n):r==="ctblock"?/^(skull|jaw|cerv[1-7]|thoracic[1-5])$/.test(n):r==="junction"?/^(cerv[5-7]|thoracic[1-5])$/.test(n):r==="pelvic"?pelvicBody(n):r==="all"||r==="axial"&&["fhs","masi"].includes(m)||r===m}
+function visibility(){const mode=$("#mode").value;for(const o of meshes){o.visible=visible(o.userData.module,isNativeSacrum(o)?"sacrum":o.userData.body)&&(!(o.userData.group==="FHS"&&/^(pelvis|sacrum)$/.test(o.userData.body))||!["pelvis","stance","l5s1","headneck"].includes(currentVersion))&&(o.userData.group!=="NativePelvis"||["pelvis","stance","l5s1","headneck"].includes(currentVersion))&&(o.userData.body!=="jaw"||currentVersion==="headneck")&&mode!=="none"&&(!o.userData.ribProxy||$("#ribtubes").checked)&&(!o.userData.ribOriginal||!$("#ribtubes").checked);if(o.userData.group==="CTNeck")o.visible=o.visible&&currentVersion==="headneck"&&$("#ctMode").value!=="original";if(o.userData.group==="CTPelvis")o.visible=o.visible&&hipCTReady&&currentVersion==="headneck"&&$("#ctMode").value!=="original"&&$("#pelvisMode").value!=="original";if(isHipOriginal(o)&&hipCTReady&&currentVersion==="headneck"&&$("#ctMode").value!=="original"&&$("#pelvisMode").value==="ct")o.visible=false;if(o.userData.group==="CTThorax")o.visible=o.visible&&thoraxReady&&currentVersion==="headneck"&&$("#ctMode").value!=="original"&&$("#thoraxMode").value!=="original";if(isThoraxOriginal(o)&&thoraxReady&&currentVersion==="headneck"&&$("#ctMode").value!=="original"&&$("#thoraxMode").value==="ct")o.visible=false;if(isCTOriginal(o)&&ctReady&&currentVersion==="headneck"&&$("#ctMode").value==="ct")o.visible=false;const overlay=ctReady&&currentVersion==="headneck"&&$("#ctMode").value==="overlay"&&isCTOriginal(o)||thoraxReady&&currentVersion==="headneck"&&$("#ctMode").value!=="original"&&$("#thoraxMode").value==="overlay"&&isThoraxOriginal(o);const hipOverlay=hipCTReady&&currentVersion==="headneck"&&$("#ctMode").value!=="original"&&$("#pelvisMode").value==="overlay"&&isHipOriginal(o);const m=o.material;m.transparent=mode==="transparent"||overlay||hipOverlay;m.opacity=(overlay||hipOverlay)?.22:mode==="transparent"?.38:1;m.depthWrite=!m.transparent;if(o.isMesh)m.wireframe=mode==="wire";m.needsUpdate=true;}jointRoot.visible=$("#links").checked;apply(frame);}
+function parseVtp(text){const doc=new DOMParser().parseFromString(text,"application/xml"),piece=doc.querySelector("VTKFile > PolyData > Piece"),a=piece?.querySelector("Points > DataArray");if(!a||a.getAttribute("format")!=="ascii")throw Error("VTP не ASCII");const nums=e=>(e?.textContent||"").trim().split(/\s+/).filter(Boolean).map(Number);const p=nums(a);if(!p.length||p.length%3||p.some(x=>!Number.isFinite(x)))throw Error("неверные вершины");const triangles=[],lines=[];for(const tag of ["Polys","Lines"]){const arrays=[...piece.querySelectorAll(tag+" > DataArray")];if(!arrays.length)continue;const ix=nums(arrays.find(e=>e.getAttribute("Name")==="connectivity")||arrays[0]),off=nums(arrays.find(e=>e.getAttribute("Name")==="offsets")||arrays[1]);let prev=0;for(const end of off){if(end<=prev||end>ix.length)throw Error("неверные индексы");if(tag==="Polys"){for(let k=prev+1;k<end-1;k++)triangles.push(ix[prev],ix[k],ix[k+1])}else for(let k=prev+1;k<end;k++)lines.push(ix[k-1],ix[k]);prev=end}}
+const isLine=!triangles.length,ind=isLine?lines:triangles;if(!ind.length||ind.some(i=>!Number.isInteger(i)||i<0||i>=p.length/3))throw Error("нет допустимой геометрии");const g=new THREE.BufferGeometry();g.setAttribute("position",new THREE.Float32BufferAttribute(p,3));g.setIndex(ind);if(!isLine)g.computeVertexNormals();return {g,isLine}}
+function addMesh(desc,text,group){const idx=data.bodyNames.indexOf(desc.body);if(idx<0)throw Error("нет сегмента "+desc.body);const {g,isLine}=parseVtp(text),color=modules[desc.module],o=isLine?new THREE.LineSegments(g,new THREE.LineBasicMaterial({color})):new THREE.Mesh(g,new THREE.MeshStandardMaterial({color,roughness:.76,side:THREE.DoubleSide}));o.scale.set(...desc.scale);o.userData={...desc,idx,group,isLine};root.add(o);meshes.push(o);stats[group].ok++;if(isLine)stats[group].lines++;if(isLine&&/^rib[0-9]+_[RL]$/.test(desc.body)){o.userData.ribOriginal=true;const p=g.getAttribute('position'),ix=g.getIndex(),tube=new THREE.InstancedMesh(new THREE.CylinderGeometry(.003,.003,1,8,1,false),new THREE.MeshStandardMaterial({color,roughness:.76}),ix.count/2);const u=new THREE.Vector3(),v=new THREE.Vector3(),d=new THREE.Vector3(),q=new THREE.Quaternion(),M=new THREE.Matrix4();for(let i=0;i<ix.count;i+=2){u.fromBufferAttribute(p,ix.getX(i));v.fromBufferAttribute(p,ix.getX(i+1));d.subVectors(v,u);const len=d.length();q.setFromUnitVectors(new THREE.Vector3(0,1,0),len>0?d.normalize():new THREE.Vector3(0,1,0));M.compose(u.clone().add(v).multiplyScalar(.5),q,new THREE.Vector3(1,len,1));tube.setMatrixAt(i/2,M)}tube.instanceMatrix.needsUpdate=true;tube.computeBoundingBox();tube.scale.copy(o.scale);tube.userData={...desc,idx,group,ribProxy:true};root.add(tube);meshes.push(tube);}}
+function apply(i){if(!seq)return;frame=Math.max(0,Math.min(i,seq.frames.length-1));const f=seq.frames[frame];$("#phase").value=frame;$("#counter").textContent=(frame+1)+"/"+seq.frames.length;for(const o of meshes){const k=data.bodyNames.indexOf(o.userData.body),R=f.rotations[k];if(o.userData.module==="masi"&&o.userData.group!=="CTNeck")o.scale.fromArray(o.userData.scale).multiplyScalar(currentVersion==="headneck"?headReport.scale:1);o.position.fromArray(f.bodies[k]);o.quaternion.setFromRotationMatrix(new THREE.Matrix4().set(R[0][0],R[0][1],R[0][2],0,R[1][0],R[1][1],R[1][2],0,R[2][0],R[2][1],R[2][2],0,0,0,0,1));}femurCTVisibility();const pts=[],byChild=new Map(top.joints.map(j=>[j.child,j]));for(const j of top.joints){if(!visible(j.source,j.child))continue;const p=byChild.get(j.parent);if(p){pts.push(...f.points[data.jointNames.indexOf(p.joint)],...f.points[data.jointNames.indexOf(j.joint)])}}jointRoot.children[0].geometry.setAttribute("position",new THREE.Float32BufferAttribute(pts,3));jointRoot.children[0].geometry.computeBoundingSphere();status();}
+const jointGeo=new THREE.BufferGeometry();jointRoot.add(new THREE.LineSegments(jointGeo,new THREE.LineBasicMaterial({color:0x5ca5cb,transparent:true,opacity:.65})));
+function fit(){if(!seq)return;root.updateMatrixWorld(true);const box=new THREE.Box3();for(const o of meshes)if(o.visible)box.expandByObject(o);const f=seq.frames[frame];for(const j of top.joints)if(visible(j.source,j.child))box.expandByPoint(vec(f.points[data.jointNames.indexOf(j.joint)]));if(box.isEmpty())return;const c=box.getCenter(new THREE.Vector3());const dirs={front:[1,0,0],back:[-1,0,0],side:[0,0,1],oblique:[1,.2,1]};const dir=vec(dirs[view]).normalize(),right=new THREE.Vector3(0,1,0).cross(dir).normalize(),up=dir.clone().cross(right);const tan=Math.tan(camera.fov*Math.PI/360),aspect=Math.max(camera.aspect,.1);let d=.09;for(const x of [box.min.x,box.max.x])for(const y of [box.min.y,box.max.y])for(const z of [box.min.z,box.max.z]){const p=new THREE.Vector3(x,y,z).sub(c);d=Math.max(d,p.dot(dir)+1.15*Math.max(Math.abs(p.dot(up))/tan,Math.abs(p.dot(right))/(tan*aspect)))}orbit.target.copy(c);camera.position.copy(c).add(dir.multiplyScalar(d));orbit.update();}
+function choose(){playing=false;$("#play").textContent="▶ Старт";seq=data.sequences.find(x=>x.id===$("#sequence").value);$("#phase").max=seq.frames.length-1;apply(0)}
+async function remoteGroup(group,defs){stats[group]={ok:0,total:defs.length,lines:0};await Promise.allSettled(defs.map(async d=>{try{const r=await fetch(d.url);if(!r.ok)throw Error("HTTP "+r.status);addMesh(d,await r.text(),group)}catch(e){errors.push(d.file+": "+e.message)}}));visibility();status();}
+async function readFHS(file){if(fhsBusy)return;fhsBusy=true;try{const z=await JSZip.loadAsync(file),path=fhsManifest.archiveRelativeOsimPath;if(!z.file(path))throw Error("Не тот архив FHS");const prefix=path.slice(0,path.lastIndexOf("/Male/"))+"/Geometry/";for(const o of meshes.filter(o=>o.userData.group==="FHS")){root.remove(o);o.geometry.dispose();o.material.dispose()}meshes=meshes.filter(o=>o.userData.group!=="FHS");const defs=[];for(const [body,list] of Object.entries(fhsManifest.anatomyMeshes))if(/^(pelvis|sacrum|lumbar[1-5]|thoracic[0-9]+|rib[0-9]+_[RL]|sternum)$/.test(body))for(const d of list){if(d.socket!=="..")throw Error("Неподдерживаемая система "+d.file);defs.push({body,file:d.file,scale:d.scaleFactors,module:"fhs"})}stats.FHS={ok:0,total:defs.length,lines:0};for(const d of defs){try{const f=z.file(prefix+d.file);if(!f)throw Error("нет файла");addMesh(d,await f.async("string"),"FHS")}catch(e){errors.push(d.file+": "+e.message)}if(stats.FHS.ok%8===0){status();await new Promise(r=>setTimeout(r,0))}}visibility();fit();status()}catch(e){errors.push("FHS: "+e.message);status()}finally{fhsBusy=false}}
+function cache(){return new Promise((resolve,reject)=>{const r=indexedDB.open("home-workouts-fhs-data",1);r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains("archive"))r.result.createObjectStore("archive")};r.onerror=()=>reject(r.error);r.onsuccess=()=>{const db=r.result,q=db.transaction("archive","readonly").objectStore("archive").get("fhs-2026-scientific-zip");q.onsuccess=()=>{resolve(q.result?.blob);db.close()};q.onerror=()=>{reject(q.error);db.close()}}})}
+$("#zip").onchange=()=>{const f=$("#zip").files[0];if(f&&fhsManifest)readFHS(f).then(()=>{if(!ctReady&&!ctBusy&&!$("#ctLoad").disabled)ctLoad()})};
+$("#sequence").onchange=choose;$("#phase").oninput=()=>{playing=false;$("#play").textContent="▶ Старт";apply(+$("#phase").value)};$("#play").onclick=()=>{playing=!playing;start=null;$("#play").textContent=playing?"Ⅱ Пауза":"▶ Старт"};$("#mode").onchange=visibility;$("#ribtubes").onchange=visibility;$("#links").onchange=visibility;$("#region").onchange=()=>{visibility();fit();if(wantsThorax()&&ctReady&&!ctBusy&&!hipCTBusy&&!thoraxBusy&&!thoraxReady)thoraxLoad()};$("#fit").onclick=fit;document.querySelectorAll("[data-view]").forEach(b=>b.onclick=()=>{view=b.dataset.view;fit()});
+new ResizeObserver(()=>{renderer.setSize(stage.clientWidth,stage.clientHeight,false);camera.aspect=stage.clientWidth/stage.clientHeight;camera.updateProjectionMatrix();if(seq)fit()}).observe(stage);
+
+const ctNames=[...Array.from({length:7},(_,i)=>"cerv"+(i+1)),...Array.from({length:12},(_,i)=>"thoracic"+(i+1)),...Array.from({length:5},(_,i)=>"lumbar"+(i+1)),"sacrum"];
+const isNativeSacrum=o=>o.userData.group==="NativePelvis"&&o.userData.file==="sacrum.vtp";
+const isCTOriginal=o=>isNativeSacrum(o)||ctNames.includes(o.userData.body)&&["MASI","FHS"].includes(o.userData.group);
+const ctBase="https://huggingface.co/datasets/BoneHub/visible-human-3d-models/resolve/main/visible_human_3d_models/CT/Mesh/01_Male/SPINAL_COLUMN/";
+const ctLoader=new STLLoader();let ctReady=false,ctBusy=false,ctReport=null;
+const ctMsg=s=>$("#ctStatus").textContent=s;
+const ctMean=pts=>pts.reduce((a,b)=>a.add(b),new THREE.Vector3()).multiplyScalar(1/pts.length);
+function ctPoints(g,limit=900){
+ const p=g.getAttribute("position"),a=[],stride=Math.max(1,Math.ceil(p.count/limit));
+ for(let i=0;i<p.count;i+=stride)a.push(new THREE.Vector3().fromBufferAttribute(p,i));return a;
+}
+function ctBounds(a){return new THREE.Box3().setFromPoints(a)}
+function ctAnchor(a,idx){
+ const b=ctBounds(a);if(idx===0)return b.getCenter(new THREE.Vector3());
+ const cut=b.max.x-.30*(b.max.x-b.min.x);
+ return ctBounds(a.filter(p=>p.x>=cut)).getCenter(new THREE.Vector3());
+}
+
+// Exact nearest-neighbour search over the same sampled points; no geometry reduction.
+const ctTrees=new WeakMap();
+function ctTree(points){
+ if(ctTrees.has(points))return ctTrees.get(points);
+ const keys=["x","y","z"];
+ function build(a,depth){
+  if(!a.length)return null;const key=keys[depth%3];
+  a.sort((p,q)=>p[key]-q[key]);const m=a.length>>1;
+  return {p:a[m],key,left:build(a.slice(0,m),depth+1),right:build(a.slice(m+1),depth+1)};
+ }
+ const tree=build(points.slice(),0);ctTrees.set(points,tree);return tree;
+}
+function ctNearest(p,node,best=Infinity){
+ if(!node)return best;
+ const dx=p.x-node.p.x,dy=p.y-node.p.y,dz=p.z-node.p.z;
+ best=Math.min(best,dx*dx+dy*dy+dz*dz);
+ const d=p[node.key]-node.p[node.key],near=d<0?node.left:node.right,far=d<0?node.right:node.left;
+ best=ctNearest(p,near,best);
+ if(d*d<best)best=ctNearest(p,far,best);return best;
+}
+function ctDistance(a,b){const tree=ctTree(b);let total=0;for(const p of a)total+=ctNearest(p,tree);return total/a.length;}
+function ctAxes(){
+ const a=[];for(const perm of [[0,1,2],[0,2,1],[1,0,2],[1,2,0],[2,0,1],[2,1,0]])for(const sx of [-1,1])for(const sy of [-1,1])for(const sz of [-1,1]){
+ const m=new THREE.Matrix4().set(...[0,1,2].map(k=>perm[0]===k?sx:0),0,...[0,1,2].map(k=>perm[1]===k?sy:0),0,...[0,1,2].map(k=>perm[2]===k?sz:0),0,0,0,0,1);
+ if(m.determinant()>0)a.push(m);
+ }return a;
+}
+function ctFrame(f,body){
+ const k=headData.bodyNames.indexOf(body);if(k<0)throw Error("Нет сегмента "+body);
+ const R=f.rotations[k],p=f.bodies[k];
+ return new THREE.Matrix4().set(R[0][0],R[0][1],R[0][2],p[0],R[1][0],R[1][1],R[1][2],p[1],R[2][0],R[2][1],R[2][2],p[2],0,0,0,1);
+}
+function ctInferiorAnchor(points){
+ const b=ctBounds(points),dx=b.max.x-b.min.x,dy=b.max.y-b.min.y;
+ // The anterior lower region is a proxy for the inferior vertebral endplate,
+ // not a manually identified anatomical landmark.
+ const anterior=points.filter(p=>p.x>=b.max.x-.40*dx);
+ const ab=ctBounds(anterior),low=anterior.filter(p=>p.y<=ab.min.y+.22*(ab.max.y-ab.min.y));
+ if(!low.length)throw Error("Не найдена нижняя область C7");
+ return ctBounds(low).getCenter(new THREE.Vector3());
+}
+function ctWorldOriginal(name,f){
+ if(name==="sacrum"){
+  const o=meshes.find(isNativeSacrum);if(o)return ctPoints(o.geometry,900).map(p=>p.multiply(vec(o.userData.scale)).applyMatrix4(ctFrame(f,o.userData.body)));
+ }
+ const group=name.startsWith("cerv")?"MASI":"FHS";
+ const bones=meshes.filter(o=>o.userData.group===group&&o.userData.body===name&&o.isMesh&&!o.userData.ribProxy);
+ if(!bones.length)throw Error("Нет поверхности "+name+". Подключите оригинальный ZIP FHS");
+ const m=ctFrame(f,name);
+ return bones.flatMap(o=>ctPoints(o.geometry,600).map(p=>p.multiply(vec(o.userData.scale)).multiplyScalar(group==="MASI"?headReport.scale:1).applyMatrix4(m)));
+}
+function ctMinDistance(a,b){
+ const tree=ctTree(b);let d=Infinity;for(const p of a)d=ctNearest(p,tree,d);return Math.sqrt(d)*1000;
+}
+async function ctRegister(geos){
+ const ref=headData.sequences.find(s=>/pronat|forearm|supinat/i.test(s.id+" "+s.label))||headData.sequences[0];
+ const f=ref.frames[0],world=ctNames.map(n=>ctFrame(f,n)),inv=world.map(m=>m.clone().invert());
+ const target=ctNames.map(n=>ctWorldOriginal(n,f));
+ const src=geos.map((g,i)=>{
+  g.scale(.001,.001,.001);g.computeBoundingBox();
+  const size=g.boundingBox.getSize(new THREE.Vector3()).length();
+  if(size<.015||size>(i===24?.28:.18))throw Error("Неожиданные единицы или размер "+ctNames[i]);
+  return ctPoints(g,1000);
+ });
+ const centers=src.map(a=>ctBounds(a).getCenter(new THREE.Vector3())),last=24;
+ const chain=centers[0].clone().sub(centers[last]);
+ if(chain.length()<.30||chain.length()>.85)throw Error("STL не имеют общей системы координат донора");
+ // Sacrum/coccyx is a combined CT label. Match the superior sacral region
+ // rather than the complete bounding box (which can be biased by coccyx).
+ function sacralTop(a){
+  const b=ctBounds(a),p=a.filter(v=>v.y>=b.max.y-.30*(b.max.y-b.min.y));
+  if(!p.length)throw Error("Нет верхней области крестца");
+  return ctBounds(p).getCenter(new THREE.Vector3());
+ }
+ const base=sacralTop(target[last]),ta=target.map(ctAnchor);
+ let best=null,iterations=0;
+ // Fit the donor as ONE rigid block. Weight the lumbosacral attachment
+ // more strongly than the old hybrid spine, without deforming any bone.
+ for(const axes of ctAxes()){
+  if(chain.clone().applyMatrix4(axes).y<.65*chain.length())continue;
+  for(let deg=-24;deg<=24;deg+=3){
+   const rot=new THREE.Matrix4().makeRotationZ(deg*Math.PI/180).multiply(axes);
+   const oriented=src.map(a=>a.map(p=>p.clone().applyMatrix4(rot)));
+   const offset=base.clone().sub(sacralTop(oriented[last]));
+   let score=0;
+   for(let i=0;i<24;i++){
+    const fit=oriented[i].map(v=>v.add(offset));
+    const d=ctAnchor(fit,i).distanceToSquared(ta[i]);
+    const w=i>=19?4:i>=7?1:.20;
+    score+=w*d;
+   }
+   // Sacral surface shape provides a second constraint on the base.
+   const st=target[last].filter((_,j)=>j%4===0),sf=oriented[last].filter((_,j)=>j%4===0).map(v=>v.add(offset));
+   score+=8*(ctDistance(st,sf)+ctDistance(sf,st))/2;
+   if(!best||score<best.score)best={rot,offset,score,deg};
+   if(++iterations%4===0){ctProgress(ctMsg,"Регистрация позвоночника · "+iterations+" вариантов");await new Promise(r=>setTimeout(r,0));}
+  }
+ }
+ if(!best)throw Error("Не удалось определить ориентацию КТ");
+ const donorToWorld=new THREE.Matrix4().makeTranslation(...best.offset.toArray()).multiply(best.rot);
+ const transformed=src.map(a=>a.map(p=>p.clone().applyMatrix4(donorToWorld)));
+ const residuals=transformed.map((a,i)=>Math.sqrt((ctDistance(a,target[i])+ctDistance(target[i],a))/2)*1000);
+ const baseError=sacralTop(transformed[last]).distanceTo(base)*1000;
+ const c1Shift=ctAnchor(transformed[0],0).distanceTo(ta[0])*1000;
+ const chainResidual=Math.max(...centers.slice(0,last).map((c,i)=>Math.abs(c.distanceTo(centers[i+1])-c.clone().applyMatrix4(donorToWorld).distanceTo(centers[i+1].clone().applyMatrix4(donorToWorld)))))*1000;
+ const lumbarRms=Math.sqrt(residuals.slice(19,24).reduce((s,x)=>s+x*x,0)/5);
+ if(baseError>.01||chainResidual>.01||residuals.some(x=>!Number.isFinite(x))||lumbarRms>40||residuals[last]>35||c1Shift>140)throw Error("Регистрация вне экспериментального диапазона: поясница "+lumbarRms.toFixed(1)+" мм, крестец "+residuals[last].toFixed(1)+" мм, C1 "+c1Shift.toFixed(1)+" мм");
+ const gaps=ctNames.slice(0,last).map((n,i)=>({pair:n+" / "+ctNames[i+1],ctMm:ctMinDistance(transformed[i],transformed[i+1]),originalMm:ctMinDistance(target[i],target[i+1])}));
+ const height=ctBounds(transformed.flat()).getSize(new THREE.Vector3()).y*1000;
+ const perBone=geos.map((g,i)=>{
+  const local=inv[i].clone().multiply(donorToWorld);
+  const check=world[i].clone().multiply(local);
+  const closure=Math.max(...src[i].slice(0,20).map(p=>p.clone().applyMatrix4(check).distanceTo(p.clone().applyMatrix4(donorToWorld))))*1000;
+  if(closure>.01)throw Error("Ошибка преобразования "+ctNames[i]);
+  g.applyMatrix4(local);g.computeVertexNormals();g.computeBoundingBox();
+  return {body:ctNames[i],triangles:g.getAttribute("position").count/3,surfaceResidualMm:residuals[i],closureMm:closure};
+ });
+ return {perBone,reference:ref.id,axes:best.rot.elements,commonTranslationM:best.offset.toArray(),sagittalAdjustmentDeg:best.deg,baseAnchorErrorMm:baseError,c1AnchorShiftMm:c1Shift,donorSpacingResidualMm:chainResidual,lumbarRmsMm:lumbarRms,sacrumResidualMm:residuals[last],spineHeightMm:height,sampledSurfaceDistancesMm:gaps,source:"BoneHub Visible Human Male, CC BY 4.0",method:"single rigid donor-to-world C1–L5 and combined sacrum/coccyx; superior sacral region anchor; weighted lumbar fit; no scaling beyond mm to m; no bone deformation; neutral donor configuration only; unsigned sampled distances not collision tests"};
+}
+function ctLevel(i){return i<7?["C",i+1]:i<19?["T",i-6]:i<24?["L",i-18]:["SACRUM",0]}
+function ctFileCandidates(i){
+ const [level,n]=ctLevel(i);
+ if(i===24)return ["SACRUM.stl","SACRUM.STL","SACRUM_COCCYX.stl"];
+ return ["VERTEBRA_"+level+n+".stl","VERTEBRA_"+level+String(n).padStart(2,"0")+".stl","VERTEBRA_"+level+n+".STL","VERTEBRA_"+level+String(n).padStart(2,"0")+".STL"];
+}
+
+const ctCacheName="home-workouts-bonehub-stl-v1";
+let ctCachePromise=null,ctCacheHits=0,ctNetworkBytes=0,ctCacheWrites=0,ctCacheFailed=false;
+function ctCacheOpen(){
+ if(!ctCachePromise)ctCachePromise=(async()=>{try{return typeof caches!=="undefined"?await caches.open(ctCacheName):null}catch(e){return null}})();
+ return ctCachePromise;
+}
+async function ctCachedBytes(url){
+ const cache=await ctCacheOpen();
+ // Use a same-origin cache key; CDN signed redirect URLs are temporary.
+ const key=new URL("./.ct-cache/"+encodeURIComponent(url),location.href).href;
+ if(cache){try{const hit=await cache.match(key);if(hit){const bytes=await hit.arrayBuffer();if(bytes.byteLength>=84){ctCacheHits++;return bytes;}await cache.delete(key)}}catch(e){}}
+ const response=await fetch(url);if(!response.ok)throw Error(url.split("/").pop()+" HTTP "+response.status);
+ const bytes=await response.arrayBuffer();if(bytes.byteLength<84)throw Error("Пустой STL "+url);
+ ctNetworkBytes+=bytes.byteLength;
+ if(cache){try{await cache.put(key,new Response(bytes,{headers:{"Content-Type":"application/octet-stream"}}));ctCacheWrites++;}catch(e){ctCacheFailed=true;}}
+ else ctCacheFailed=true;
+ return bytes;
+}
+async function ctPool(count,work,limit=4){
+ let next=0,error=null;
+ const workers=Array.from({length:Math.min(limit,count)},async()=>{while(!error){const i=next++;if(i>=count)return;try{await work(i)}catch(e){error=e;}}});
+ await Promise.all(workers);if(error)throw error;
+}
+function ctCacheText(){return "Кэш: "+ctCacheHits+" файлов · сеть: "+(ctNetworkBytes/1e6).toFixed(1)+" МБ"+(ctCacheFailed?" · браузер ограничил сохранение":"");}
+function ctProgress(target,s){target(s+" · "+ctCacheText());}
+$("#clearCTCache").onclick=async()=>{
+ if(ctBusy||thoraxBusy||hipCTBusy||femurCTBusy)return;
+ try{if(typeof caches!=="undefined")await caches.delete(ctCacheName);ctCachePromise=null;ctCacheHits=ctCacheWrites=ctNetworkBytes=0;ctCacheFailed=false;$("#cacheInfo").textContent="Локальный КТ-кэш очищен. Текущая модель остаётся открытой.";}
+ catch(e){$("#cacheInfo").textContent="Не удалось очистить кэш.";}
+};
+
+let ctDirectory=null;
+async function ctBytes(i,files){
+ const candidates=ctFileCandidates(i);
+ if(files){const f=files.find(f=>candidates.some(n=>n.toUpperCase()===f.name.toUpperCase()));if(!f)throw Error("Нет "+candidates[0]);return f.arrayBuffer();}
+ return ctCachedBytes(ctBase+candidates[0]+"?download=true");
+}
+async function ctLoad(files){
+ if(ctBusy||thoraxBusy||hipCTBusy||femurCTBusy)return;ctBusy=true;$("#ctLoad").disabled=$("#ctFiles").disabled=true;
+ let geos=[];
+ try{
+  if(!meshes.some(o=>o.userData.group==="FHS"&&o.userData.body==="lumbar5"))throw Error("Для регистрации C1–L5 требуется исходный ZIP FHS");
+  ctMsg("КТ: загрузка 25 STL…");
+  let loaded=0;await ctPool(ctNames.length,async i=>{
+   const name=ctFileCandidates(i)[0],bytes=await ctBytes(i,files);
+   const g=ctLoader.parse(bytes),p=g.getAttribute("position");
+   if(!p||p.count<300||!p.array.every(Number.isFinite)){g.dispose();throw Error("Некорректный STL "+name);}
+   geos[i]=g;ctProgress(ctMsg,"Позвоночник: "+(++loaded)+"/"+ctNames.length);
+   await new Promise(r=>setTimeout(r,0));
+  });
+  ctMsg("КТ 25/25 · регистрация позвоночника…");await new Promise(r=>setTimeout(r,40));
+  const report=await ctRegister(geos);
+  for(const o of meshes.filter(o=>o.userData.group==="CTNeck")){root.remove(o);o.geometry.dispose();o.material.dispose()}
+  meshes=meshes.filter(o=>o.userData.group!=="CTNeck");
+  for(let i=0;i<ctNames.length;i++){
+   const body=ctNames[i],module=i<7?"masi":"fhs",o=new THREE.Mesh(geos[i],new THREE.MeshStandardMaterial({color:0xbca8f7,roughness:.8,side:THREE.DoubleSide}));
+   o.userData={body,module,group:"CTNeck",scale:[1,1,1]};root.add(o);meshes.push(o);
+  }
+  geos=[];ctReady=true;ctReport=report;stats.CTNeck={ok:ctNames.length,total:ctNames.length,lines:0};
+  $("#ctMode").disabled=false;$("#ctMode").value="ct";
+  const d=report.sampledSurfaceDistancesMm,fmt=x=>x.toFixed(1)+" мм";
+  ctMsg("КТ 25/25 · 24 позвонка + крестец с копчиком. Поясничный RMS: "+fmt(report.lumbarRmsMm)+", крестец: "+fmt(report.sacrumResidualMm)+". C7–T1: "+fmt(d[6].ctMm)+"; T12–L1: "+fmt(d[18].ctMm)+"; L5–S1: "+fmt(d[23].ctMm)+". Смещение C1 от старого рига: "+fmt(report.c1AnchorShiftMm)+". Череп ещё не согласован; таз проверяется отдельно; расстояния не являются проверкой столкновений.");
+
+  $("#ctMeasurements").hidden=false;$("#ctTable").replaceChildren(...d.map(v=>{const el=document.createElement("div");el.textContent=v.pair+": "+fmt(v.originalMm)+" → "+fmt(v.ctMm);return el}));
+  thoraxInvalidate();hipCTInvalidate();femurCTInvalidate();visibility();fit();
+  $("#thoraxLoad").disabled=$("#thoraxFiles").disabled=$("#pelvisLoad").disabled=$("#pelvisFiles").disabled=false;
+  hipCTMsg("Позвоночник готов. Запускаю загрузку таза…");await hipCTLoad();
+  if(hipCTReady)await femurCTLoad();
+  if(wantsThorax())await thoraxLoad();else thoraxMsg("Грудная клетка: загрузится при выборе торса или всего тела.");
+ }catch(e){if(ctReady){hipCTMsg("Позвоночник готов, но запуск таза прерван: "+e.message+". Можно повторить отдельно.");$("#pelvisLoad").disabled=$("#pelvisFiles").disabled=false;}ctMsg("КТ: "+e.message+". "+(ctReady?"Предыдущая КТ сохранена.":"Показана исходная MASI. Можно повторить загрузку или выбрать 25 STL локально."));}
+ finally{geos.forEach(g=>g.dispose());$("#cacheInfo").textContent=ctCacheText();ctBusy=false;$("#ctLoad").disabled=$("#ctFiles").disabled=false;}
+}
+$("#ctMode").onchange=()=>{visibility();fit()};
+$("#ctLoad").onclick=()=>ctLoad();
+$("#ctFiles").onchange=()=>ctLoad([...$("#ctFiles").files]);
+
+
+const thoraxBase=ctBase.replace("SPINAL_COLUMN/","THORAX/");
+const thoraxNames=[...Array.from({length:12},(_,i)=>["rib"+(i+1)+"_R","rib"+(i+1)+"_L"]).flat(),"sternum"];
+const isThoraxOriginal=o=>o.userData.group==="FHS"&&thoraxNames.includes(o.userData.body);
+let thoraxReady=false,thoraxBusy=false,thoraxReport=null;
+const thoraxMsg=s=>$("#thoraxStatus").textContent=s;
+function thoraxLabel(filename){
+ const s=filename.split("/").pop().replace(/\.stl$/i,"").toUpperCase();
+ if(s==="STERNUM")return "sternum";
+ const tokens=s.split(/[_ -]+/).filter(Boolean);
+ let side=null,n=null;
+ for(const x of tokens){
+  if(x==="LEFT"||x==="L")side="L";
+  else if(x==="RIGHT"||x==="R")side="R";
+  else if(/^\d{1,2}$/.test(x))n=Number(x);
+  else {const m=x.match(/^(?:RIB)?(0?[1-9]|1[0-2])([LR])$/)||x.match(/^([LR])(0?[1-9]|1[0-2])$/);
+   if(m){if(/^\d/.test(m[1])){n=Number(m[1]);side=m[2]}else{side=m[1];n=Number(m[2])}}
+   else if(/^RIB\d+$/.test(x))n=Number(x.slice(3));}
+ }
+ if(!s.includes("RIB")||!side||!n||n>12)return null;
+ return "rib"+n+"_"+side;
+}
+function thoraxCandidates(body){
+ if(body==="sternum")return ["STERNUM.stl","STERNUM.STL"];
+ const m=body.match(/^rib(\d+)_([RL])$/),n=m[1],s=m[2],long=s==="R"?"RIGHT":"LEFT";
+ return [...new Set([n,n.padStart(2,"0")].flatMap(k=>["RIB_"+k+"_"+s,"RIB_"+s+"_"+k,"RIB_"+k+"_"+long,"RIB_"+long+"_"+k,"RIB_"+k+s,"RIB"+k+"_"+s,"RIB_"+s+k].map(x=>x+".stl")))];
+}
+async function thoraxManifest(files){
+ let items;
+ if(files)items=files.map(f=>({name:f.name,file:f}));
+ else {
+  const api="https://huggingface.co/api/datasets/BoneHub/visible-human-3d-models/tree/main/visible_human_3d_models/CT/Mesh/01_Male/THORAX?limit=100";
+  try{const r=await fetch(api);if(r.ok){const rows=await r.json();items=rows.filter(e=>e.type==="file"&&/\.stl$/i.test(e.path)).map(e=>({name:e.path.split("/").pop()}));}}catch(e){}
+ }
+ const map=new Map();
+ for(const item of items||[]){
+  const body=thoraxLabel(item.name);
+  if(!body)continue;if(map.has(body))throw Error("Неоднозначное имя "+body);map.set(body,item);
+ }
+ if(files&&map.size!==25)throw Error("Требуются 24 однозначно подписанных ребра и STERNUM.stl; распознано "+map.size+"/25");
+ return map;
+}
+async function thoraxBytes(body,manifest){
+ const item=manifest.get(body);
+ if(item?.file)return item.file.arrayBuffer();
+ if(body==="sternum")return ctCachedBytes(thoraxBase+"STERNUM.stl?download=true");
+ const m=body.match(/^rib(\d+)_([RL])$/);
+ return ctCachedBytes(thoraxBase+"RIB_"+m[1]+"_"+(m[2]==="R"?"RIGHT":"LEFT")+".stl?download=true");
+}
+function thoraxInvalidate(){
+ thoraxReady=false;thoraxReport=null;
+ for(const o of meshes.filter(o=>o.userData.group==="CTThorax")){root.remove(o);o.geometry.dispose();o.material.dispose();}
+ meshes=meshes.filter(o=>o.userData.group!=="CTThorax");delete stats.CTThorax;
+ $("#thoraxMode").disabled=true;$("#thoraxDetails").hidden=true;
+}
+async function thoraxLoad(files){
+ if(thoraxBusy||hipCTBusy||femurCTBusy||!ctReady)return;
+ thoraxBusy=true;$("#thoraxLoad").disabled=$("#thoraxFiles").disabled=$("#ctLoad").disabled=$("#ctFiles").disabled=true;
+ let staged=[];
+ try{
+  const report=ctReport,ref=headData.sequences.find(s=>s.id===report.reference);
+  if(!ref)throw Error("Нет опорного кадра позвоночника");
+  const f=ref.frames[0],rot=new THREE.Matrix4().fromArray(report.axes);
+  const donorToWorld=new THREE.Matrix4().makeTranslation(...report.commonTranslationM).multiply(rot);
+  const vertebrae=new Map();
+  for(let i=1;i<=12;i++){
+   const body="thoracic"+i,o=meshes.find(o=>o.userData.group==="CTNeck"&&o.userData.body===body);
+   if(!o)throw Error("Нет КТ "+body);
+   vertebrae.set(i,ctPoints(o.geometry,1000).map(p=>p.applyMatrix4(ctFrame(f,body))));
+  }
+  const manifest=files?await thoraxManifest(files):new Map();let loaded=0;
+  await ctPool(thoraxNames.length,async i=>{
+   const body=thoraxNames[i];
+   const bytes=await thoraxBytes(body,manifest),g=ctLoader.parse(bytes);
+   staged[i]={body,g};
+   const p=g.getAttribute("position");
+   if(!p||p.count<300||!p.array.every(Number.isFinite))throw Error("Некорректная сетка "+body);
+   g.scale(.001,.001,.001);g.computeBoundingBox();
+   const length=g.boundingBox.getSize(new THREE.Vector3()).length();
+   if(length<.02||length>.60)throw Error("Размер STL вне диапазона "+body);
+   const world=ctFrame(f,body),local=world.clone().invert().multiply(donorToWorld);
+   const worldPoints=ctPoints(g,1200).map(p=>p.applyMatrix4(donorToWorld));
+   const center=ctBounds(worldPoints).getCenter(new THREE.Vector3());
+   const m=body.match(/^rib(\d+)_([RL])$/);
+   let gap=null,adjacentGap=null,sideOffset=null;
+   if(m){
+    const n=Number(m[1]),v=vertebrae.get(n),vc=ctBounds(v).getCenter(new THREE.Vector3());
+    sideOffset=(center.z-vc.z)*1000;
+    gap=ctMinDistance(worldPoints,v);
+    if(n>1)adjacentGap=ctMinDistance(worldPoints,vertebrae.get(n-1));
+    if(Math.min(gap,adjacentGap??Infinity)>35)throw Error("Ребро "+body+" слишком далеко от своего уровня; проверьте координаты STL");
+   }
+   g.applyMatrix4(local);g.computeVertexNormals();g.computeBoundingBox();
+   staged[i].info={body,triangles:p.count/3,gapMm:gap,adjacentGapMm:adjacentGap,sideOffsetMm:sideOffset};
+   ctProgress(thoraxMsg,"Грудная клетка: "+(++loaded)+"/25");await new Promise(r=>setTimeout(r,0));
+  });
+  // Ensure pair labels correspond to opposite sides of the donor spine.
+  for(let i=0;i<24;i+=2){
+   const r=staged[i].info.sideOffsetMm,l=staged[i+1].info.sideOffsetMm;
+   if(r*l>=0||Math.abs(r)<10||Math.abs(l)<10)throw Error("Рёбра пары "+(i/2+1)+" не расположены по разные стороны");
+  }
+  const signs=staged.filter((_,i)=>i<24&&i%2===0).map(o=>Math.sign(o.info.sideOffsetMm));
+  if(signs.some(s=>s!==signs[0]))throw Error("Неоднозначное расположение правых рёбер");
+  // OpenSim coordinates: +Z is right. Do not silently swap atlas labels.
+  if(signs[0]!==1)throw Error("Правая и левая стороны КТ не согласованы с осью OpenSim +Z");
+  const infos=staged.map(o=>o.info);
+  thoraxInvalidate();
+  for(const {body,g} of staged){
+   const o=new THREE.Mesh(g,new THREE.MeshStandardMaterial({color:0xbca8f7,roughness:.8,side:THREE.DoubleSide}));
+   o.userData={body,module:"fhs",group:"CTThorax",scale:[1,1,1]};root.add(o);meshes.push(o);
+  }
+  staged=[];thoraxReady=true;stats.CTThorax={ok:25,total:25,lines:0};
+  thoraxReport={reference:ref.id,source:"BoneHub Visible Human Male THORAX",method:"reuse spine rigid donor-to-world transform; no individual offsets",bones:infos};
+  $("#thoraxMode").disabled=false;$("#thoraxMode").value="ct";
+  const ribs=infos.filter(x=>x.gapMm!==null),maxGap=Math.max(...ribs.map(x=>Math.min(x.gapMm,x.adjacentGapMm??Infinity)));
+  thoraxMsg("КТ грудной клетки 25/25 · 12 пар рёбер и грудина. Наибольшее минимальное расстояние до своего/соседнего позвонка: "+maxGap.toFixed(1)+" мм. Хрящи и суставная механика пока не валидированы.");
+  $("#thoraxDetails").hidden=false;
+  $("#thoraxTable").replaceChildren(...ribs.map(x=>{const el=document.createElement("div");el.textContent=x.body+": свой уровень "+x.gapMm.toFixed(1)+" мм"+(x.adjacentGapMm===null?"":"; выше "+x.adjacentGapMm.toFixed(1)+" мм");return el}));
+  visibility();fit();
+ }catch(e){thoraxMsg("Грудная клетка: "+e.message+". "+(thoraxReady?"Предыдущая КТ сохранена.":"Показаны исходные рёбра; позвоночник сохранён."));}
+ finally{staged.forEach(x=>x.g.dispose());$("#cacheInfo").textContent=ctCacheText();thoraxBusy=false;$("#thoraxLoad").disabled=$("#thoraxFiles").disabled=!ctReady;$("#ctLoad").disabled=$("#ctFiles").disabled=ctBusy;}
+}
+$("#thoraxMode").onchange=()=>{visibility();fit()};
+$("#thoraxLoad").onclick=()=>thoraxLoad();
+$("#thoraxFiles").onchange=()=>thoraxLoad([...$("#thoraxFiles").files]);
+
+
+const hipCTSources=[{side:"R",dir:"LOWER_EXTREMITY_RIGHT",file:"HIP_RIGHT.stl",femur:"femur_r",joint:"hip_r",old:"r_pelvis.vtp"},{side:"L",dir:"LOWER_EXTREMITY_LEFT",file:"HIP_LEFT.stl",femur:"femur_l",joint:"hip_l",old:"l_pelvis.vtp"}];
+const hipCTBase=ctBase.replace("SPINAL_COLUMN/","");
+const isHipOriginal=o=>o.userData.group==="NativePelvis"&&!isNativeSacrum(o)||o.userData.group==="FHS"&&o.userData.body==="pelvis";
+let hipCTBusy=false,hipCTReady=false,hipCTReport=null;
+const hipCTMsg=s=>$("#pelvisStatus").textContent=s;
+function wantsThorax(){return ["all","axial","fhs","thorax","upperthorax","frontthorax","lowerthorax"].includes($("#region").value)}
+function hipCTInvalidate(){
+ hipCTReady=false;hipCTReport=null;
+ for(const o of meshes.filter(o=>o.userData.group==="CTPelvis")){root.remove(o);o.geometry.dispose();o.material.dispose()}
+ meshes=meshes.filter(o=>o.userData.group!=="CTPelvis");delete stats.CTPelvis;
+ $("#pelvisMode").disabled=true;$("#pelvisDetails").hidden=true;
+}
+
+function hipBound(p,ms,label){
+ let timer;return Promise.race([p,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error(label)),ms)})]).finally(()=>clearTimeout(timer));
+}
+async function hipBytes(url,onProgress,onStage){
+ const key=new URL("./.ct-cache/"+encodeURIComponent(url),location.href).href;
+ let cache=null;
+ try{cache=await hipBound(ctCacheOpen(),4000,"Кэш недоступен")}catch(e){}
+ if(cache){try{
+  const hit=await hipBound(cache.match(key),4000,"Чтение кэша задерживается");
+  if(hit){const bytes=await hipBound(hit.arrayBuffer(),8000,"Чтение STL из кэша задерживается");if(bytes.byteLength>=84){ctCacheHits++;onProgress(bytes.byteLength);onStage("из кэша");return bytes;}}
+ }catch(e){ctCacheFailed=true;}}
+ let lastError;
+ for(let attempt=1;attempt<=2;attempt++){
+  const controller=new AbortController();let timeout;
+  const arm=()=>{clearTimeout(timeout);timeout=setTimeout(()=>controller.abort(),35000)};
+  try{
+   onProgress(0);onStage(attempt===1?"соединение":"повтор 2/2");arm();
+   const response=await fetch(url,{signal:controller.signal});
+   if(!response.ok)throw Error("HTTP "+response.status);
+   let bytes;
+   if(response.body?.getReader){
+    const reader=response.body.getReader(),chunks=[];let total=0;
+    while(true){arm();const {done,value}=await reader.read();if(done)break;chunks.push(value);total+=value.byteLength;onProgress(total);onStage("скачивание");}
+    const a=new Uint8Array(total);let pos=0;for(const chunk of chunks){a.set(chunk,pos);pos+=chunk.length;}bytes=a.buffer;
+   }else{arm();bytes=await response.arrayBuffer();onProgress(bytes.byteLength);}
+   if(bytes.byteLength<84)throw Error("Пустой STL");
+   // Binary STL has an exact byte count; reject incomplete transfers.
+   const count=new DataView(bytes).getUint32(80,true);
+   if(84+50*count!==bytes.byteLength){
+    const prefix=new TextDecoder().decode(new Uint8Array(bytes,0,Math.min(80,bytes.byteLength))).trim();
+    if(!/^solid\b/i.test(prefix))throw Error("Неполный или неверный STL");
+   }
+   ctNetworkBytes+=bytes.byteLength;onStage("скачан");
+   if(cache){try{await hipBound(cache.put(key,new Response(bytes,{headers:{"Content-Type":"application/octet-stream"}})),5000,"Запись кэша задерживается");ctCacheWrites++;}catch(e){ctCacheFailed=true;}}
+   return bytes;
+  }catch(e){lastError=e.name==="AbortError"?Error("нет данных от сервера 35 секунд"):e;if(attempt===1)onStage("повтор после ошибки");}
+  finally{clearTimeout(timeout);}
+ }
+ throw lastError;
+}
+
+async function hipCTLoad(files){
+ if(hipCTBusy||thoraxBusy||femurCTBusy||!ctReady)return;
+ hipCTBusy=true;$("#pelvisLoad").disabled=$("#pelvisFiles").disabled=$("#ctLoad").disabled=$("#ctFiles").disabled=$("#thoraxLoad").disabled=$("#thoraxFiles").disabled=true;
+ let staged=[];
+ const received=[0,0],stages=["ожидание","ожидание"],progress=$("#hipProgress");progress.hidden=false;progress.value=0;
+ const draw=()=>{progress.value=Math.min(progress.max,(received[0]+received[1])/1e6);$("#hipTransfer").textContent="Правая: "+(received[0]/1e6).toFixed(1)+" МБ ("+stages[0]+") · левая: "+(received[1]/1e6).toFixed(1)+" МБ ("+stages[1]+")";};
+ hipCTMsg("КТ таз: начинаю загрузку двух костей (20,3 МБ).");draw();
+ try{
+  const report=ctReport,ref=headData.sequences.find(s=>s.id===report.reference);
+  if(!ref)throw Error("Нет опорного кадра");
+  const f=ref.frames[0],rot=new THREE.Matrix4().fromArray(report.axes),donorToWorld=new THREE.Matrix4().makeTranslation(...report.commonTranslationM).multiply(rot);
+  const sac=meshes.find(o=>o.userData.group==="CTNeck"&&o.userData.body==="sacrum");
+  if(!sac)throw Error("Нет КТ крестца");
+  const sacPoints=ctPoints(sac.geometry,2500).map(p=>p.applyMatrix4(ctFrame(f,"sacrum")));
+  const sacCenter=ctBounds(sacPoints).getCenter(new THREE.Vector3());
+  const pelvisWorld=ctFrame(f,"pelvis");
+  let loaded=0;
+  await ctPool(2,async i=>{
+   const d=hipCTSources[i];
+   let bytes;
+   if(files){const file=files.find(x=>x.name.toUpperCase()===d.file.toUpperCase());if(!file)throw Error("Нет "+d.file);bytes=await file.arrayBuffer()}
+   else bytes=await hipBytes(hipCTBase+d.dir+"/"+d.file+"?download=true",n=>{received[i]=n;draw()},s=>{stages[i]=s;draw()});
+   received[i]=bytes.byteLength;stages[i]="обработка STL";draw();await new Promise(r=>setTimeout(r,0));
+   const g=ctLoader.parse(bytes);staged[i]={d,g};
+   const p=g.getAttribute("position");
+   if(!p||p.count<300||!p.array.every(Number.isFinite))throw Error("Некорректная сетка "+d.file);
+   g.scale(.001,.001,.001);g.computeBoundingBox();
+   const size=g.boundingBox.getSize(new THREE.Vector3()).length();
+   if(size<.10||size>.55)throw Error("Неожиданный размер "+d.file);
+   const w=ctPoints(g,3500).map(p=>p.applyMatrix4(donorToWorld)),center=ctBounds(w).getCenter(new THREE.Vector3());
+   const sideOffset=(center.z-sacCenter.z)*1000;
+   if((d.side==="R"?1:-1)*sideOffset<20)throw Error("Сторона тазовой кости не согласована "+d.file);
+   const sacGap=ctMinDistance(w,sacPoints);
+   if(sacGap>35)throw Error("Тазовая кость слишком далеко от крестца "+d.file);
+   const old=meshes.find(o=>o.userData.group==="NativePelvis"&&o.userData.file===d.old);
+   const oldPoints=old?ctPoints(old.geometry,2500).map(p=>p.multiply(vec(old.userData.scale)).applyMatrix4(pelvisWorld)):null;
+   const femurs=meshes.filter(o=>o.userData.group==="Rajagopal"&&o.userData.body===d.femur&&o.isMesh);
+   const femurPoints=femurs.flatMap(o=>ctPoints(o.geometry,3500).map(p=>p.multiply(vec(o.userData.scale)).applyMatrix4(ctFrame(f,d.femur))));
+   const jointIndex=headData.jointNames.indexOf(d.joint),joint=jointIndex>=0&&f.points[jointIndex]?vec(f.points[jointIndex]):null;
+   const jointSurfaceMm=joint?Math.sqrt(ctNearest(joint,ctTree(w)))*1000:null;
+   const oldJointSurfaceMm=joint&&oldPoints?Math.sqrt(ctNearest(joint,ctTree(oldPoints)))*1000:null;
+   stages[i]="измерения";draw();await new Promise(r=>setTimeout(r,0));
+   const info={side:d.side,triangles:p.count/3,sacGapMm:sacGap,sideOffsetMm:sideOffset,femurGapMm:femurPoints.length?ctMinDistance(w,femurPoints):null,oldFemurGapMm:femurPoints.length&&oldPoints?ctMinDistance(oldPoints,femurPoints):null,jointSurfaceMm,oldJointSurfaceMm,oldSurfaceRmsMm:oldPoints?Math.sqrt((ctDistance(w,oldPoints)+ctDistance(oldPoints,w))/2)*1000:null};
+   g.applyMatrix4(pelvisWorld.clone().invert().multiply(donorToWorld));g.computeVertexNormals();g.computeBoundingBox();
+   staged[i].info=info;staged[i].points=w;
+   stages[i]="готово";draw();ctProgress(hipCTMsg,"Таз: "+(++loaded)+"/2");await new Promise(r=>setTimeout(r,0));
+  });
+  const symphysisGap=ctMinDistance(staged[0].points,staged[1].points),infos=staged.map(x=>x.info);
+  hipCTInvalidate();femurCTInvalidate();
+  for(const {d,g} of staged){
+   const o=new THREE.Mesh(g,new THREE.MeshStandardMaterial({color:0xbca8f7,roughness:.8,side:THREE.DoubleSide}));
+   o.userData={body:"pelvis",module:"fhs",group:"CTPelvis",side:d.side,scale:[1,1,1]};root.add(o);meshes.push(o);
+  }
+  staged=[];hipCTReady=true;stats.CTPelvis={ok:2,total:2,lines:0};
+  hipCTReport={reference:ref.id,source:"BoneHub Visible Human Male HIP_LEFT and HIP_RIGHT",method:"same rigid donor transform as spine; existing hip joints unchanged",bones:infos,sampledInterHipDistanceMm:symphysisGap};
+  $("#pelvisMode").disabled=false;$("#pelvisMode").value="ct";$("#femurLoad").disabled=$("#femurFiles").disabled=false;
+  const fmt=x=>x===null?"нет данных":x.toFixed(1)+" мм";
+  progress.value=progress.max;
+  hipCTMsg("КТ таз 2/2 · крестец того же донора. Мин. расстояния до крестца: справа "+fmt(infos[0].sacGapMm)+", слева "+fmt(infos[1].sacGapMm)+". Между тазовыми костями: "+fmt(symphysisGap)+". Бедренные кости и центры суставов пока прежние.");
+  $("#pelvisDetails").hidden=false;$("#pelvisTable").replaceChildren(...infos.map(x=>{
+   const el=document.createElement("div");el.textContent=(x.side==="R"?"Правый":"Левый")+" таз: до бедра "+fmt(x.oldFemurGapMm)+" → "+fmt(x.femurGapMm)+"; от старого центра сустава до ближайшей поверхности "+fmt(x.oldJointSurfaceMm)+" → "+fmt(x.jointSurfaceMm)+"; RMS исходной и КТ кости "+fmt(x.oldSurfaceRmsMm);return el
+  }));
+  visibility();fit();
+ }catch(e){hipCTMsg("Таз: "+e.message+". "+(hipCTReady?"Предыдущая КТ сохранена.":"Показан исходный таз; позвоночник сохранён. Нажмите «Загрузить таз» для повтора."));}
+ finally{staged.forEach(x=>x.g.dispose());hipCTBusy=false;$("#pelvisLoad").disabled=$("#pelvisFiles").disabled=!ctReady;$("#thoraxLoad").disabled=$("#thoraxFiles").disabled=!ctReady;$("#ctLoad").disabled=$("#ctFiles").disabled=ctBusy;$("#cacheInfo").textContent=ctCacheText();}
+}
+$("#pelvisMode").onchange=()=>{visibility();fit()};
+$("#pelvisLoad").onclick=async()=>{await hipCTLoad();if(hipCTReady&&!femurCTReady)await femurCTLoad()};
+$("#pelvisFiles").onchange=async()=>{await hipCTLoad([...$("#pelvisFiles").files]);if(hipCTReady&&!femurCTReady)await femurCTLoad()};
+
+
+let femurCTBusy=false,femurCTReady=false,femurCTReport=null;
+const femurCTMsg=s=>$("#femurStatus").textContent=s;
+function femurCTInvalidate(){
+ femurCTReady=false;femurCTReport=null;
+ for(const o of meshes.filter(o=>o.userData.group==="CTFemur")){root.remove(o);o.geometry.dispose();o.material.dispose()}
+ meshes=meshes.filter(o=>o.userData.group!=="CTFemur");delete stats.CTFemur;
+ $("#femurMode").disabled=$("#femurRef").disabled=true;$("#femurDetails").hidden=true;
+}
+function femurCTVisibility(){
+ const ref=femurCTReady&&currentVersion==="headneck"&&seq?.id===femurCTReport.reference&&frame===0&&$("#ctMode").value!=="original"&&$("#pelvisMode").value!=="original";
+ const mode=$("#femurMode").value,surface=$("#mode").value;
+ for(const o of meshes){
+  const ct=o.userData.group==="CTFemur",old=o.userData.group==="Rajagopal"&&/^femur_[rl]$/.test(o.userData.body);
+  if(!ct&&!old)continue;
+  const enabled=visible(o.userData.module,o.userData.body)&&surface!=="none";
+  o.visible=enabled&&(ct?ref&&mode!=="original":!(ref&&mode==="ct"));
+  const overlay=old&&ref&&mode==="overlay",m=o.material;
+  m.transparent=overlay||surface==="transparent";m.opacity=overlay?.22:surface==="transparent"?.38:1;m.depthWrite=!m.transparent;
+ }
+ if(femurCTReady)$("#femurRef").textContent=ref?"Опорная поза ✓":"Вернуться к КТ-позе";
+}
+function femurDistalAnchor(points){
+ const b=ctBounds(points),sub=points.filter(p=>p.y<=b.min.y+.15*(b.max.y-b.min.y));
+ return ctBounds(sub).getCenter(new THREE.Vector3());
+}
+async function femurCTLoad(files){
+ if(femurCTBusy||hipCTBusy||thoraxBusy||!hipCTReady)return;
+ femurCTBusy=true;$("#femurLoad").disabled=$("#femurFiles").disabled=true;
+ let staged=[],received=[0,0];
+ const stages=["ожидание","ожидание"];
+ const draw=()=>femurCTMsg("КТ-бёдра: правая "+(received[0]/1e6).toFixed(1)+" МБ ("+stages[0]+"), левая "+(received[1]/1e6).toFixed(1)+" МБ ("+stages[1]+")");
+ draw();
+ try{
+  const report=ctReport,ref=headData.sequences.find(s=>s.id===report.reference),f=ref?.frames[0];
+  if(!f)throw Error("Нет опорного кадра");
+  const donorToWorld=new THREE.Matrix4().makeTranslation(...report.commonTranslationM).multiply(new THREE.Matrix4().fromArray(report.axes));
+  await ctPool(2,async i=>{
+   const d=hipCTSources[i],file="FEMUR_"+(d.side==="R"?"RIGHT":"LEFT")+".stl";
+   let bytes;
+   if(files){const local=files.find(x=>x.name.toUpperCase()===file);if(!local)throw Error("Нет "+file);bytes=await local.arrayBuffer();}
+   else bytes=await hipBytes(hipCTBase+d.dir+"/"+file+"?download=true",n=>{received[i]=n;draw()},s=>{stages[i]=s;draw()});
+   received[i]=bytes.byteLength;stages[i]="обработка";draw();await new Promise(r=>setTimeout(r,0));
+   const g=ctLoader.parse(bytes);staged[i]={d,g};
+   const p=g.getAttribute("position");if(!p||p.count<300||!p.array.every(Number.isFinite))throw Error("Некорректная сетка "+file);
+   g.scale(.001,.001,.001);g.computeBoundingBox();const size=g.boundingBox.getSize(new THREE.Vector3()).length();
+   if(size<.25||size>.75)throw Error("Неверный размер "+file);
+   const w=ctPoints(g,4000).map(p=>p.applyMatrix4(donorToWorld));
+   const hip=meshes.find(o=>o.userData.group==="CTPelvis"&&o.userData.side===d.side);
+   if(!hip)throw Error("Нет КТ таза "+d.side);
+   const hp=ctPoints(hip.geometry,4000).map(p=>p.applyMatrix4(ctFrame(f,"pelvis")));
+   const hipGap=ctMinDistance(w,hp);
+   if(hipGap>30)throw Error("КТ-бедро далеко от таза "+d.side);
+   const old=meshes.filter(o=>o.userData.group==="Rajagopal"&&o.userData.body===d.femur&&o.isMesh).flatMap(o=>ctPoints(o.geometry,4000).map(p=>p.multiply(vec(o.userData.scale)).applyMatrix4(ctFrame(f,d.femur))));
+   const oldGap=old.length?ctMinDistance(old,hp):null;
+   const kneeShift=old.length?femurDistalAnchor(old).distanceTo(femurDistalAnchor(w))*1000:null;
+   g.applyMatrix4(ctFrame(f,d.femur).invert().multiply(donorToWorld));g.computeVertexNormals();g.computeBoundingBox();
+   staged[i].info={side:d.side,hipGapMm:hipGap,oldHipGapMm:oldGap,distalRegionShiftMm:kneeShift,triangles:p.count/3};
+   stages[i]="готово";draw();await new Promise(r=>setTimeout(r,0));
+  });
+  const infos=staged.map(o=>o.info);femurCTInvalidate();
+  for(const {d,g} of staged){
+   const o=new THREE.Mesh(g,new THREE.MeshStandardMaterial({color:0xbca8f7,roughness:.8,side:THREE.DoubleSide}));
+   o.userData={body:d.femur,module:"legs",group:"CTFemur",scale:[1,1,1]};root.add(o);meshes.push(o);
+  }
+  staged=[];femurCTReady=true;femurCTReport={reference:ref.id,bones:infos,method:"same donor transform, static reference only; original rig and joint centers unchanged"};
+  stats.CTFemur={ok:2,total:2,lines:0};
+  $("#femurMode").disabled=$("#femurRef").disabled=false;$("#femurMode").value="ct";
+  const fmt=x=>x===null?"нет данных":x.toFixed(1)+" мм";
+  femurCTMsg("КТ-бёдра 2/2 · эталон в опорном кадре. Минимум таз–бедро: справа "+fmt(infos[0].hipGapMm)+", слева "+fmt(infos[1].hipGapMm)+". При движении отображаются прежние бёдра; центры суставов ещё не изменены.");
+  $("#femurDetails").hidden=false;$("#femurTable").replaceChildren(...infos.map(x=>{const el=document.createElement("div");el.textContent=x.side+": таз–бедро "+fmt(x.oldHipGapMm)+" → "+fmt(x.hipGapMm)+"; смещение нижней области бедра "+fmt(x.distalRegionShiftMm);return el}));
+  visibility();fit();
+ }catch(e){femurCTMsg("КТ-бёдра: "+e.message+". "+(femurCTReady?"Предыдущие КТ сохранены.":"Показаны прежние бёдра; таз сохранён."));}
+ finally{staged.forEach(x=>x.g.dispose());femurCTBusy=false;$("#femurLoad").disabled=$("#femurFiles").disabled=!hipCTReady;$("#cacheInfo").textContent=ctCacheText();}
+}
+$("#femurLoad").onclick=()=>femurCTLoad();
+$("#femurFiles").onchange=()=>femurCTLoad([...$("#femurFiles").files]);
+$("#femurMode").onchange=()=>{visibility();fit()};
+$("#femurRef").onclick=()=>{if(!femurCTReady||currentVersion!=="headneck")return;$("#sequence").value=femurCTReport.reference;choose();visibility();fit()};
+
+function tick(t){requestAnimationFrame(tick);if(playing&&seq){if(start===null)start=t-frame*65;const n=seq.frames.length-1,k=Math.floor((t-start)/65)%(2*n);const i=k<=n?k:2*n-k;if(i!==frame)apply(i)}orbit.update();renderer.render(scene,camera)}requestAnimationFrame(tick);
+try{[headData,headReport,top,fhsManifest]=await Promise.all([get("sequences-head-neck.json"),get("head-neck-report.json"),get("topology.json"),get("../opensim-lab/assets/fhs-original-frames.json")]);data=headData;$("#version").value="headneck";if(!data.sequences[0].frames[0].rotations)throw Error("нет матриц сегментов");$("#sequence").replaceChildren(...data.sequences.map(s=>new Option(s.label,s.id)));$("#sequence").disabled=$("#phase").disabled=$("#play").disabled=false;$("#version").onchange=async()=>{try{$("#version").disabled=true;const old=seq.id,oldFrame=frame;playing=false;$("#play").textContent="▶ Старт";if($("#version").value==="headneck"){headData??=await get("sequences-head-neck.json");headReport??=await get("head-neck-report.json");data=headData}else if($("#version").value==="l5s1"){l5s1Data??=await get("sequences-l5s1.json");l5s1Report??=await get("l5s1-correction.json");data=l5s1Data}else if($("#version").value==="stance"){stanceData??=await get("sequences-stance.json");stanceReport??=await get("stance-report.json");data=stanceData}else if($("#version").value==="pelvis"){pelvisData??=await get("sequences-pelvis.json");pelvisReport??=await get("pelvis-block.json");data=pelvisData}else if($("#version").value==="calibrated"){calibratedData??=await get("sequences-calibrated.json");calibrationReport??=await get("calibration.json");data=calibratedData}else{baselineData??=await get("sequences.json");data=baselineData}currentVersion=$("#version").value;$("#sequence").replaceChildren(...data.sequences.map(s=>new Option(s.label,s.id)));if(data.sequences.some(s=>s.id===old))$("#sequence").value=old;choose();apply(oldFrame);visibility();fit();status()}catch(e){$("#version").value=currentVersion;data=currentVersion==="headneck"?headData:currentVersion==="l5s1"?l5s1Data:currentVersion==="stance"?stanceData:currentVersion==="pelvis"?pelvisData:currentVersion==="calibrated"?calibratedData:baselineData;choose();visibility();errors.push("Калибровка: "+e.message);status()}finally{$("#version").disabled=false}};choose();visibility();fit();const [masi,aah,legs]=await Promise.all([get("../opensim-lab/assets/masi-neck-native.json"),get("../opensim-lab/assets/aah-hand-poses.json"),get("../opensim-lab/assets/rajagopal-lower-limbs.json")]);const neck=Object.entries(masi.bodyFrames).filter(([b])=>/^cerv[1-7]$|^skull$/.test(b)).map(([body,d])=>({body,file:d.file,scale:d.scale,module:"masi",url:"https://raw.githubusercontent.com/MyoHub/myoconverter/main/models/osim/Neck6D/Geometry/"+encodeURIComponent(d.file)}));neck.push({body:"jaw",file:"jaw.vtp",scale:[1,1,1],module:"masi",url:"https://raw.githubusercontent.com/MyoHub/myoconverter/main/models/osim/Neck6D/Geometry/jaw.vtp"});const arms=[];for(const side of ["right","left"])for(const m of aah[side].displayMeshes)if(data.bodyNames.includes(m.body))arms.push({...m,module:side,url:"https://raw.githubusercontent.com/nishbo/ms_arm_and_hand/main/AAH%20Model/Geometry/"+encodeURIComponent(m.file)});const lower=[];for(const [body,defs] of Object.entries(legs.bodyMeshes))if(data.bodyNames.includes(body)&&body!=="pelvis")for(const m of defs)lower.push({...m,body,module:"legs",url:"https://raw.githubusercontent.com/opensim-org/opensim-models/master/"+(/^[rl]_(femur|fibula|pelvis|tibia)\.vtp$|^sacrum\.vtp$/.test(m.file)?"Models/Rajagopal/Geometry/":"Geometry/")+encodeURIComponent(m.file)});const nativePelvis=["r_pelvis.vtp","l_pelvis.vtp","sacrum.vtp"].map(file=>({body:"pelvis",file,scale:[1,1,1],module:"fhs",url:"https://raw.githubusercontent.com/opensim-org/opensim-models/master/Models/Rajagopal/Geometry/"+file}));await Promise.all([remoteGroup("MASI",neck),remoteGroup("AAH",arms),remoteGroup("Rajagopal",lower),remoteGroup("NativePelvis",nativePelvis)]);fit();try{const f=await cache();if(f)await readFHS(f)}catch(e){console.warn(e)}status();window.__unifiedSurfaceQA={stats,errors,get meshes(){return meshes},get data(){return data},get version(){return currentVersion},get pelvisReport(){return pelvisReport},get stanceReport(){return stanceReport},get l5s1Report(){return l5s1Report},get headReport(){return headReport}};$("#version").disabled=false;$("#ctLoad").disabled=$("#ctFiles").disabled=false;Object.defineProperty(window.__unifiedSurfaceQA,"ctReport",{get:()=>ctReport});Object.defineProperty(window.__unifiedSurfaceQA,"thoraxReport",{get:()=>thoraxReport});Object.defineProperty(window.__unifiedSurfaceQA,"hipCTReport",{get:()=>hipCTReport});Object.defineProperty(window.__unifiedSurfaceQA,"femurCTReport",{get:()=>femurCTReport});status();fit();ctLoad();}catch(e){$("#status").textContent="Ошибка: "+e.message;console.error(e)}
+</script></body></html>
