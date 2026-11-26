@@ -1,0 +1,78 @@
+name: Verify head and neck proportion correction
+on:
+  push:
+    paths:
+      - 'unified-rig/calibrate_head_neck.py'
+      - '.github/workflows/qa-head-neck.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install opensim==4.6 scipy trimesh
+      - name: Restore exact v0.9 model and FHS reference
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run download 45772201108 -n l5s1-neutral-correction -D /tmp/l5
+          for url in 'https://zenodo.org/api/records/18259702/files/FHS_dataset_4.x.zip/content' 'https://zenodo.org/records/18259702/files/FHS_dataset_4.x.zip?download=1'; do
+            if curl -fL --retry 1 --retry-all-errors --max-time 160 "$url" -o /tmp/fhs.zip && echo 'd2db8c587afb5d1ee0c8081f84c43f8e  /tmp/fhs.zip' | md5sum -c -; then break; fi
+            rm -f /tmp/fhs.zip
+          done
+          test -s /tmp/fhs.zip
+      - name: Fit source head scale and test native neck movements
+        run: |
+          python unified-rig/calibrate_head_neck.py /tmp/l5/candidate.osim /tmp/fhs.zip qa-head-neck
+          python unified-rig/sample_sequences.py qa-head-neck/candidate.osim qa-head-neck/sequences.json
+          python - <<'PY'
+          import json,pathlib,numpy as np
+          p=pathlib.Path('qa-head-neck');a=json.loads(pathlib.Path('/tmp/l5/sequences.json').read_text());b=json.loads((p/'sequences.json').read_text());n=json.loads((p/'neck-motion.json').read_text());r=json.loads((p/'head-neck-report.json').read_text())
+          assert a['bodyNames']==b['bodyNames']==n['bodyNames'] and a['jointNames']==b['jointNames']==n['jointNames']
+          assert [s['id'] for s in a['sequences']]==[s['id'] for s in b['sequences']] and not b['rejected']
+          ix=[i for i,v in enumerate(a['bodyNames']) if v in r['neckBodies']]
+          other=[i for i in range(len(a['bodyNames'])) if i not in ix]
+          j=a['jointNames'].index('auxt1jnt');err=0;rot=0;frames=0
+          for s,t in zip(a['sequences'],b['sequences']):
+              for f,g in zip(s['frames'],t['frames']):
+                  X=np.array(f['bodies']);pivot=np.array(f['points'][j]);X[ix]=pivot+r['scale']*(X[ix]-pivot)
+                  err=max(err,float(np.max(np.linalg.norm(X-g['bodies'],axis=-1))));rot=max(rot,float(np.max(abs(np.array(f['rotations'])-g['rotations']))));frames+=1
+          assert frames==186 and err<3e-6 and rot<1e-6,(frames,err,rot)
+          for s in n['sequences']:
+              for f in s['frames']:
+                  assert np.max(abs(np.array(f['bodies'])[other]-np.array(s['frames'][0]['bodies'])[other]))<1e-6
+          r['bodyMotionQA']={'frames':frames,'maxPositionResidualMm':err*1000,'maxRotationMatrixResidual':rot}
+          b['sequences']+=n['sequences']
+          (p/'sequences.json').write_text(json.dumps(b,separators=(',',':'),ensure_ascii=False))
+          (p/'head-neck-report.json').write_text(json.dumps(r,indent=2));print('HEAD_NECK_ALL_QA',json.dumps(r))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: corrected-head-neck
+          path: qa-head-neck/
+          retention-days: 14
+      - name: Publish experimental head neck variant
+        run: |
+          cp qa-head-neck/head-neck-report.json unified-rig/head-neck-report.json
+          cp qa-head-neck/sequences.json unified-rig/sequences-head-neck.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add unified-rig/head-neck-report.json unified-rig/sequences-head-neck.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Publish verified head neck proportion experiment'
+            for n in 1 2 3; do
+              git pull --rebase origin main
+              if git push origin HEAD:main; then exit 0; fi
+            done
+            exit 1
+          fi
