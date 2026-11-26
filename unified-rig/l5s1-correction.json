@@ -1,0 +1,48 @@
+{
+  "status": "experimental geometric neutral correction",
+  "shiftAlongL5LocalYmm": 5.96075,
+  "worldShiftM": [
+    0.002136146228525,
+    0.005564837581075,
+    0.0
+  ],
+  "sampledCommonRays": 724,
+  "donorMinClearanceMm": 0.5032,
+  "v08MinClearanceMm": -4.9495000000000005,
+  "predictedMinClearanceMm": 1.0112499999999995,
+  "v08NegativeRays": 44,
+  "predictedNegativeRays": 0,
+  "coreRoiMm": {
+    "x": [
+      0,
+      10
+    ],
+    "absZMax": 10
+  },
+  "donorCoreClearance": {
+    "minMm": 7.4238,
+    "medianMm": 15.35575,
+    "maxMm": 23.7424
+  },
+  "v08CoreClearance": {
+    "minMm": 1.5001999999999995,
+    "medianMm": 10.0734,
+    "maxMm": 17.5942
+  },
+  "predictedCoreClearance": {
+    "minMm": 7.4609499999999995,
+    "medianMm": 16.03415,
+    "maxMm": 23.55495
+  },
+  "modelModifiedOnly": "L5_S1_IVDjnt parent translation",
+  "anatomicallyValidated": false,
+  "nativeQA": {
+    "frames": 186,
+    "maxTranslationResidualMm": 0.001196021650657145,
+    "maxRotationMatrixResidual": 0,
+    "commonRays": 724,
+    "minClearanceMm": 1.0114,
+    "negativeRays": 0,
+    "allSixSequencesPreserved": true
+  }
+}
