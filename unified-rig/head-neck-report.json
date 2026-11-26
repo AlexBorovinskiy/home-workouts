@@ -1,0 +1,146 @@
+{
+  "status": "FHS donor-matched geometric scale experiment; not anthropometric certification",
+  "scale": 0.88875,
+  "sourceMeshComparisons": {
+    "cerv1": {
+      "sourceVertices": 310,
+      "fhsVertices": 310,
+      "maxCorrespondingResidualMm": 2.3418766925686896e-14,
+      "rmsMm": 1.8667888817209337e-14,
+      "equivalent": true
+    },
+    "cerv2": {
+      "sourceVertices": 142,
+      "fhsVertices": 142,
+      "maxCorrespondingResidualMm": 2.913096087920249e-14,
+      "rmsMm": 1.1573232458358694e-14,
+      "equivalent": true
+    },
+    "cerv3": {
+      "sourceVertices": 142,
+      "fhsVertices": 142,
+      "maxCorrespondingResidualMm": 1.411962612463446e-14,
+      "rmsMm": 8.995923464396117e-15,
+      "equivalent": true
+    },
+    "cerv4": {
+      "sourceVertices": 142,
+      "fhsVertices": 142,
+      "maxCorrespondingResidualMm": 8.621724275111742e-15,
+      "rmsMm": 5.661180623205953e-15,
+      "equivalent": true
+    },
+    "cerv5": {
+      "sourceVertices": 142,
+      "fhsVertices": 142,
+      "maxCorrespondingResidualMm": 3.492410254270259e-14,
+      "rmsMm": 1.1991742736021629e-14,
+      "equivalent": true
+    },
+    "cerv6": {
+      "sourceVertices": 142,
+      "fhsVertices": 142,
+      "maxCorrespondingResidualMm": 1.7562736622057743e-14,
+      "rmsMm": 7.835730725662066e-15,
+      "equivalent": true
+    },
+    "cerv7": {
+      "sourceVertices": 142,
+      "fhsVertices": 142,
+      "maxCorrespondingResidualMm": 1.74339332588131e-14,
+      "rmsMm": 9.092811575314468e-15,
+      "equivalent": true
+    },
+    "jaw": {
+      "sourceVertices": 1459,
+      "fhsVertices": 1459,
+      "maxCorrespondingResidualMm": 5.051591013050332e-14,
+      "rmsMm": 2.294731215085e-14,
+      "equivalent": true
+    },
+    "skull": {
+      "sourceVertices": 3305,
+      "fhsVertices": 3305,
+      "maxCorrespondingResidualMm": 1.2197462367390768e-13,
+      "rmsMm": 7.626117980285997e-14,
+      "equivalent": true
+    }
+  },
+  "beforeDisplayed": {
+    "headHeightMm": 186.60281774695474,
+    "headWidthMm": 161.14999999999995,
+    "headDepthMm": 195.33302201093346,
+    "baseToOccipitalJointMm": 124.42418492356323,
+    "baseToHeadTopMm": 282.94798141388634,
+    "jawRendered": false
+  },
+  "beforeWithJaw": {
+    "headHeightMm": 230.01984368939375,
+    "headWidthMm": 161.14999999999995,
+    "headDepthMm": 195.33302201093346,
+    "baseToOccipitalJointMm": 124.42418492356323,
+    "baseToHeadTopMm": 282.94798141388634,
+    "jawRendered": true
+  },
+  "afterWithJaw": {
+    "headHeightMm": 204.43013607894866,
+    "headWidthMm": 143.22206249999996,
+    "headDepthMm": 173.60222331221715,
+    "baseToOccipitalJointMm": 110.58199435081701,
+    "baseToHeadTopMm": 251.47001848159167,
+    "jawRendered": true
+  },
+  "changedFrames": [
+    "auxt1jnt/cerv7_offset",
+    "aux7jnt/cerv7_offset",
+    "aux7jnt/cerv6_offset",
+    "aux6jnt/cerv6_offset",
+    "aux6jnt/cerv5_offset",
+    "aux5jnt/cerv5_offset",
+    "aux5jnt/cerv4_offset",
+    "aux4jnt/cerv4_offset",
+    "aux4jnt/cerv3_offset",
+    "aux3jnt/cerv3_offset",
+    "aux3jnt/cerv2_offset",
+    "aux2jnt/cerv2_offset",
+    "aux2jnt/cerv1_offset",
+    "aux1jnt/cerv1_offset",
+    "aux1jnt/skull_offset",
+    "jawjnt/skull_offset",
+    "jawjnt/jaw_offset"
+  ],
+  "anchorM": [
+    -0.04002985046117192,
+    0.5350140118464415,
+    0.0
+  ],
+  "neckBodies": [
+    "cerv1",
+    "cerv2",
+    "cerv3",
+    "cerv4",
+    "cerv5",
+    "cerv6",
+    "cerv7",
+    "jaw",
+    "skull"
+  ],
+  "limitations": [
+    "FHS donor scale is not a personalized head-size measurement",
+    "Jaw remains welded in the original MASI model",
+    "Dynamic loads and contact unvalidated"
+  ],
+  "neckMotionQA": {
+    "sequences": 4,
+    "frames": 124,
+    "maxNonNeckPositionDriftMm": 0.0050000000000039605,
+    "maxNonNeckRotationMatrixDrift": 9.2e-06,
+    "positionToleranceMm": 0.01,
+    "rotationMatrixTolerance": 2e-05
+  },
+  "bodyMotionQA": {
+    "frames": 186,
+    "maxPositionResidualMm": 0.0006719712140260704,
+    "maxRotationMatrixResidual": 0
+  }
+}
