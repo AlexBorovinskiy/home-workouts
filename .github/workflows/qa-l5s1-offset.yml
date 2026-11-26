@@ -1,0 +1,89 @@
+name: Verify L5 S1 neutral offset experiment
+on:
+  push:
+    paths:
+      - '.github/workflows/qa-l5s1-offset.yml'
+      - 'unified-rig/correct_l5s1_offset.py'
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install opensim==4.6 scipy trimesh matplotlib
+      - name: Restore verified input data
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run download 45407502408 -n corrected-native-stance -D /tmp/stance
+          gh run download 45771895250 -n l5s1-section-audit -D /tmp/sections
+          for url in 'https://zenodo.org/api/records/18259702/files/FHS_dataset_4.x.zip/content' 'https://zenodo.org/records/18259702/files/FHS_dataset_4.x.zip?download=1'; do
+            if curl -fL --retry 1 --retry-all-errors --max-time 160 "$url" -o /tmp/fhs.zip && echo 'd2db8c587afb5d1ee0c8081f84c43f8e  /tmp/fhs.zip' | md5sum -c -; then break; fi
+            rm -f /tmp/fhs.zip
+          done
+          test -s /tmp/fhs.zip
+      - name: Solve corrected neutral pose and all native movements
+        run: |
+          python unified-rig/correct_l5s1_offset.py /tmp/stance/candidate.osim /tmp/sections/ray-grid.json qa-offset
+          python unified-rig/sample_sequences.py qa-offset/candidate.osim qa-offset/sequences.json
+          python unified-rig/audit_l5s1_sections.py /tmp/fhs.zip qa-offset/sequences.json qa-offset/sections
+      - name: Check actual new intersections and unchanged mechanisms
+        run: |
+          python - <<'PY'
+          import numpy as np,json,pathlib,xml.etree.ElementTree as ET
+          p=pathlib.Path('qa-offset')
+          r=json.loads((p/'correction.json').read_text()); shift=np.array(r['worldShiftM'])
+          a=json.loads(pathlib.Path('/tmp/stance/sequences.json').read_text());b=json.loads((p/'sequences.json').read_text())
+          assert a['bodyNames']==b['bodyNames'] and a['jointNames']==b['jointNames'] and not b['rejected']
+          assert [s['id'] for s in a['sequences']]==[s['id'] for s in b['sequences']]
+          top=json.loads(pathlib.Path('unified-rig/topology.json').read_text())
+          subtree={'lumbar5'}
+          while True:
+              prev=len(subtree);subtree.update(j['child'] for j in top['joints'] if j['parent'] in subtree)
+              if prev==len(subtree):break
+          ix=[i for i,n in enumerate(a['bodyNames']) if n in subtree]
+          jx=[i for i,n in enumerate(a['jointNames']) if any(j['joint']==n and j['child'] in subtree for j in top['joints'])]
+          err=0;rot=0;frames=0
+          for s,t in zip(a['sequences'],b['sequences']):
+              assert len(s['frames'])==len(t['frames'])==31
+              for f,g in zip(s['frames'],t['frames']):
+                  B=np.array(f['bodies']);J=np.array(f['points']);B[ix]+=shift;J[jx]+=shift
+                  err=max(err,float(np.max(np.linalg.norm(B-g['bodies'],axis=-1))),float(np.max(np.linalg.norm(J-g['points'],axis=-1))))
+                  rot=max(rot,float(np.max(abs(np.array(f['rotations'])-g['rotations']))));frames+=1
+          assert err<3e-6 and rot<1e-6,(err,rot)
+          d=json.loads((p/'sections/ray-grid.json').read_text())
+          H=d['intersectionsYMm'];gap=np.array([min(a)-max(b) for a,b in zip(H['lumbar5'],H['native_sacrum']) if a and b])
+          assert len(gap)>500 and gap.min()>0,(len(gap),gap.min())
+          r['nativeQA']={'frames':frames,'maxTranslationResidualMm':err*1000,'maxRotationMatrixResidual':rot,'commonRays':len(gap),'minClearanceMm':float(gap.min()),'negativeRays':int(np.sum(gap<-.1)),'allSixSequencesPreserved':True}
+          (p/'correction.json').write_text(json.dumps(r,indent=2));print('L5S1_NATIVE_QA',json.dumps(r))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: l5s1-neutral-correction
+          path: qa-offset/
+          retention-days: 14
+      - name: Publish diagnostic variant only
+        run: |
+          cp qa-offset/correction.json unified-rig/l5s1-correction.json
+          cp qa-offset/sequences.json unified-rig/sequences-l5s1.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add unified-rig/l5s1-correction.json unified-rig/sequences-l5s1.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Publish verified experimental L5/S1 neutral correction'
+            for n in 1 2 3; do
+              git pull --rebase origin main
+              if git push origin HEAD:main; then exit 0; fi
+            done
+            exit 1
+          fi
