@@ -1,0 +1,102 @@
+{
+  "schema": "neutral-stance-audit-v1",
+  "date": "2026-11-26",
+  "version": "0.8",
+  "source": {
+    "nativeRun": 45407502408,
+    "sourceInventoryRun": 45364940962,
+    "frame": "pronation / frame 0",
+    "geometry": "native Rajagopal foot/sacrum, MyoHub neck skull surrogate as used by viewer",
+    "units": "m; x forward, y up, z right"
+  },
+  "measured": {
+    "hipAnkleSagittalDeg": {
+      "r": 0.4565272993,
+      "l": 0.4565272993
+    },
+    "kneeAxisBendProxyDeg": {
+      "r": 0.5797045159,
+      "l": 0.5797045159
+    },
+    "hipToKneeJointDistanceM": 0.40965555194,
+    "kneeToAnkleJointDistanceM": 0.39647239254,
+    "hipCenterSeparationM": 0.15452,
+    "footMeshes": {
+      "calcnLowestY": -0.9118070975262,
+      "toesLowestY": -0.914104383134,
+      "lowestDifferenceMm": 2.2972856078,
+      "bilateralDifferenceMm": 0,
+      "footExtentXM": [
+        -0.0719849688284,
+        0.1935329485964
+      ],
+      "footExtentZM": {
+        "right": [
+          0.045681840903,
+          0.1401949757996
+        ],
+        "left": [
+          -0.1401949757996,
+          -0.045681840903
+        ]
+      },
+      "verticesPerFoot": 2057
+    },
+    "skullTopY": 0.8123969874252001,
+    "skullVertices": 3305,
+    "skullToLowestFootSkeletalHeightM": 1.7265013705592,
+    "sacrumBoundsY": [
+      -0.024837937579200005,
+      0.0986222331446
+    ],
+    "sacrumVertices": 192,
+    "L5BodyOriginM": [
+      -0.01517,
+      0.08512,
+      0
+    ],
+    "nativeSpineRelativePositionMaxErrorMm": {
+      "FHS": 0.0011597872990757058,
+      "MASI": 0.0000563034511845927
+    },
+    "nativeSpineRelativeRotationMatrixMaxError": {
+      "FHS": 6.428262089297476e-8,
+      "MASI": 5.0385312025004893e-8
+    },
+    "frameOrientationDifferencesDeg": {
+      "L5ToL1": 32.1777038754,
+      "T12ToT1": -20.8356969041,
+      "C7ToC2": 0.0000630253574644
+    },
+    "pelvisBodyFrameSagittalDeg": -14.00660828558,
+    "referenceFloorY": -0.914104383134
+  },
+  "interpretation": {
+    "passed": [
+      "sagittal leg-axis correction",
+      "bilateral foot height symmetry",
+      "original relative FHS and MASI frame geometry preserved"
+    ],
+    "unvalidated": [
+      "true endplate-based cervical lordosis, thoracic kyphosis and lumbar lordosis",
+      "sacral slope and pelvic tilt from anatomical landmarks",
+      "L5–S1 surface clearance",
+      "horizontal gaze",
+      "skin stature",
+      "ground contact and force balance"
+    ],
+    "blockers": [
+      "FHS original archive download rejected in current local runtime; no direct access to vertebral surfaces for endplate measurement",
+      "skull surrogate not independently verified identical to MASI original",
+      "combined model is kinematic; heterogeneous donor mass assignments do not establish valid whole-body dynamics"
+    ],
+    "decision": "Do not modify native joints or scale the model on the basis of frame angles or skeletal stature. Define reference floor only as geometric display datum. Obtain original endplate landmarks before neutral posture acceptance."
+  },
+  "references": [
+    "https://pubmed.ncbi.nlm.nih.gov/40407040/",
+    "https://pubmed.ncbi.nlm.nih.gov/35797462/",
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC5382592/",
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC12514220/",
+    "https://zenodo.org/records/18259702"
+  ]
+}
