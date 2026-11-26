@@ -23,7 +23,8 @@ try{
  page.on('requestfailed',r=>log('REQUEST FAILED',r.url(),r.failure()?.errorText));
  page.on('crash',()=>log('PAGE CRASHED'));
  // Seed the same IndexedDB key used by the app, before any model initialization.
- await page.goto(origin+'/',{waitUntil:'domcontentloaded',timeout:60000});
+ await page.route(origin+'/__qa_bootstrap',r=>r.fulfill({status:200,contentType:'text/html',body:'<!doctype html><title>QA bootstrap</title>'}));
+ await page.goto(origin+'/__qa_bootstrap',{waitUntil:'domcontentloaded',timeout:60000});
  await page.evaluate(async()=>{
   const response=await fetch('/.qa-cache/fhs.zip');if(!response.ok)throw Error('FHS HTTP '+response.status);
   const blob=await response.blob();if(blob.size<1000)throw Error('Empty FHS');
