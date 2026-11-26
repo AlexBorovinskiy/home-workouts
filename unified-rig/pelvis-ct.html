@@ -1,13 +1,13 @@
 <!doctype html>
-<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Unified Rig 1.6 · КТ таза</title>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Unified Rig 1.6.1 · КТ таза</title>
 <style>body{margin:0;background:#101827;color:#e5edf7;font:14px system-ui}header,footer{padding:12px}h2{margin:0 0 6px}small{color:#b1c1d5}button,select,input[type=file]{background:#243247;color:white;border:1px solid #526078;border-radius:7px;padding:8px;margin:3px;max-width:95%}a{color:#9cdcff}#stage{height:55vh;min-height:280px;background:#0b1220;position:relative}canvas{width:100%;height:100%;display:block;touch-action:none}#status{white-space:pre-wrap;line-height:1.5}.controls{display:flex;flex-wrap:wrap;align-items:center;gap:6px}label{margin:4px}#phase{flex:1;min-width:80px}</style>
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"}}</script></head>
-<body><header><h2>Unified Human Rig · 1.6 — КТ таза</h2><small>Тазовые кости и крестец одного КТ-донора. Общая регистрация позвоночника сохранена; тазобедренные суставы и ноги пока прежние.</small>
+<body><header><h2>Unified Human Rig · 1.6.1 — КТ таза</h2><small>Тазовые кости и крестец одного КТ-донора. Общая регистрация позвоночника сохранена; тазобедренные суставы и ноги пока прежние.</small>
 <div class="controls"><button data-view="front">Спереди</button><button data-view="back">Сзади</button><button data-view="side">Сбоку</button><button data-view="oblique">3/4</button><button id="fit">Вписать</button></div>
 <div class="controls"><select id="sequence" disabled><option>Загрузка…</option></select><button id="play" disabled>▶ Старт</button><input id="phase" type="range" min="0" max="30" value="0" disabled><span id="counter">—</span></div>
 <div class="controls"><select id="region"><option value="all">Всё тело</option><option value="hips" selected>Таз и бёдра</option><option value="pelvic">Таз и поясница</option><option value="pelvisonly">Тазовое кольцо</option><option value="axial">Осевой скелет</option><option value="fhs">Туловище</option><option value="masi">Шея и череп</option><option value="thorax">Грудная клетка</option><option value="upperthorax">Верхняя апертура</option><option value="frontthorax">Грудина и рёбра 1–7</option><option value="lowerthorax">Нижние рёбра 10–12</option><option value="spine">Весь позвоночник</option><option value="junction">Переход C5–T5</option><option value="tl">Переход T10–L3</option><option value="ls">Переход L3–S1 и таз</option><option value="ctblock">Череп и C1–T5</option><option value="right">Правая рука</option><option value="left">Левая рука</option><option value="legs">Ноги</option></select><select id="mode"><option value="solid">Поверхности</option><option value="transparent">Полупрозрачные</option><option value="wire">Сетка</option><option value="none">Без поверхностей</option></select><label><input type="checkbox" id="links" checked> Суставы</label></div>
-<div class="controls"><select id="version" disabled><option value="baseline">Исходная v0.5</option><option value="calibrated">Калибровка v0.6</option><option value="pelvis">Нативный таз v0.7</option><option value="stance">Нейтральная стойка v0.8</option><option value="l5s1">Эксперимент L5–S1 v0.9</option><option value="headneck" selected>Голова и шея v1.0</option></select><label><input id="ribtubes" type="checkbox" checked> Объёмные оси рёбер</label></div><div><a href="https://zenodo.org/records/18259702/files/FHS_dataset_4.x.zip?download=1">Скачать исходный ZIP FHS</a> <input type="file" id="zip" accept=".zip,application/zip"></div><div class="controls"><select id="ctMode" disabled><option value="ct">КТ v1.5</option><option value="original">Исходные поверхности v1.0</option><option value="overlay">Наложение КТ + исходные</option></select><button id="ctLoad" disabled>Загрузить КТ</button><label>Локальные STL C1–L5 + крестец (25 файлов) <input id="ctFiles" type="file" multiple accept=".stl" disabled></label></div><small id="ctStatus">КТ: ожидание исходного рига.</small><details id="ctMeasurements" hidden><summary>Измерения всех 24 переходов</summary><div id="ctTable"></div><small>Минимальные расстояния между выборками точек, не ширина дисков и не проверка столкновений.</small></details><div><a href="head-neck.html">Исходная v1.0</a> · <a href="neck-ct.html">КТ v1.1</a> · <a href="neck-chain.html">КТ v1.2</a> · <a href="cervicothoracic.html">КТ v1.3</a> · <a href="full-spine-ct.html">КТ v1.4</a> · <a href="thorax-ct.html">КТ v1.5.1</a> · <a href="https://bonehub.github.io/Educational-Atlas/">BoneHub CT</a></div><div class="controls"><select id="thoraxMode" disabled><option value="ct">КТ-рёбра и грудина</option><option value="original">Исходные рёбра</option><option value="overlay">Наложение</option></select><button id="thoraxLoad" disabled>Загрузить грудную клетку</button><label>Локальные STL грудной клетки <input id="thoraxFiles" type="file" multiple accept=".stl" disabled></label></div><div class="controls"><button id="clearCTCache">Очистить КТ-кэш</button><small id="cacheInfo">STL сохраняются локально при первой загрузке, если браузер разрешает.</small></div><small id="thoraxStatus">Грудная клетка: ожидание регистрации позвоночника.</small><details id="thoraxDetails" hidden><summary>Контроль 24 рёбер</summary><div id="thoraxTable"></div><small>Расстояния между выборками точек КТ, не проверка суставного контакта. Хрящи отсутствуют.</small></details><div class="controls"><select id="pelvisMode" disabled><option value="ct">КТ тазовые кости</option><option value="original">Исходный таз</option><option value="overlay">Наложение</option></select><button id="pelvisLoad" disabled>Загрузить таз</button><label>Локальные HIP_LEFT/RIGHT <input id="pelvisFiles" type="file" multiple accept=".stl" disabled></label></div><small id="pelvisStatus">Таз: ожидание позвоночника.</small><details id="pelvisDetails" hidden><summary>Контроль тазового кольца и бёдер</summary><div id="pelvisTable"></div><small>Расстояния между выборками точек; не проверка контакта, пересечений или центра вертлужной впадины.</small></details></header>
+<div class="controls"><select id="version" disabled><option value="baseline">Исходная v0.5</option><option value="calibrated">Калибровка v0.6</option><option value="pelvis">Нативный таз v0.7</option><option value="stance">Нейтральная стойка v0.8</option><option value="l5s1">Эксперимент L5–S1 v0.9</option><option value="headneck" selected>Голова и шея v1.0</option></select><label><input id="ribtubes" type="checkbox" checked> Объёмные оси рёбер</label></div><div><a href="https://zenodo.org/records/18259702/files/FHS_dataset_4.x.zip?download=1">Скачать исходный ZIP FHS</a> <input type="file" id="zip" accept=".zip,application/zip"></div><div class="controls"><select id="ctMode" disabled><option value="ct">КТ v1.5</option><option value="original">Исходные поверхности v1.0</option><option value="overlay">Наложение КТ + исходные</option></select><button id="ctLoad" disabled>Загрузить КТ</button><label>Локальные STL C1–L5 + крестец (25 файлов) <input id="ctFiles" type="file" multiple accept=".stl" disabled></label></div><small id="ctStatus">КТ: ожидание исходного рига.</small><details id="ctMeasurements" hidden><summary>Измерения всех 24 переходов</summary><div id="ctTable"></div><small>Минимальные расстояния между выборками точек, не ширина дисков и не проверка столкновений.</small></details><div><a href="head-neck.html">Исходная v1.0</a> · <a href="neck-ct.html">КТ v1.1</a> · <a href="neck-chain.html">КТ v1.2</a> · <a href="cervicothoracic.html">КТ v1.3</a> · <a href="full-spine-ct.html">КТ v1.4</a> · <a href="thorax-ct.html">КТ v1.5.1</a> · <a href="https://bonehub.github.io/Educational-Atlas/">BoneHub CT</a></div><div class="controls"><select id="thoraxMode" disabled><option value="ct">КТ-рёбра и грудина</option><option value="original">Исходные рёбра</option><option value="overlay">Наложение</option></select><button id="thoraxLoad" disabled>Загрузить грудную клетку</button><label>Локальные STL грудной клетки <input id="thoraxFiles" type="file" multiple accept=".stl" disabled></label></div><div class="controls"><button id="clearCTCache">Очистить КТ-кэш</button><small id="cacheInfo">STL сохраняются локально при первой загрузке, если браузер разрешает.</small></div><small id="thoraxStatus">Грудная клетка: ожидание регистрации позвоночника.</small><details id="thoraxDetails" hidden><summary>Контроль 24 рёбер</summary><div id="thoraxTable"></div><small>Расстояния между выборками точек КТ, не проверка суставного контакта. Хрящи отсутствуют.</small></details><div class="controls"><select id="pelvisMode" disabled><option value="ct">КТ тазовые кости</option><option value="original">Исходный таз</option><option value="overlay">Наложение</option></select><button id="pelvisLoad" disabled>Загрузить таз</button><label>Локальные HIP_LEFT/RIGHT <input id="pelvisFiles" type="file" multiple accept=".stl" disabled></label></div><small id="pelvisStatus" aria-live="polite">Таз: ожидание позвоночника.</small><div><progress id="hipProgress" max="20.3" value="0" hidden style="width:95%"></progress></div><small id="hipTransfer"></small><details><summary>Если КТ таза не скачивается</summary><a href="https://huggingface.co/datasets/BoneHub/visible-human-3d-models/resolve/main/visible_human_3d_models/CT/Mesh/01_Male/LOWER_EXTREMITY_LEFT/HIP_LEFT.stl?download=true">HIP_LEFT.stl</a> · <a href="https://huggingface.co/datasets/BoneHub/visible-human-3d-models/resolve/main/visible_human_3d_models/CT/Mesh/01_Male/LOWER_EXTREMITY_RIGHT/HIP_RIGHT.stl?download=true">HIP_RIGHT.stl</a><br>Можно загрузить эти два файла локально, не перезапуская позвоночник.</details><details id="pelvisDetails" hidden><summary>Контроль тазового кольца и бёдер</summary><div id="pelvisTable"></div><small>Расстояния между выборками точек; не проверка контакта, пересечений или центра вертлужной впадины.</small></details></header>
 <div id="stage"><canvas id="canvas"></canvas></div><footer><div id="status">Загрузка данных…</div><small>FHS загружается локально из оригинального архива, не публикуется. Объёмные рёбра — трубчатое отображение оригинальных осей FHS, не анатомические костные поверхности. Геометрия MASI — соответствующие файлы MyoHub, идентичность оригиналу не подтверждена. В v0.7 обе тазовые кости и крестец заменены нативными поверхностями Rajagopal. В v0.8 нейтральные координаты бедра рассчитаны по ориентации ног v0.6. v0.9 проверяет устранение пересечений в нейтральной позе; анатомическое соответствие суставов, движения позвоночника под нагрузкой, баланс и рост не подтверждены.</small><p><small>КТ: Alavi &amp; Asseln (2026), <a href="https://doi.org/10.57967/hf/10464">Visible Human 3D Models</a>; Andreassen et al. (2023), <a href="https://doi.org/10.1038/s41597-022-01905-2">Scientific Data</a>; <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>. Изменения: преобразование единиц, ориентация, перенос; форма не деформирована. Регистрация предварительная, не медицинская валидация. При ошибке сохраняется исходная модель.</small></p></footer>
 <script type="module">
 import * as THREE from "three";
@@ -21,7 +21,7 @@ const modules={fhs:0xddd3bb,masi:0xbca8f7,right:0x8bbcf7,left:0x94d3ee,legs:0xe2
 let baselineData,calibratedData,calibrationReport,pelvisData,pelvisReport,stanceData,stanceReport,l5s1Data,l5s1Report,headData,headReport;let currentVersion="headneck";let data,top,seq,frame=0,playing=false,start=null,view="front",fhsManifest,meshes=[],stats={},errors=[],fhsBusy=false;
 const vec=a=>new THREE.Vector3(...a),get=async url=>{const r=await fetch(url);if(!r.ok)throw Error(url+" HTTP "+r.status);return r.json()};
 const versionLabels={baseline:"0.5",calibrated:"0.6",pelvis:"0.7",stance:"0.8",l5s1:"0.9",headneck:"1.0"};
-function status(){document.querySelector("h2").textContent=currentVersion==="headneck"?"Unified Human Rig · 1.6 — КТ таза":"Unified Human Rig · "+versionLabels[currentVersion]+" — сравнение";const s=Object.entries(stats).map(([k,v])=>k+": "+v.ok+"/"+v.total+(v.lines?" · линий "+v.lines:"")).join(" | ");$("#status").textContent=(seq?seq.label+" · "+(frame+1)+"/"+seq.frames.length+" · OpenSim\n":"")+s+"\n"+(stats.FHS?.ok?"FHS подключён":"FHS: выберите оригинальный ZIP или используйте ранее сохранённый архив.")+(errors.length?"\nОшибки ("+errors.length+"): "+errors.slice(0,5).join("; "):"");}
+function status(){document.querySelector("h2").textContent=currentVersion==="headneck"?"Unified Human Rig · 1.6.1 — КТ таза":"Unified Human Rig · "+versionLabels[currentVersion]+" — сравнение";const s=Object.entries(stats).map(([k,v])=>k+": "+v.ok+"/"+v.total+(v.lines?" · линий "+v.lines:"")).join(" | ");$("#status").textContent=(seq?seq.label+" · "+(frame+1)+"/"+seq.frames.length+" · OpenSim\n":"")+s+"\n"+(stats.FHS?.ok?"FHS подключён":"FHS: выберите оригинальный ZIP или используйте ранее сохранённый архив.")+(errors.length?"\nОшибки ("+errors.length+"): "+errors.slice(0,5).join("; "):"");}
 function pelvicBody(n){return /^(pelvis|sacrum|lumbar[1-5]|femur_[rl])$/.test(n)}
 function visible(m,n){const r=$("#region").value;return r==="hips"?/^(pelvis|sacrum|lumbar[345]|femur_[rl])$/.test(n):r==="pelvisonly"?/^(pelvis|sacrum)$/.test(n):r==="thorax"?/^(thoracic(?:[1-9]|1[0-2])|rib(?:[1-9]|1[0-2])_[RL]|sternum)$/.test(n):r==="upperthorax"?/^(cerv[67]|thoracic[1-3]|rib[1-3]_[RL]|sternum)$/.test(n):r==="frontthorax"?/^(rib[1-7]_[RL]|sternum)$/.test(n):r==="lowerthorax"?/^(thoracic1[0-2]|rib1[0-2]_[RL]|lumbar[12])$/.test(n):r==="spine"?/^(cerv[1-7]|thoracic(?:[1-9]|1[0-2])|lumbar[1-5]|sacrum)$/.test(n):r==="tl"?/^(thoracic1[0-2]|lumbar[1-3])$/.test(n):r==="ls"?/^(lumbar[3-5]|sacrum|pelvis)$/.test(n):r==="ctblock"?/^(skull|jaw|cerv[1-7]|thoracic[1-5])$/.test(n):r==="junction"?/^(cerv[5-7]|thoracic[1-5])$/.test(n):r==="pelvic"?pelvicBody(n):r==="all"||r==="axial"&&["fhs","masi"].includes(m)||r===m}
 function visibility(){const mode=$("#mode").value;for(const o of meshes){o.visible=visible(o.userData.module,isNativeSacrum(o)?"sacrum":o.userData.body)&&(!(o.userData.group==="FHS"&&/^(pelvis|sacrum)$/.test(o.userData.body))||!["pelvis","stance","l5s1","headneck"].includes(currentVersion))&&(o.userData.group!=="NativePelvis"||["pelvis","stance","l5s1","headneck"].includes(currentVersion))&&(o.userData.body!=="jaw"||currentVersion==="headneck")&&mode!=="none"&&(!o.userData.ribProxy||$("#ribtubes").checked)&&(!o.userData.ribOriginal||!$("#ribtubes").checked);if(o.userData.group==="CTNeck")o.visible=o.visible&&currentVersion==="headneck"&&$("#ctMode").value!=="original";if(o.userData.group==="CTPelvis")o.visible=o.visible&&hipCTReady&&currentVersion==="headneck"&&$("#ctMode").value!=="original"&&$("#pelvisMode").value!=="original";if(isHipOriginal(o)&&hipCTReady&&currentVersion==="headneck"&&$("#ctMode").value!=="original"&&$("#pelvisMode").value==="ct")o.visible=false;if(o.userData.group==="CTThorax")o.visible=o.visible&&thoraxReady&&currentVersion==="headneck"&&$("#ctMode").value!=="original"&&$("#thoraxMode").value!=="original";if(isThoraxOriginal(o)&&thoraxReady&&currentVersion==="headneck"&&$("#ctMode").value!=="original"&&$("#thoraxMode").value==="ct")o.visible=false;if(isCTOriginal(o)&&ctReady&&currentVersion==="headneck"&&$("#ctMode").value==="ct")o.visible=false;const overlay=ctReady&&currentVersion==="headneck"&&$("#ctMode").value==="overlay"&&isCTOriginal(o)||thoraxReady&&currentVersion==="headneck"&&$("#ctMode").value!=="original"&&$("#thoraxMode").value==="overlay"&&isThoraxOriginal(o);const hipOverlay=hipCTReady&&currentVersion==="headneck"&&$("#ctMode").value!=="original"&&$("#pelvisMode").value==="overlay"&&isHipOriginal(o);const m=o.material;m.transparent=mode==="transparent"||overlay||hipOverlay;m.opacity=(overlay||hipOverlay)?.22:mode==="transparent"?.38:1;m.depthWrite=!m.transparent;if(o.isMesh)m.wireframe=mode==="wire";m.needsUpdate=true;}jointRoot.visible=$("#links").checked;apply(frame);}
@@ -249,9 +249,9 @@ async function ctLoad(files){
   $("#ctMeasurements").hidden=false;$("#ctTable").replaceChildren(...d.map(v=>{const el=document.createElement("div");el.textContent=v.pair+": "+fmt(v.originalMm)+" → "+fmt(v.ctMm);return el}));
   thoraxInvalidate();hipCTInvalidate();visibility();fit();
   $("#thoraxLoad").disabled=$("#thoraxFiles").disabled=$("#pelvisLoad").disabled=$("#pelvisFiles").disabled=false;
-  await hipCTLoad();
+  hipCTMsg("Позвоночник готов. Запускаю загрузку таза…");await hipCTLoad();
   if(wantsThorax())await thoraxLoad();else thoraxMsg("Грудная клетка: загрузится при выборе торса или всего тела.");
- }catch(e){ctMsg("КТ: "+e.message+". "+(ctReady?"Предыдущая КТ сохранена.":"Показана исходная MASI. Можно повторить загрузку или выбрать 25 STL локально."));}
+ }catch(e){if(ctReady){hipCTMsg("Позвоночник готов, но запуск таза прерван: "+e.message+". Можно повторить отдельно.");$("#pelvisLoad").disabled=$("#pelvisFiles").disabled=false;}ctMsg("КТ: "+e.message+". "+(ctReady?"Предыдущая КТ сохранена.":"Показана исходная MASI. Можно повторить загрузку или выбрать 25 STL локально."));}
  finally{geos.forEach(g=>g.dispose());$("#cacheInfo").textContent=ctCacheText();ctBusy=false;$("#ctLoad").disabled=$("#ctFiles").disabled=false;}
 }
 $("#ctMode").onchange=()=>{visibility();fit()};
@@ -397,10 +397,55 @@ function hipCTInvalidate(){
  meshes=meshes.filter(o=>o.userData.group!=="CTPelvis");delete stats.CTPelvis;
  $("#pelvisMode").disabled=true;$("#pelvisDetails").hidden=true;
 }
+
+function hipBound(p,ms,label){
+ let timer;return Promise.race([p,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error(label)),ms)})]).finally(()=>clearTimeout(timer));
+}
+async function hipBytes(url,onProgress,onStage){
+ const key=new URL("./.ct-cache/"+encodeURIComponent(url),location.href).href;
+ let cache=null;
+ try{cache=await hipBound(ctCacheOpen(),4000,"Кэш недоступен")}catch(e){}
+ if(cache){try{
+  const hit=await hipBound(cache.match(key),4000,"Чтение кэша задерживается");
+  if(hit){const bytes=await hipBound(hit.arrayBuffer(),8000,"Чтение STL из кэша задерживается");if(bytes.byteLength>=84){ctCacheHits++;onProgress(bytes.byteLength);onStage("из кэша");return bytes;}}
+ }catch(e){ctCacheFailed=true;}}
+ let lastError;
+ for(let attempt=1;attempt<=2;attempt++){
+  const controller=new AbortController();let timeout;
+  const arm=()=>{clearTimeout(timeout);timeout=setTimeout(()=>controller.abort(),35000)};
+  try{
+   onProgress(0);onStage(attempt===1?"соединение":"повтор 2/2");arm();
+   const response=await fetch(url,{signal:controller.signal});
+   if(!response.ok)throw Error("HTTP "+response.status);
+   let bytes;
+   if(response.body?.getReader){
+    const reader=response.body.getReader(),chunks=[];let total=0;
+    while(true){arm();const {done,value}=await reader.read();if(done)break;chunks.push(value);total+=value.byteLength;onProgress(total);onStage("скачивание");}
+    const a=new Uint8Array(total);let pos=0;for(const chunk of chunks){a.set(chunk,pos);pos+=chunk.length;}bytes=a.buffer;
+   }else{arm();bytes=await response.arrayBuffer();onProgress(bytes.byteLength);}
+   if(bytes.byteLength<84)throw Error("Пустой STL");
+   // Binary STL has an exact byte count; reject incomplete transfers.
+   const count=new DataView(bytes).getUint32(80,true);
+   if(84+50*count!==bytes.byteLength){
+    const prefix=new TextDecoder().decode(new Uint8Array(bytes,0,Math.min(80,bytes.byteLength))).trim();
+    if(!/^solid\b/i.test(prefix))throw Error("Неполный или неверный STL");
+   }
+   ctNetworkBytes+=bytes.byteLength;onStage("скачан");
+   if(cache){try{await hipBound(cache.put(key,new Response(bytes,{headers:{"Content-Type":"application/octet-stream"}})),5000,"Запись кэша задерживается");ctCacheWrites++;}catch(e){ctCacheFailed=true;}}
+   return bytes;
+  }catch(e){lastError=e.name==="AbortError"?Error("нет данных от сервера 35 секунд"):e;if(attempt===1)onStage("повтор после ошибки");}
+  finally{clearTimeout(timeout);}
+ }
+ throw lastError;
+}
+
 async function hipCTLoad(files){
  if(hipCTBusy||thoraxBusy||!ctReady)return;
  hipCTBusy=true;$("#pelvisLoad").disabled=$("#pelvisFiles").disabled=$("#ctLoad").disabled=$("#ctFiles").disabled=$("#thoraxLoad").disabled=$("#thoraxFiles").disabled=true;
  let staged=[];
+ const received=[0,0],stages=["ожидание","ожидание"],progress=$("#hipProgress");progress.hidden=false;progress.value=0;
+ const draw=()=>{progress.value=Math.min(progress.max,(received[0]+received[1])/1e6);$("#hipTransfer").textContent="Правая: "+(received[0]/1e6).toFixed(1)+" МБ ("+stages[0]+") · левая: "+(received[1]/1e6).toFixed(1)+" МБ ("+stages[1]+")";};
+ hipCTMsg("КТ таз: начинаю загрузку двух костей (20,3 МБ).");draw();
  try{
   const report=ctReport,ref=headData.sequences.find(s=>s.id===report.reference);
   if(!ref)throw Error("Нет опорного кадра");
@@ -415,7 +460,8 @@ async function hipCTLoad(files){
    const d=hipCTSources[i];
    let bytes;
    if(files){const file=files.find(x=>x.name.toUpperCase()===d.file.toUpperCase());if(!file)throw Error("Нет "+d.file);bytes=await file.arrayBuffer()}
-   else bytes=await ctCachedBytes(hipCTBase+d.dir+"/"+d.file+"?download=true");
+   else bytes=await hipBytes(hipCTBase+d.dir+"/"+d.file+"?download=true",n=>{received[i]=n;draw()},s=>{stages[i]=s;draw()});
+   received[i]=bytes.byteLength;stages[i]="обработка STL";draw();await new Promise(r=>setTimeout(r,0));
    const g=ctLoader.parse(bytes);staged[i]={d,g};
    const p=g.getAttribute("position");
    if(!p||p.count<300||!p.array.every(Number.isFinite))throw Error("Некорректная сетка "+d.file);
@@ -434,10 +480,11 @@ async function hipCTLoad(files){
    const jointIndex=headData.jointNames.indexOf(d.joint),joint=jointIndex>=0&&f.points[jointIndex]?vec(f.points[jointIndex]):null;
    const jointSurfaceMm=joint?Math.sqrt(ctNearest(joint,ctTree(w)))*1000:null;
    const oldJointSurfaceMm=joint&&oldPoints?Math.sqrt(ctNearest(joint,ctTree(oldPoints)))*1000:null;
+   stages[i]="измерения";draw();await new Promise(r=>setTimeout(r,0));
    const info={side:d.side,triangles:p.count/3,sacGapMm:sacGap,sideOffsetMm:sideOffset,femurGapMm:femurPoints.length?ctMinDistance(w,femurPoints):null,oldFemurGapMm:femurPoints.length&&oldPoints?ctMinDistance(oldPoints,femurPoints):null,jointSurfaceMm,oldJointSurfaceMm,oldSurfaceRmsMm:oldPoints?Math.sqrt((ctDistance(w,oldPoints)+ctDistance(oldPoints,w))/2)*1000:null};
    g.applyMatrix4(pelvisWorld.clone().invert().multiply(donorToWorld));g.computeVertexNormals();g.computeBoundingBox();
    staged[i].info=info;staged[i].points=w;
-   ctProgress(hipCTMsg,"Таз: "+(++loaded)+"/2");await new Promise(r=>setTimeout(r,0));
+   stages[i]="готово";draw();ctProgress(hipCTMsg,"Таз: "+(++loaded)+"/2");await new Promise(r=>setTimeout(r,0));
   });
   const symphysisGap=ctMinDistance(staged[0].points,staged[1].points),infos=staged.map(x=>x.info);
   hipCTInvalidate();
@@ -449,12 +496,13 @@ async function hipCTLoad(files){
   hipCTReport={reference:ref.id,source:"BoneHub Visible Human Male HIP_LEFT and HIP_RIGHT",method:"same rigid donor transform as spine; existing hip joints unchanged",bones:infos,sampledInterHipDistanceMm:symphysisGap};
   $("#pelvisMode").disabled=false;$("#pelvisMode").value="ct";
   const fmt=x=>x===null?"нет данных":x.toFixed(1)+" мм";
+  progress.value=progress.max;
   hipCTMsg("КТ таз 2/2 · крестец того же донора. Мин. расстояния до крестца: справа "+fmt(infos[0].sacGapMm)+", слева "+fmt(infos[1].sacGapMm)+". Между тазовыми костями: "+fmt(symphysisGap)+". Бедренные кости и центры суставов пока прежние.");
   $("#pelvisDetails").hidden=false;$("#pelvisTable").replaceChildren(...infos.map(x=>{
    const el=document.createElement("div");el.textContent=(x.side==="R"?"Правый":"Левый")+" таз: до бедра "+fmt(x.oldFemurGapMm)+" → "+fmt(x.femurGapMm)+"; от старого центра сустава до ближайшей поверхности "+fmt(x.oldJointSurfaceMm)+" → "+fmt(x.jointSurfaceMm)+"; RMS исходной и КТ кости "+fmt(x.oldSurfaceRmsMm);return el
   }));
   visibility();fit();
- }catch(e){hipCTMsg("Таз: "+e.message+". "+(hipCTReady?"Предыдущая КТ сохранена.":"Показан исходный таз; позвоночник сохранён."));}
+ }catch(e){hipCTMsg("Таз: "+e.message+". "+(hipCTReady?"Предыдущая КТ сохранена.":"Показан исходный таз; позвоночник сохранён. Нажмите «Загрузить таз» для повтора."));}
  finally{staged.forEach(x=>x.g.dispose());hipCTBusy=false;$("#pelvisLoad").disabled=$("#pelvisFiles").disabled=!ctReady;$("#thoraxLoad").disabled=$("#thoraxFiles").disabled=!ctReady;$("#ctLoad").disabled=$("#ctFiles").disabled=ctBusy;$("#cacheInfo").textContent=ctCacheText();}
 }
 $("#pelvisMode").onchange=()=>{visibility();fit()};
