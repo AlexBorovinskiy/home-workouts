@@ -57,7 +57,7 @@ def main():
         try:add(b,urllib.request.urlopen('https://raw.githubusercontent.com/MyoHub/myoconverter/main/models/osim/Neck6D/Geometry/'+d['file'],timeout=30).read(),d['scale'])
         except Exception as e:failures[b]=str(e)
     add('native_sacrum',urllib.request.urlopen('https://raw.githubusercontent.com/opensim-org/opensim-models/master/Models/Rajagopal/Geometry/sacrum.vtp',timeout=30).read(),[1,1,1],'pelvis')
-    records={};planes={};plotdata=[]
+    records={};planes={};plotdata=[];refinement={};refinedplots=[]
     for j in top['joints']:
         child=j['child'];parent=j['parent']
         if child=='cerv1' or not child.startswith(('lumbar','thoracic','cerv')):continue
@@ -83,12 +83,37 @@ def main():
             ca=np.array(A['selected']['planeYFromXZ']);cb=np.array(B['selected']['planeYFromXZ']);x=np.array([seed[0],seed[2],1]);rec['centralVerticalClearanceMm']=float((cb-ca)@x*1000)
             rec['interpretation']='plane extrapolation at joint center; not contact or cartilage thickness'
         records[j['joint']]=rec
+        if not rec['bothStable']:
+            # Probe along the sagittal body axis, but never choose an anatomical
+            # endplate solely from numerical flatness. Store all stable patches.
+            aa=bodies['native_sacrum' if lower=='sacrum' else lower].triangles
+            bb=bodies[upper].triangles
+            rr=[.003,.0045,.006] if any(n.startswith('cerv') for n in (lower,upper)) else [.004,.006,.008]
+            candidates=[];validplots=[]
+            for off in range(-18,19,3):
+                shifted=seed+np.array([off/1000,0,0])
+                pair=[];cloud=[]
+                for tri,high in [(aa,True),(bb,False)]:
+                    vals=[];pts=None
+                    for rad in rr:
+                        q,p=patch(tri,shifted,high,rad)
+                        vals.append(q)
+                        if rad==rr[1]:pts=p
+                    good=all(q['valid'] and q['coverage']>=.9 and q['rmsMm']<=1 and q['centerToJointMm']<=25 for q in vals) and np.ptp([q['slopeDeg'] for q in vals])<=4
+                    pair.append({'stable':bool(good),'samples':vals});cloud.append(pts)
+                if all(x['stable'] for x in pair):
+                    pa,pb=[x['samples'][1] for x in pair]
+                    gap=float((np.array(pb['planeYFromXZ'])-pa['planeYFromXZ'])@np.array([shifted[0],shifted[2],1])*1000)
+                    candidates.append({'offsetMm':off,'lowerSlopeDeg':pa['slopeDeg'],'upperSlopeDeg':pb['slopeDeg'],'clearanceMm':gap,'lower':pa,'upper':pb})
+                    validplots.append((off,cloud))
+            refinement[j['joint']]={'candidatePairs':candidates,'acceptedAnatomically':False,'reason':'manual anatomical identification required'}
+            refinedplots.append((j['joint'],aa,bb,seed,validplots))
     def cobb(a,b):
         if a not in planes or b not in planes or not planes[a]['stable'] or not planes[b]['stable']:return None
         return abs(planes[a]['selected']['slopeDeg']-planes[b]['selected']['slopeDeg'])
     # T1 superior and C7 inferior are measured at the cervical/thoracic joint.
     measures={'lumbarL1S1CandidateDeg':cobb('lumbar1:superior','native_sacrum:superior'),'thoracicT1T12CandidateDeg':cobb('thoracic1:superior','thoracic12:inferior'),'cervicalC2C7CandidateDeg':cobb('cerv2:inferior','cerv7:inferior')}
-    report={'status':'exploratory surface patches, not anatomically certified endplates','geometrySources':{'trunk':'original FHS archive','neck':'MyoHub surrogate used by viewer','sacrum':'native Rajagopal'},'meshFailures':failures,'bodyCount':len(bodies),'planes':planes,'interfaces':records,'candidateAngles':measures,'modelModified':False,'limitations':['Joint-seeded vertical rays may hit posterior elements or non-endplate surfaces; visual review required.','All angles withheld when coverage, plane residual or ROI stability gates fail.','No inference of physical contact from plane clearance.']}
+    report={'status':'exploratory surface patches, not anatomically certified endplates','geometrySources':{'trunk':'original FHS archive','neck':'MyoHub surrogate used by viewer','sacrum':'native Rajagopal'},'meshFailures':failures,'bodyCount':len(bodies),'planes':planes,'interfaces':records,'candidateAngles':measures,'refinement':refinement,'modelModified':False,'limitations':['Joint-seeded vertical rays may hit posterior elements or non-endplate surfaces; visual review required.','All angles withheld when coverage, plane residual or ROI stability gates fail.','No inference of physical contact from plane clearance.']}
     (out/'report.json').write_text(json.dumps(report,indent=2,allow_nan=False))
     import matplotlib
     matplotlib.use('Agg')
@@ -103,5 +128,18 @@ def main():
         ax.scatter(seed[0],seed[1],s=8,c='#325c9e')
         ax.annotate(key,(pts[:,0].mean(),pts[:,1].mean()),fontsize=5,xytext=(4,0),textcoords='offset points')
     ax.autoscale();ax.set_aspect('equal');ax.set_title('v0.8 | Endplate candidate patches (green = geometric stability only)');ax.set_xlabel('Anterior x (m)');ax.set_ylabel('Superior y (m)');fig.savefig(out/'sagittal.png',dpi=170);plt.close(fig)
+    fig,axes=plt.subplots(4,4,figsize=(16,16))
+    for ax,(name,aa,bb,seed,validplots) in zip(axes.flat,refinedplots):
+        for tri,color in [(aa,'#91abc3'),(bb,'#c4cfdb')]:
+            ax.add_collection(PolyCollection(tri[:,:,:2],facecolors=color,edgecolors='none',alpha=.16))
+        for off,cloud in validplots:
+            for p,color in zip(cloud,['#2166ac','#b2182b']):
+                ax.scatter(p[:,0],p[:,1],s=3,c=color,alpha=.65)
+            ax.annotate(str(off),(seed[0]+off/1000,seed[1]),fontsize=6,rotation=90)
+        ax.scatter(seed[0],seed[1],c='black',s=15)
+        ax.set_xlim(seed[0]-.04,seed[0]+.04);ax.set_ylim(seed[1]-.035,seed[1]+.035);ax.set_aspect('equal');ax.set_title(name+' | '+str(len(validplots))+' candidate pairs',fontsize=9)
+    for ax in list(axes.flat)[len(refinedplots):]:ax.axis('off')
+    fig.tight_layout();fig.savefig(out/'refined.png',dpi=150);plt.close(fig)
+    print('REFINEMENT_QA',json.dumps({k:[{n:round(x[n],3) for n in ['offsetMm','lowerSlopeDeg','upperSlopeDeg','clearanceMm']} for x in v['candidatePairs']] for k,v in refinement.items()}))
     print('ENDPLATE_QA',json.dumps({'bodyCount':len(bodies),'failures':failures,'stable':sum(x['stable'] for x in planes.values()),'total':len(planes),'angles':measures,'l5s1':records.get('L5_S1_IVDjnt')}))
 if __name__=='__main__':main()
