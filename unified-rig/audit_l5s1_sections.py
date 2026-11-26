@@ -8,6 +8,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
+from trimesh.intersections import mesh_plane
 
 def main():
     p=argparse.ArgumentParser();p.add_argument('archive');p.add_argument('poses');p.add_argument('out');a=p.parse_args()
@@ -37,10 +38,10 @@ def main():
     (out/'ray-grid.json').write_text(json.dumps({'frame':'L5 axes, origin L5/S1 child joint','xMm':(x*1000).tolist(),'zMm':(z*1000).tolist(),'gridOrder':'x outer, z inner','worldOriginM':origin.tolist(),'frameBasis':R.tolist(),'intersectionsYMm':raw},separators=(',',':')))
     colors={'lumbar5':'#23589b','sacrum':'#8895a5','native_sacrum':'#bc5036'}
     def section(ax,b,axis,offset):
-        n=np.eye(3)[axis];s=meshes[b].section(plane_origin=n*offset,plane_normal=n)
-        if s is None:return
+        n=np.eye(3)[axis];s=mesh_plane(meshes[b],plane_normal=n,plane_origin=n*offset)
+        if not len(s):return
         dims=[k for k in range(3) if k!=axis]
-        for poly in s.discrete:ax.plot(poly[:,dims[0]]*1000,poly[:,dims[1]]*1000,color=colors[b],lw=1.4)
+        ax.add_collection(LineCollection(s[:,:,dims]*1000,colors=colors[b],linewidths=1.4));ax.autoscale_view()
     fig,axs=plt.subplots(2,3,figsize=(15,10))
     for ax,zz in zip(axs[0],[0,.008,.016]):
         for b in meshes:section(ax,b,2,zz)
@@ -48,9 +49,9 @@ def main():
     for ax,xx in zip(axs[1],[-.008,.006,.020]):
         # section helper returns local y then z; swap for coronal plot.
         for b in meshes:
-            s=meshes[b].section(plane_origin=[xx,0,0],plane_normal=[1,0,0])
-            if s:
-                for poly in s.discrete:ax.plot(poly[:,2]*1000,poly[:,1]*1000,color=colors[b],lw=1.4)
+            s=mesh_plane(meshes[b],plane_origin=[xx,0,0],plane_normal=[1,0,0])
+            if len(s):
+                ax.add_collection(LineCollection(s[:,:,[2,1]]*1000,colors=colors[b],linewidths=1.4));ax.autoscale_view()
         ax.set_title(f'Coronal x={xx*1000:.0f} mm');ax.set_xlabel('Lateral z (mm)');ax.set_ylabel('Local y (mm)')
     for ax in axs.flat:ax.set_aspect('equal');ax.grid(alpha=.2);ax.set_ylim(-65,45)
     fig.legend([plt.Line2D([0],[0],color=colors[b]) for b in meshes],list(meshes),loc='upper center',ncol=3);fig.tight_layout(rect=[0,0,1,.94]);fig.savefig(out/'sections.png',dpi=160);plt.close(fig)
