@@ -1,0 +1,76 @@
+name: QA head neck mobile geometry
+on:
+  workflow_run:
+    workflows: ["Verify head and neck proportion correction"]
+    types: [completed]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --prefix /tmp/head-browser --no-audit --no-fund playwright-core@1.56.1
+      - name: Restore FHS geometry for visual comparison
+        run: |
+          for url in 'https://zenodo.org/api/records/18259702/files/FHS_dataset_4.x.zip/content' 'https://zenodo.org/records/18259702/files/FHS_dataset_4.x.zip?download=1'; do
+            if curl -fL --retry 1 --retry-all-errors --max-time 160 "$url" -o /tmp/fhs.zip && echo 'd2db8c587afb5d1ee0c8081f84c43f8e  /tmp/fhs.zip' | md5sum -c -; then break; fi
+            rm -f /tmp/fhs.zip
+          done
+          test -s /tmp/fhs.zip
+      - name: Check native head and neck shapes and motion in mobile browser
+        run: |
+          mkdir -p qa-head-view
+          python3 -m http.server 8784 --bind 127.0.0.1 >/tmp/head-http.log 2>&1 &
+          node --input-type=module <<'NODE'
+          import {chromium} from '/tmp/head-browser/node_modules/playwright-core/index.mjs';
+          import {writeFileSync} from 'node:fs';
+          const browser=await chromium.launch({channel:'chrome',headless:true,args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+          const page=await browser.newPage({viewport:{width:430,height:932},isMobile:true,hasTouch:true,deviceScaleFactor:1});
+          const errors=[];page.on('pageerror',e=>errors.push(e.message));
+          try{
+            await page.goto('http://127.0.0.1:8784/unified-rig/head-neck.html',{waitUntil:'domcontentloaded',timeout:90000});
+            await page.waitForFunction(()=>window.__unifiedSurfaceQA?.version==='headneck',null,{timeout:120000});
+            await page.locator('#zip').setInputFiles('/tmp/fhs.zip');
+            await page.waitForFunction(()=>{const q=window.__unifiedSurfaceQA?.stats.FHS;return q&&q.ok===q.total&&q.total===45},null,{timeout:150000});
+            const audit=()=>page.evaluate(()=>{const q=window.__unifiedSurfaceQA;return {version:q.version,stats:q.stats,errors:q.errors,neck:q.meshes.filter(m=>m.visible&&m.userData.module==='masi').map(m=>({body:m.userData.body,scale:m.scale.toArray()})),sequences:q.data.sequences.length}});
+            const report={};
+            await page.locator('#region').selectOption('all');await page.locator('#links').uncheck();
+            for(const v of ['l5s1','headneck']){
+              await page.locator('#version').selectOption(v);await page.waitForFunction(x=>window.__unifiedSurfaceQA.version===x,v);
+              await page.locator('#sequence').selectOption('pronation');
+              let q=await audit();report[v]=q;
+              if(q.errors.length||q.stats.MASI.ok!==9)throw Error(JSON.stringify(q));
+              if(v==='headneck'&&(q.neck.length!==9||q.sequences!==10||q.neck.some(m=>m.scale.some(x=>Math.abs(x-.88875)>1e-7))))throw Error(JSON.stringify(q));
+              if(v==='l5s1'&&(q.neck.length!==8||q.neck.some(m=>m.scale.some(x=>Math.abs(x-1)>1e-7))))throw Error(JSON.stringify(q));
+              for(const view of ['front','side']){await page.locator('[data-view="'+view+'"]').click();await page.waitForTimeout(400);await page.locator('#stage').screenshot({path:'qa-head-view/'+v+'-'+view+'.png'});}
+              await page.locator('#region').selectOption('masi');
+              await page.locator('[data-view="side"]').click();await page.waitForTimeout(400);
+              await page.locator('#stage').screenshot({path:'qa-head-view/'+v+'-neck.png'});
+              await page.locator('#region').selectOption('all');
+            }
+            await page.locator('#region').selectOption('masi');
+            for(const id of ['neck_flex','neck_extend','neck_turn','neck_side']){
+              await page.locator('#sequence').selectOption(id);await page.locator('#phase').evaluate(e=>{e.value=e.max;e.dispatchEvent(new Event('input'))});
+              await page.locator('[data-view="'+(id==='neck_side'?'front':'side')+'"]').click();await page.waitForTimeout(400);await page.locator('#stage').screenshot({path:'qa-head-view/'+id+'.png'});
+            }
+            if(errors.length)throw Error(errors.join(';'));
+            writeFileSync('qa-head-view/report.json',JSON.stringify({report,passed:true},null,2));
+            console.log('HEAD_NECK_BROWSER_QA_SUCCESS');
+          }catch(e){writeFileSync('qa-head-view/failure.txt',String(e)+'\n'+errors.join('\n'));await page.screenshot({path:'qa-head-view/failure.png'}).catch(()=>{});throw e}
+          finally{await browser.close()}
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: head-neck-mobile-review
+          path: qa-head-view/
+          retention-days: 14
