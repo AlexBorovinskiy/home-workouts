@@ -1,0 +1,53 @@
+name: CT rig browser QA
+on:
+  pull_request:
+    paths:
+      - 'qa/**'
+      - 'unified-rig/**'
+      - 'opensim-lab/assets/**'
+      - '.github/workflows/ct-rig-qa.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ct-rig-qa-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  chromium:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser runner
+        run: |
+          npm install --no-save --no-package-lock playwright@1.51.1
+          npx playwright install --with-deps chromium
+          node --check qa/run-ct-browser.mjs
+      - name: Cache public source archive
+        uses: actions/cache@v4
+        with:
+          path: .qa-cache/fhs.zip
+          key: fhs-zenodo-18259702-4x-v1
+      - name: Download and check FHS archive
+        run: |
+          mkdir -p .qa-cache qa-results
+          if ! test -s .qa-cache/fhs.zip; then
+            curl --fail --location --retry 3 --connect-timeout 30 --max-time 600 'https://zenodo.org/records/18259702/files/FHS_dataset_4.x.zip?download=1' -o .qa-cache/fhs.zip.part
+            mv .qa-cache/fhs.zip.part .qa-cache/fhs.zip
+          fi
+          python3 -m zipfile -t .qa-cache/fhs.zip
+      - name: Run full knee-axis comparison
+        run: node qa/run-ct-browser.mjs
+      - name: Upload QA outputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ct-rig-qa
+          path: qa-results/
+          if-no-files-found: warn
+          retention-days: 7
