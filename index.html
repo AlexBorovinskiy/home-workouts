@@ -252,6 +252,7 @@ function playTechniqueVideo(id){
 }
 function hideTech(){openEx=null;const o=document.getElementById('overlay');o.classList.remove('open');o.setAttribute('aria-hidden','true');document.getElementById('modal').innerHTML=''}
 function saveSession(){
+ if(restState)finishRest();
  const entries=[];for(const id of ids(type)){const sets=(draft.entries[id]||[]).filter(s=>s.reps!==''&&s.reps!==null&&Number(s.reps)>0).map(s=>({reps:Number(s.reps),weight:EX[id].equipment?Number(s.weight)||0:0,...(s.restAfterSec!=null?{restAfterSec:Number(s.restAfterSec)||0}:{}),...(s.recordedAt?{recordedAt:s.recordedAt}:{})}));if(sets.length)entries.push({id,sets})}
  if(!entries.length){notify('Запиши хотя бы один выполненный подход.');return}
  if(!/^\d{4}-\d\d-\d\d$/.test(draft.date)){notify('Проверь дату тренировки.');return}
