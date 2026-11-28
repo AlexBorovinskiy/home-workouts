@@ -57,6 +57,7 @@ async function uploadRemote(id){
   if(snapshot(db)!==fp){pending=true;}
 }
 function importRemote(cloud){
+  if(activeWorkout()||editId)throw Error('Заверши текущую тренировку или редактирование перед загрузкой облачной истории. Черновик сохранён.');
   validImport(cloud);applying=true;
   try{
     db={schemaVersion:VERSION,prefs:{...db.prefs,...cloud.prefs},sessions:cloud.sessions,measurements:cloud.measurements,lastBackupAt:cloud.lastBackupAt||null};
@@ -105,6 +106,7 @@ function backupLocal(){
   download('moi-trenirovki-pered-sliyaniem-'+today()+'.json',payload(),'application/json;charset=utf-8');
 }
 async function merge(){
+  if(activeWorkout()||editId)return note('Заверши текущую тренировку или редактирование перед объединением. Черновик сохранён.');
   if(!validToken())return note('Подключи Google, чтобы объединить данные.');
   if(!confirm('Объединить записи iPhone и Google Диска по ID? Перед объединением скачается локальная резервная копия. Удалённые на одном устройстве записи могут вернуться.'))return;
   busy=true;note('Объединяю записи, сохраняя резервную копию…');
