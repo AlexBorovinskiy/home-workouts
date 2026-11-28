@@ -133,6 +133,7 @@ const copy=x=>JSON.parse(JSON.stringify(x));
 const defaultFrames=()=>[{}, {}, {}];
 let frames=defaultFrames(),pose={},selected=0,playing=false,playhead=0,lastTime=0,loaded=false,rig={},rest={},mesh=null,dumbbells=[],skel=null,part=null,groups=[],vertexColors=null;
 let handholdGrips=null,handSkin=null;
+const handleRadius=.010,plateOffset=.074,plateWidth=.022;
 let yaw=.15,pitch=.06,zoom=3.75,panX=0,panY=0,activeName='Сгибание рук с гантелями',targetGroup='arms_front';
 const scene=new THREE.Scene(),cam=new THREE.PerspectiveCamera(34,1,.02,80),renderer=new THREE.WebGLRenderer({canvas:ui.canvas,antialias:true,alpha:true,powerPreference:'high-performance'});
 renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.7));renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.15;renderer.setClearColor(0x081928,0);
@@ -154,10 +155,10 @@ function addDumbbells(){
  for(const side of ['L','R']){
    const hand=rig['hand.'+side];if(!hand)continue;
    const g=new THREE.Group();g.position.set(0,.063,.006);
-   const handle=new THREE.Mesh(new THREE.CylinderGeometry(.010,.010,.18,14),barMat);
+   const handle=new THREE.Mesh(new THREE.CylinderGeometry(handleRadius,handleRadius,.18,14),barMat);
    handle.rotation.z=Math.PI/2;g.add(handle);
-   for(const x of [-.074,.074]){
-      const disc=new THREE.Mesh(new THREE.CylinderGeometry(.052,.052,.022,20),discMat);
+   for(const x of [-plateOffset,plateOffset]){
+      const disc=new THREE.Mesh(new THREE.CylinderGeometry(.052,.052,plateWidth,20),discMat);
       disc.rotation.z=Math.PI/2;disc.position.x=x;g.add(disc);
    }
    hand.add(g);dumbbells.push(g);
@@ -214,6 +215,29 @@ function positionDumbbellsForGrip(){
     g.quaternion.fromArray(saved.quaternion).normalize();
     g.scale.fromArray(saved.scale);
   }
+}
+async function measureGripSurfaces(){
+ const {measureHandleSurface,skinnedHandleVertices}=await import('./handle-surface.js');
+ if(!handSkin?.isEnabled()||!dumbbells.every(g=>g.visible))throw Error('Включите объёмные кисти и гантели');
+ handSkin.update();
+ return Object.fromEntries(handSkin.overlays.map(({side,source})=>{
+   const equipment=dumbbells[side==='L'?0:1];
+   const worldToHandle=equipment.matrixWorld.clone().invert();
+   const worldAxisLengthScale=equipment.getWorldScale(new THREE.Vector3()).toArray();
+   const summaries=[];
+   source.traverse(mesh=>{
+     if(!mesh.isSkinnedMesh||!mesh.visible)return;
+     const vertices=skinnedHandleVertices(mesh,worldToHandle);
+     summaries.push(measureHandleSurface(vertices,mesh.geometry.index,plateOffset-plateWidth/2,handleRadius));
+   });
+   const gaps=summaries.map(report=>report.minRadialGapM).filter(Number.isFinite);
+   return [side,{
+     trianglesInShaft:summaries.reduce((total,report)=>total+report.trianglesInShaft,0),
+     penetratingTriangles:summaries.reduce((total,report)=>total+report.penetratingTriangles,0),
+     minNominalRadialGapM:gaps.length?Math.min(...gaps):null,
+     worldAxisLengthScale,
+   }];
+ }));
 }
 function drawAxes(){const a=getAngles(ui.joint.value);for(let i=0;i<3;i++){const n=['X','Y','Z'][i];$('#angle'+n).value=a[i];$('#out'+n).textContent=Math.round(a[i])+'°'}}
 function applySlider(){
@@ -330,6 +354,7 @@ async function loadModel(){
    // Hidden diagnostic hook: no experimental grip controls in the user interface.
    window.__skinPreviewDebug={
      getState:()=>({enabled:handSkin.isEnabled(),maskedVertices:handSkin.maskedVertices}),
+     measureGripSurfaces,
      setCamera:(opts)=>{zoom=opts.zoom??zoom;panY=opts.panY??panY;panX=opts.panX??panX;yaw=opts.yaw??yaw;pitch=opts.pitch??pitch}
    };
    handSkin.setEnabled(true);

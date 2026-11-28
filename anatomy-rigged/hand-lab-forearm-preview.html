@@ -63,7 +63,7 @@ import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {createForearmExtension} from './forearm-extension.js';
-import {measureHandleSurface} from './handle-surface.js';
+import {measureHandleSurface,skinnedHandleVertices} from './handle-surface.js';
 const $=s=>document.querySelector(s),holder=$('#viewer'),canvas=$('#canvas'),hud=$('#hud'),report=$('#report');
 const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(35,1,.012,20);
 const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true,preserveDrawingBuffer:true});
@@ -155,8 +155,7 @@ function checkContact(){
  const groups=['index','middle','ring','pinky','thumb'];
  const names={index:'Указательный',middle:'Средний',ring:'Безымянный',pinky:'Мизинец',thumb:'Большой'};
  const results=Object.fromEntries(groups.map(k=>[k,{samples:0,near:0,penetration:0,deep:0,minGap:Infinity}]));
- const meshToHandle=bar.matrixWorld.clone().invert().multiply(mesh.matrixWorld);
- const vertices=Array.from({length:pos.count},(_,i)=>mesh.getVertexPosition(i,new THREE.Vector3()).applyMatrix4(meshToHandle));
+ const vertices=skinnedHandleVertices(mesh,bar.matrixWorld.clone().invert());
  const surface=measureHandleSurface(vertices,mesh.geometry.index,plateOffset-plateWidth/2,handleRadius);
  let samples=0,near=0,penetration=0,min=Infinity;
  const step=Math.max(1,Math.ceil(pos.count/12000));

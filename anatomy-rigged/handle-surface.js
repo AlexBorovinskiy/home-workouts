@@ -45,3 +45,9 @@ export function measureHandleSurface(vertices, index, halfShaft, radius) {
   }
   return {trianglesInShaft, penetratingTriangles, minRadialGapM: Number.isFinite(minRadialGapM) ? minRadialGapM : null};
 }
+
+export function skinnedHandleVertices(mesh, worldToHandle) {
+  const transform = worldToHandle.clone().multiply(mesh.matrixWorld);
+  const count = mesh.geometry.getAttribute('position').count;
+  return Array.from({length: count}, (_, i) => mesh.getVertexPosition(i, mesh.position.clone()).applyMatrix4(transform));
+}
