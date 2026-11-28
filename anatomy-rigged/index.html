@@ -39,7 +39,7 @@ try{THREE=await import('three');({GLTFLoader}=await import('three/addons/loaders
 const scene=new THREE.Scene(),renderer=new THREE.WebGLRenderer({canvas:ui.canvas,antialias:true,alpha:true,powerPreference:'high-performance'});renderer.setClearColor(0x0c2331,0);renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.65));renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.15;renderer.outputColorSpace=THREE.SRGBColorSpace;
 const camera=new THREE.PerspectiveCamera(33,1,.01,50);scene.add(new THREE.HemisphereLight(0xe2fbff,0x344656,1.7));const key=new THREE.DirectionalLight(0xffe5db,2.3);key.position.set(1.6,4,5);scene.add(key);const back=new THREE.DirectionalLight(0x87e9e3,1.0);back.position.set(-4,1,-2);scene.add(back);
 const floor=new THREE.Mesh(new THREE.CylinderGeometry(.77,.82,.03,64),new THREE.MeshStandardMaterial({color:0x16394a,roughness:1}));floor.position.y=-.035;scene.add(floor);const ring=new THREE.Mesh(new THREE.TorusGeometry(.81,.006,8,90),new THREE.MeshBasicMaterial({color:0x4b8791}));ring.rotation.x=Math.PI/2;ring.position.y=-.017;scene.add(ring);
-let model,rig={},rest={},skeletonHelper=null,muscleMesh=null,partIds=null,tendons=null,partGroups=[],colored=null,active='curl',progress=0,playing=false,speed=1,last=0,zoom=3.9,yaw=.10,pitch=.06,panX=0,panY=0,rigReady=false,frontSign=1;const restFoot={},restPelvis=new THREE.Vector3();let dumbbells=[],trainingEffortUniform=null,exerciseMask=null,gripPoseOverride=null;const viewerGroup=new THREE.Group(),orientation=new THREE.Group();scene.add(viewerGroup);viewerGroup.add(orientation);
+let model,rig={},rest={},skeletonHelper=null,muscleMesh=null,partIds=null,tendons=null,partGroups=[],colored=null,active='curl',progress=0,playing=false,speed=1,last=0,zoom=3.9,yaw=.10,pitch=.06,panX=0,panY=0,rigReady=false,frontSign=1;const restFoot={},restPelvis=new THREE.Vector3();let pushupSupport,lastPushupEffort;let dumbbells=[],trainingEffortUniform=null,exerciseMask=null,gripPoseOverride=null;const viewerGroup=new THREE.Group(),orientation=new THREE.Group();scene.add(viewerGroup);viewerGroup.add(orientation);
 const exercises={curl:{title:'Сгибание рук',desc:'Гантели у бёдер. Поднимай их контролируемо примерно до нижней части груди, не забрасывая к плечам. Плечи почти неподвижны, локти рядом с корпусом, запястья прямые.',info:'Оранжевый цвет меняется по фазе подъёма и опускания. Это учебная иллюстрация, а не измерение электромиографии или силы мышцы.',groups:['arms_front','forearms'],phase:'Сгибание в локте'},squat:{title:'Приседание',desc:'Проверяем сгибание тазобедренных и коленных суставов. Стопы должны оставаться на уровне пола; движение пока не используется как образец техники.',info:'Подсветка: квадрицепсы, ягодичные и мышцы корпуса.',groups:['quads','glutes','abs'],phase:'Приседание'},pushup:{title:'Отжимание',desc:'Проверяем плечи, локти и кисти при положении корпуса почти горизонтально. Эта поза — тест геометрии рига, не эталон упражнения.',info:'Подсветка: грудь, задняя поверхность плеча, передние дельтовидные.',groups:['chest','arms_back','shoulders'],phase:'Отжимание'}};
 function setError(err){ui.status.textContent='Ошибка загрузки';ui.loading.style.display='none';ui.error.classList.add('visible');ui.errorText.textContent=err?.message||String(err)}
 function dimensions(){let w=ui.box.clientWidth,h=ui.box.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}window.addEventListener('resize',dimensions);dimensions();
@@ -137,7 +137,7 @@ try{const [gltf,catalog]=await Promise.all([new Promise((resolve,reject)=>new GL
  // Capture the rest-world quaternion for each parent in order to rotate in anatomical axes.
  for(const [name,bone] of Object.entries(rig)){const parentQ=new THREE.Quaternion();bone.parent.getWorldQuaternion(parentQ);rest[name].parentWorldQ=parentQ;}
  skeletonHelper=new THREE.SkeletonHelper(model);scene.add(skeletonHelper);skeletonHelper.visible=false;skeletonHelper.material.color.setHex(0x8ef4df);skeletonHelper.material.depthTest=false;skeletonHelper.renderOrder=10;
- addDemoDumbbells();rigReady=true;ui.status.textContent='✓ Реальный риг · '+Object.keys(rig).length+' костей';ui.loading.style.display='none';ui.joints.textContent='Распознано '+Object.keys(rig).length+' суставов. Скелетная анимация — вращение костей с сохранением привязки мышц.';
+ pushupSupport=measurePushupSupport();addDemoDumbbells();rigReady=true;ui.status.textContent='✓ Реальный риг · '+Object.keys(rig).length+' костей';ui.loading.style.display='none';ui.joints.textContent='Распознано '+Object.keys(rig).length+' суставов. Скелетная анимация — вращение костей с сохранением привязки мышц.';
  updateColors();setExercise('curl');
  const fit=await fitDumbbellGrip({
    THREE,rig,dumbbells,initialPose:{},
@@ -153,7 +153,150 @@ function rotateWorld(name,axis,angle){const bone=rig[name];if(!bone)return;const
 function rotateWorldXYZ(name,x,y,z){const bone=rig[name];if(!bone)return;const r=rest[name];const w=new THREE.Quaternion().setFromEuler(new THREE.Euler(x,y,z,'XYZ'));const local=r.parentWorldQ.clone().invert().multiply(w).multiply(r.parentWorldQ);bone.quaternion.copy(local.multiply(r.quaternion))}
 function smooth(t){t=Math.max(0,Math.min(1,t));return t*t*(3-2*t)}
 function effort(t){if(t<.10)return 0;if(t<.45)return smooth((t-.1)/.35);if(t<.58)return 1;if(t<.93)return 1-smooth((t-.58)/.35);return 0}
-function applyPose(){if(!rigReady)return;resetBones();const a=effort(progress);
+function jointPosition(name){return rig[name].getWorldPosition(new THREE.Vector3())}
+function setJointWorldRotation(joint,world){
+ const parent=joint.parent.getWorldQuaternion(new THREE.Quaternion());
+ joint.quaternion.copy(parent.invert().multiply(world));
+ joint.updateMatrixWorld(true);
+}
+function pointJointAt(joint,child,target){
+ const start=joint.getWorldPosition(new THREE.Vector3());
+ const aim=child.getWorldPosition(new THREE.Vector3()).sub(start).normalize();
+ const direction=target.clone().sub(start).normalize();
+ const turn=new THREE.Quaternion().setFromUnitVectors(aim,direction);
+ setJointWorldRotation(joint,turn.multiply(joint.getWorldQuaternion(new THREE.Quaternion())));
+}
+function averageJointPosition(name){
+ return jointPosition(name+'.L').add(jointPosition(name+'.R')).multiplyScalar(.5);
+}
+function minimumSupportY(vertices){
+ const point=new THREE.Vector3();
+ let min=Infinity;
+ for(const i of vertices){
+  muscleMesh.getVertexPosition(i,point).applyMatrix4(muscleMesh.matrixWorld);
+  min=Math.min(min,point.y);
+ }
+ return min;
+}
+function measurePushupSupport(){
+ const {skinIndex,skinWeight}=muscleMesh.geometry.attributes;
+ const toeVertices=[],handVertices={L:[],R:[]};
+ // Keep support samples on the extremities by excluding mixed forearm and shank vertices.
+ const membership=muscleMesh.skeleton.bones.map(bone=>{
+  if(/^(hand|index_|middle_|ring_|pinky_|thumb_)/.test(bone.name))return bone.name.slice(-1);
+  if(/^toes/i.test(bone.name))return 'toe';
+  return null;
+ });
+ for(let i=0;i<skinIndex.count;i++){
+  const weights={L:0,R:0,toe:0};
+  for(let j=0;j<4;j++){
+   const group=membership[skinIndex.getComponent(i,j)];
+   if(group)weights[group]+=skinWeight.getComponent(i,j);
+  }
+  if(weights.L>=.75)handVertices.L.push(i);
+  if(weights.R>=.75)handVertices.R.push(i);
+  if(weights.toe>=.75)toeVertices.push(i);
+ }
+ if(!toeVertices.length||!handVertices.L.length||!handVertices.R.length)
+  throw Error('Не найдены опорные поверхности кистей и пальцев ног');
+ const limbs=['L','R'].map(side=>{
+  const shoulder=jointPosition('upperarm.'+side),elbow=jointPosition('forearm.'+side),wrist=jointPosition('hand.'+side);
+  const hand=rig['hand.'+side],foot=rig['foot.'+side];
+  const forward=hand.worldToLocal(jointPosition('middle_01.'+side)).normalize();
+  const across=hand.worldToLocal(jointPosition('index_01.'+side)).sub(hand.worldToLocal(jointPosition('pinky_01.'+side)));
+  across.addScaledVector(forward,-across.dot(forward)).normalize();
+  const normal=forward.clone().cross(across);
+  const basis=new THREE.Matrix4().makeBasis(across,normal,forward);
+  // Both middle fingers point forward. Index fingers face the midline.
+  const targetAcross=AXIS_X.clone().multiplyScalar(-Math.sign(wrist.x));
+  const targetBasis=new THREE.Matrix4().makeBasis(targetAcross,AXIS_Z.clone().cross(targetAcross),AXIS_Z);
+  const handRotation=new THREE.Quaternion().setFromRotationMatrix(targetBasis.multiply(basis.invert()));
+  const quarterTurn=new THREE.Quaternion().setFromAxisAngle(AXIS_X,Math.PI/2);
+  const footRotation=quarterTurn.multiply(foot.getWorldQuaternion(new THREE.Quaternion()));
+  const toes=rig['toes.'+side];
+  const toeRotation=new THREE.Quaternion().setFromAxisAngle(AXIS_X,Math.PI/6).multiply(toes.getWorldQuaternion(new THREE.Quaternion()));
+  // Use the skinned hand surface to obtain wrist clearance for a level hand.
+  const original=hand.quaternion.clone();
+  setJointWorldRotation(hand,handRotation);
+  const wristHeight=wrist.y-minimumSupportY(handVertices[side]);
+  hand.quaternion.copy(original);
+  hand.updateMatrixWorld(true);
+  return {side,handRotation,footRotation,toeRotation,wristHeight,upper:shoulder.distanceTo(elbow),lower:elbow.distanceTo(wrist)};
+ });
+ // Solve a symmetric preview from the rig's measured joint lengths and toe support.
+ orientation.rotation.x=Math.PI/2;
+ orientation.updateMatrixWorld(true);
+ setPushupFootRotations(limbs);
+ const ankle=averageJointPosition('foot');
+ const shoulder=averageJointPosition('upperarm');
+ const span=shoulder.sub(ankle);
+ const supportSpan=Math.hypot(span.y,span.z);
+ const neutralIncline=Math.atan2(span.y,span.z);
+ const floorY=floor.position.y+floor.geometry.parameters.height/2;
+ ankle.y+=floorY-minimumSupportY(toeVertices);
+
+ const wristY=floorY+(limbs[0].wristHeight+limbs[1].wristHeight)*.5;
+ const shoulderX=(jointPosition('upperarm.L').x-jointPosition('upperarm.R').x)*.5;
+ const wristWidthOffset=shoulderX*.25;
+ // These included elbow angles set the endpoints of this preview.
+ // The standing rig has no native push-up trajectory or loaded shoulder mechanism.
+ const reachAtAngle=degrees=>limbs.reduce((sum,{upper,lower})=>
+  sum+Math.sqrt(upper*upper+lower*lower-2*upper*lower*Math.cos(THREE.MathUtils.degToRad(degrees))),0)*.5;
+ const topReach=reachAtAngle(170);
+ const topShoulderY=wristY+Math.sqrt(topReach*topReach-wristWidthOffset*wristWidthOffset);
+ const topIncline=Math.asin(THREE.MathUtils.clamp((topShoulderY-ankle.y)/supportSpan,0,1));
+ // Place the wrists below the shoulders at the top and retain that floor position.
+ const wristZ=ankle.z+supportSpan*Math.cos(topIncline);
+ const bottomReach=reachAtAngle(80);
+ let low=0,high=topIncline;
+ for(let i=0;i<16;i++){
+  const pitch=(low+high)*.5;
+  const dy=ankle.y+supportSpan*Math.sin(pitch)-wristY;
+  const dz=ankle.z+supportSpan*Math.cos(pitch)-wristZ;
+  if(Math.hypot(wristWidthOffset,dy,dz)>bottomReach)high=pitch;
+  else low=pitch;
+ }
+ resetBones();
+ orientation.updateMatrixWorld(true);
+ return {limbs,ankle,floorY,wristZ,neutralIncline,topIncline,bottomIncline:(low+high)*.5};
+}
+function setPushupFootRotations(limbs){
+ for(const {side,footRotation,toeRotation} of limbs){
+  setJointWorldRotation(rig['foot.'+side],footRotation);
+  setJointWorldRotation(rig['toes.'+side],toeRotation);
+ }
+}
+function poseSupportedPushup(effort){
+ const {limbs,ankle,floorY,wristZ,neutralIncline,topIncline,bottomIncline}=pushupSupport;
+ orientation.rotation.x=Math.PI/2+neutralIncline-THREE.MathUtils.lerp(topIncline,bottomIncline,effort);
+ orientation.updateMatrixWorld(true);
+ orientation.position.copy(ankle.clone().sub(averageJointPosition('foot')));
+ orientation.updateMatrixWorld(true);
+ setPushupFootRotations(limbs);
+ for(const limb of limbs){
+  const {side,upper,lower,handRotation,wristHeight}=limb;
+  const upperarm=rig['upperarm.'+side],forearm=rig['forearm.'+side],hand=rig['hand.'+side];
+  const start=jointPosition('upperarm.'+side);
+  const wrist=new THREE.Vector3(start.x*1.25,floorY+wristHeight,wristZ);
+  const aim=wrist.clone().sub(start);
+  const distance=THREE.MathUtils.clamp(aim.length(),Math.abs(upper-lower)+.001,upper+lower-.001);
+  aim.normalize();
+  const hint=new THREE.Vector3(.65*Math.sign(start.x),0,-1);
+  const bend=hint.addScaledVector(aim,-hint.dot(aim)).normalize();
+  // Solve the triangle from the two rigid segments and choose the feetward elbow.
+  const along=(upper*upper-lower*lower+distance*distance)/(2*distance);
+  const elbow=start.clone().addScaledVector(aim,along).addScaledVector(bend,Math.sqrt(Math.max(0,upper*upper-along*along)));
+  pointJointAt(upperarm,forearm,elbow);
+  pointJointAt(forearm,hand,start.clone().addScaledVector(aim,distance));
+  setJointWorldRotation(hand,handRotation);
+ }
+}
+function applyPose(){
+ if(!rigReady)return;
+ const a=effort(progress);
+ if(active==='pushup'&&a===lastPushupEffort)return;
+ lastPushupEffort=active==='pushup'?a:undefined;
+ resetBones();
  if(active==='curl'){
    for(const side of ['L','R']){
     // Arm stays alongside torso; elbow flexion carries the dumbbell toward shoulder.
@@ -196,13 +339,7 @@ function applyPose(){if(!rigReady)return;resetBones();const a=effort(progress);
    const rootParent=rig.pelvis.parent;const q=rootParent.getWorldQuaternion(new THREE.Quaternion()).invert();const scale=rootParent.getWorldScale(new THREE.Vector3());
    drift.applyQuaternion(q).divide(scale);rig.pelvis.position.add(drift);
  }
- if(active==='pushup'){
-   // Rotate the entire rigged figure into the horizontal plane, then animate elbows.
-   orientation.rotation.x=Math.PI*.5;
-   orientation.position.y=-.47*a;
-   for(const s of ['L','R']){rotateWorld('upperarm.'+s,AXIS_X,-Math.PI*.48);rotateWorld('forearm.'+s,AXIS_X,.95*a);rotateWorld('hand.'+s,AXIS_X,.1);}
-   rotateWorld('spine_01',AXIS_X,-.05*a);
- }
+ if(active==='pushup')poseSupportedPushup(a);
  scene.updateMatrixWorld(true);if(skeletonHelper)skeletonHelper.updateMatrixWorld(true);}
 function updateColors(){if(!colored||!partIds)return;const groups=exercises[active].groups,enabled=$('#highlight').checked;const color=muscleMesh.geometry.attributes.color,mask=muscleMesh.geometry.attributes.aExerciseActivation;for(let i=0;i<partIds.count;i++){
   const id=Math.round(partIds.getX(i)),idx=Math.floor((id-1)/2),group=id>0?partGroups[idx]:null,t=tendons?tendons.getX(i):0;
@@ -211,7 +348,7 @@ function updateColors(){if(!colored||!partIds)return;const groups=exercises[acti
   const blend=Math.min(1,Math.max(0,t))*0.68;r=r*(1-blend)+.88*blend;g=g*(1-blend)+.84*blend;b=b*(1-blend)+.75*blend;
   colored[i*3]=r;colored[i*3+1]=g;colored[i*3+2]=b;
  }color.needsUpdate=true;mask.needsUpdate=true;}
-function setExercise(name){active=name;progress=0;playing=false;panX=0;panY=0;ui.play.textContent='▶ Запустить';ui.title.textContent=exercises[name].title;ui.desc.textContent=exercises[name].desc;ui.info.textContent=exercises[name].info;document.querySelectorAll('[data-ex]').forEach(b=>b.classList.toggle('active',b.dataset.ex===name));updateColors();equipmentRefresh();applyPose();setView(name==='pushup'?'side':'front')}
+function setExercise(name){active=name;floor.position.z=name==='pushup'?.88:0;floor.scale.z=name==='pushup'?1.36:1;ring.visible=name!=='pushup';progress=0;playing=false;panX=0;panY=0;ui.play.textContent='▶ Запустить';ui.title.textContent=exercises[name].title;ui.desc.textContent=exercises[name].desc;ui.info.textContent=exercises[name].info;document.querySelectorAll('[data-ex]').forEach(b=>b.classList.toggle('active',b.dataset.ex===name));updateColors();equipmentRefresh();applyPose();setView(name==='pushup'?'side':'front')}
 function setView(view){yaw=({front:0,side:Math.PI/2,back:Math.PI})[view];pitch=.06;panX=0;panY=0;document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===view))}
 function tick(ts){if(playing&&last)progress=(progress+(ts-last)*speed/9000)%1;last=ts;const b=effort(progress),f=progress<.1?'Исходное положение':progress<.45?'Сгибание':progress<.58?'Контроль позиции':progress<.93?'Разгибание':'Исходное положение';ui.phase.textContent=(active==='pushup'&&b>.85?'Нижняя точка':f);ui.scrub.value=Math.round(progress*1000);const dur=9/speed,fmt=s=>String(Math.floor(s/60)).padStart(2,'0')+':'+String(Math.floor(s%60)).padStart(2,'0');ui.time.textContent=fmt(dur*progress)+' / '+fmt(dur);if(rigReady)applyPose();
  if(trainingEffortUniform){
