@@ -1,8 +1,15 @@
-name: Browser QA for independent hand-grip pose
+name: Browser QA for curl lesson grip
 on:
   push:
     paths:
       - '.github/workflows/verify-anatomy-handhold-preview.yml'
+      - 'anatomy-rigged/lesson.html'
+      - 'anatomy-rigged/skin-hands.js'
+      - 'anatomy-rigged/handle-surface.js'
+      - 'anatomy-rigged/assets/body_superficial.glb'
+      - 'anatomy-rigged/assets/skin-hand-right.cc0.glb'
+      - 'anatomy-rigged/assets/ergonomic-dumbbell-grip.json'
+      - 'anatomy-rigged/exercises/dumbbell-curl.json'
   workflow_dispatch:
 permissions:
   contents: read
@@ -11,55 +18,58 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
-      - name: Set up Node
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '22'
       - name: Install browser adapter
         run: npm install --prefix /tmp/anatomy-qa --no-fund --no-audit playwright-core@1.56.1
-      - name: Capture old and new grip on GitHub Pages
+      - name: Capture and measure both hands on the checked-out lesson
         shell: bash
         run: |
           mkdir -p snapshots
+          python3 -m http.server 8765 --bind 127.0.0.1 >/tmp/curl-qa-http.log 2>&1 &
           node --input-type=module <<'NODE'
           import { chromium } from '/tmp/anatomy-qa/node_modules/playwright-core/index.mjs';
           import { writeFileSync } from 'node:fs';
-          import { createHash } from 'node:crypto';
-          const browser=await chromium.launch({channel:'chrome',headless:true,args:['--no-sandbox']});
-          const context=await browser.newContext({viewport:{width:430,height:932},deviceScaleFactor:1,isMobile:true,hasTouch:true,serviceWorkers:'block'});
-          const page=await context.newPage();
-          const errors=[];
+          const browser=await chromium.launch({channel:'chrome',headless:true,args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+          const page=await browser.newPage({viewport:{width:430,height:932},deviceScaleFactor:1,isMobile:true,hasTouch:true,serviceWorkers:'block'});
+          const errors=[],phases=[];
           page.on('pageerror',e=>errors.push(String(e)));
           try{
-            await page.goto('https://alexborovinskiy.github.io/home-workouts/anatomy-rigged/lesson.html?v=24&qa=2',{waitUntil:'domcontentloaded',timeout:90000});
-            await page.waitForFunction(()=>{
-              const text=document.querySelector('#gripStatus')?.textContent||'';
-              return text.includes('Новый хват рассчитан')||text.includes('Не удалось загрузить альтернативный захват');
-            },null,{timeout:90000});
-            const status=await page.locator('#gripStatus').innerText();
-            const button=await page.locator('#compareGrip').innerText();
-            const visible=await page.locator('#compareGrip').isVisible();
-            await page.locator('canvas').scrollIntoViewIfNeeded();
-            await page.waitForTimeout(800);
-            await page.screenshot({path:'snapshots/whole-page.png',fullPage:true});
-            const newImage=await page.locator('canvas').screenshot({path:'snapshots/default-old-canvas.png'});
-            if(!visible||!status.includes('Новый хват рассчитан'))throw Error('Expected Handhold pose did not load: '+status);
-            await page.locator('#compareGrip').click();
-            await page.waitForTimeout(500);
-            const oldImage=await page.locator('canvas').screenshot({path:'snapshots/oriented-handhold-canvas.png'});
-            const sha=x=>createHash('sha256').update(x).digest('hex');
-            const changed=sha(newImage)!==sha(oldImage);
-            const result={status,button,visible,visualPixelsChanged:changed,newHash:sha(newImage),oldHash:sha(oldImage),errors};
-            writeFileSync('snapshots/result.json',JSON.stringify(result,null,2));
-            console.log(JSON.stringify(result,null,2));
-            if(!changed||errors.length)throw Error('Browser QA detected no visible pose difference or JS errors');
+            await page.goto('http://127.0.0.1:8765/anatomy-rigged/lesson.html',{waitUntil:'domcontentloaded',timeout:60000});
+            await page.waitForFunction(()=>window.__skinPreviewDebug?.getState().enabled,null,{timeout:90000});
+            const canvas=page.locator('#touchScene canvas');
+            for(const [phase,value,panY,panX] of [['start',0,.065,.24],['peak',500,.34,.34],['return',999,.065,.24]]){
+              await page.locator('#timeline').evaluate((node,value)=>{
+                node.value=String(value);
+                node.dispatchEvent(new Event('input',{bubbles:true}));
+              },value);
+              const hands=await page.evaluate(()=>window.__skinPreviewDebug.measureGripSurfaces());
+              for(const side of ['L','R']){
+                const hand=hands[side];
+                if(!hand||hand.trianglesInShaft<=0||!Number.isFinite(hand.minNominalRadialGapM))
+                  throw Error('Missing grip geometry at '+phase+' '+side);
+                const sign=side==='L'?1:-1;
+                await page.evaluate(opts=>window.__skinPreviewDebug.setCamera(opts),{
+                  zoom:.82,panX:sign*panX,panY,yaw:-sign*.28,pitch:.22
+                });
+                await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+                await canvas.screenshot({path:'snapshots/'+phase+'-'+side+'.png'});
+              }
+              phases.push({phase,hands});
+            }
+            if(errors.length)throw Error('Curl lesson execution errors');
           }catch(err){
-            await page.screenshot({path:'snapshots/failure.png',fullPage:true}).catch(()=>{});
+            await page.screenshot({path:'snapshots/failure.png'}).catch(()=>{});
             writeFileSync('snapshots/error.txt',String(err)+'\n'+errors.join('\n'));
             throw err;
-          }finally{await browser.close();}
+          }finally{
+            writeFileSync('snapshots/result.json',JSON.stringify({phases,errors},null,2));
+            await browser.close();
+          }
           NODE
-      - name: Upload screenshots for visual review
+      - name: Upload screenshots and diagnostics for review
         if: always()
         uses: actions/upload-artifact@v4
         with:
