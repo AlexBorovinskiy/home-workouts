@@ -1,4 +1,4 @@
-const CACHE='my-workout-journal-shell-v5';
+const CACHE='my-workout-journal-shell-v6';
 const SHELL=['./','./index.html','./drive-sync.js','./manifest.webmanifest','./icons/icon-192.png','./icons/icon.svg'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()))});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('my-workout-journal-shell-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
