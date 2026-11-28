@@ -45,6 +45,7 @@ function setError(err){ui.status.textContent='Ошибка загрузки';ui.
 function dimensions(){let w=ui.box.clientWidth,h=ui.box.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}window.addEventListener('resize',dimensions);dimensions();
 // Initialize motion axes before the asynchronous model loader can call setExercise/applyPose.
 const AXIS_X=new THREE.Vector3(1,0,0),AXIS_Y=new THREE.Vector3(0,1,0),AXIS_Z=new THREE.Vector3(0,0,1);
+const PREVIEW_HEIGHT=1.76,DEFAULT_ZOOM=3.9;
 // Test limits for the biceps curl: avoid lifting wrists above the intended top position.
 const CURL_MAX_FLEXION=1.60; // radians, ~92 degrees of forearm rotation from rest
 const CURL_MAX_SUPINATION=.48; // radians, gentle pronation-to-supination change
@@ -131,7 +132,7 @@ try{const [gltf,catalog]=await Promise.all([new Promise((resolve,reject)=>new GL
  // Normalize the visual scene dimensions without changing bone-local bind matrices.
  const box=new THREE.Box3().setFromObject(model),size=new THREE.Vector3(),center=new THREE.Vector3();box.getSize(size);box.getCenter(center);
  if(!Number.isFinite(size.y)||size.y<=0)throw Error('Некорректные размеры анатомической сетки');
- const scl=1.76/size.y;model.position.set(-center.x, -box.min.y, -center.z);orientation.scale.setScalar(scl);orientation.updateMatrixWorld(true);
+ const scl=PREVIEW_HEIGHT/size.y;model.position.set(-center.x, -box.min.y, -center.z);orientation.scale.setScalar(scl);orientation.updateMatrixWorld(true);
  const ground=new THREE.Vector3();for(const side of ['L','R']){rig['foot.'+side].getWorldPosition(ground);restFoot[side]=ground.clone();}rig.pelvis.getWorldPosition(restPelvis);
  // Capture the rest-world quaternion for each parent in order to rotate in anatomical axes.
  for(const [name,bone] of Object.entries(rig)){const parentQ=new THREE.Quaternion();bone.parent.getWorldQuaternion(parentQ);rest[name].parentWorldQ=parentQ;}
@@ -220,7 +221,13 @@ function tick(ts){if(playing&&last)progress=(progress+(ts-last)*speed/9000)%1;la
  if(active==='curl'){
    ui.phase.textContent=progress<.10?'Подготовка':progress<.45?'Подъём · бицепс':progress<.58?'Верхняя точка':progress<.93?'Медленное опускание':'Исходное положение';
  }
- const target=new THREE.Vector3(panX,(active==='pushup'?.65:.88)+panY,0);camera.position.set(target.x+zoom*Math.sin(yaw)*Math.cos(pitch),target.y+zoom*Math.sin(pitch),target.z+zoom*Math.cos(yaw)*Math.cos(pitch));camera.lookAt(target);renderer.render(scene,camera);requestAnimationFrame(tick)}requestAnimationFrame(tick);
+ const pushup=active==='pushup';
+ const target=new THREE.Vector3(panX,(pushup?.16:PREVIEW_HEIGHT/2)+panY,pushup?PREVIEW_HEIGHT/2:0);
+ // The horizontal pose extends along Z. Fit its projected length in narrow profile views.
+ const halfVertical=Math.tan(THREE.MathUtils.degToRad(camera.fov/2));
+ const fitDistance=pushup?(PREVIEW_HEIGHT*.62*Math.abs(Math.sin(yaw))+.27)/(halfVertical*camera.aspect):DEFAULT_ZOOM;
+ const distance=zoom*Math.max(1,fitDistance/DEFAULT_ZOOM);
+ camera.position.set(target.x+distance*Math.sin(yaw)*Math.cos(pitch),target.y+distance*Math.sin(pitch),target.z+distance*Math.cos(yaw)*Math.cos(pitch));camera.lookAt(target);renderer.render(scene,camera);requestAnimationFrame(tick)}requestAnimationFrame(tick);
 $('#play').onclick=()=>{playing=!playing;ui.play.textContent=playing?'Ⅱ Пауза':'▶ Запустить'};$('#restart').onclick=()=>{progress=0;playing=false;ui.play.textContent='▶ Запустить';applyPose()};$('#hold').onclick=()=>{progress=.51;playing=false;ui.play.textContent='▶ Запустить';applyPose()};ui.scrub.addEventListener('input',()=>{progress=+ui.scrub.value/1000;playing=false;ui.play.textContent='▶ Запустить';applyPose()});ui.speed.onchange=()=>speed=+ui.speed.value;
 $('#resetCamera').onclick=()=>{zoom=3.9;panX=0;panY=0;pitch=.06};
 document.querySelectorAll('[data-ex]').forEach(b=>b.onclick=()=>setExercise(b.dataset.ex));document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>setView(b.dataset.view));$('#highlight').onchange=updateColors;$('#skeleton').onchange=e=>{if(skeletonHelper)skeletonHelper.visible=e.target.checked};$('#equipment').onchange=()=>{equipmentRefresh();applyPose()};$('#grip').onchange=applyPose;
