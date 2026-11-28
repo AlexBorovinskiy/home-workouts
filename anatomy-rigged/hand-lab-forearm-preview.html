@@ -63,6 +63,7 @@ import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {createForearmExtension} from './forearm-extension.js';
+import {measureHandleSurface} from './handle-surface.js';
 const $=s=>document.querySelector(s),holder=$('#viewer'),canvas=$('#canvas'),hud=$('#hud'),report=$('#report');
 const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(35,1,.012,20);
 const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true,preserveDrawingBuffer:true});
@@ -78,6 +79,7 @@ const rest=new Map(),skinMat=new THREE.MeshStandardMaterial({color:0xdfaba1,roug
 const shaftMat=new THREE.MeshStandardMaterial({color:0x364d5b,metalness:.56,roughness:.38});
 const discMat=new THREE.MeshStandardMaterial({color:0x899dac,metalness:.72,roughness:.32});
 const handleCenter=new THREE.Vector3(0,.07657357,.03055974),handleQ=new THREE.Quaternion(0,0,.10713777,.99424418).normalize();
+const handleRadius=.010,plateOffset=.076,plateWidth=.022;
 const bends={index:[53,50,27],middle:[56,50,28],ring:[53,48,24],pinky:[15,35,20]};
 const defaultThumb={baseX:-13,baseY:-50,baseZ:7,middle:-20,tip:51};
 const thumbSettings={...defaultThumb};
@@ -100,9 +102,9 @@ function setStage(i){
 }
 function addDumbbell(){
  bar=new THREE.Group();bar.position.copy(handleCenter);bar.quaternion.copy(handleQ);
- const handle=new THREE.Mesh(new THREE.CylinderGeometry(.010,.010,.202,28),shaftMat);handle.rotation.z=Math.PI/2;bar.add(handle);
- for(const x of [-.076,.076]){
-  const d=new THREE.Mesh(new THREE.CylinderGeometry(.049,.049,.022,32),discMat.clone());d.rotation.z=Math.PI/2;d.position.x=x;d.userData.isPlate=true;bar.add(d);
+ const handle=new THREE.Mesh(new THREE.CylinderGeometry(handleRadius,handleRadius,.202,28),shaftMat);handle.rotation.z=Math.PI/2;bar.add(handle);
+ for(const x of [-plateOffset,plateOffset]){
+  const d=new THREE.Mesh(new THREE.CylinderGeometry(.049,.049,plateWidth,32),discMat.clone());d.rotation.z=Math.PI/2;d.position.x=x;d.userData.isPlate=true;bar.add(d);
   const cap=new THREE.Mesh(new THREE.CylinderGeometry(.014,.014,.012,20),shaftMat.clone());cap.rotation.z=Math.PI/2;cap.position.x=x*1.28;cap.userData.isPlate=true;bar.add(cap);
  }
  root.add(bar);
@@ -153,7 +155,9 @@ function checkContact(){
  const groups=['index','middle','ring','pinky','thumb'];
  const names={index:'Указательный',middle:'Средний',ring:'Безымянный',pinky:'Мизинец',thumb:'Большой'};
  const results=Object.fromEntries(groups.map(k=>[k,{samples:0,near:0,penetration:0,deep:0,minGap:Infinity}]));
- const inv=bar.matrixWorld.clone().invert(),v=new THREE.Vector3();
+ const meshToHandle=bar.matrixWorld.clone().invert().multiply(mesh.matrixWorld);
+ const vertices=Array.from({length:pos.count},(_,i)=>mesh.getVertexPosition(i,new THREE.Vector3()).applyMatrix4(meshToHandle));
+ const surface=measureHandleSurface(vertices,mesh.geometry.index,plateOffset-plateWidth/2,handleRadius);
  let samples=0,near=0,penetration=0,min=Infinity;
  const step=Math.max(1,Math.ceil(pos.count/12000));
  for(let i=0;i<pos.count;i+=step){
@@ -164,9 +168,9 @@ function checkContact(){
    }
    const best=groups.reduce((a,b)=>parts[a]>=parts[b]?a:b);
    if(parts[best]<.55)continue; // Exclude palm and ambiguous transitions from finger-specific metrics
-   v.fromBufferAttribute(pos,i);mesh.applyBoneTransform(i,v);mesh.localToWorld(v);v.applyMatrix4(inv);
+   const v=vertices[i];
    if(Math.abs(v.x)>.063)continue; // exclude inner plates and shaft ends
-   const radial=Math.hypot(v.y,v.z),distance=radial-.010,group=results[best];
+   const radial=Math.hypot(v.y,v.z),distance=radial-handleRadius,group=results[best];
    samples++;group.samples++;
    if(Math.abs(distance)<=.003){near++;group.near++;}
    if(distance<-.002){penetration++;group.penetration++;}
@@ -181,8 +185,9 @@ function checkContact(){
    return '<tr><td>'+names[key]+'</td><td>'+r.near+' / '+r.samples+'</td><td>'+r.penetration+'</td><td class="'+cls+'">'+status+'</td></tr>';
  });
  document.getElementById('digitResults').innerHTML='<table class="diagnostics"><thead><tr><th>Палец</th><th>Рядом / выборка</th><th>Внутри</th><th>Оценка</th></tr></thead><tbody>'+rows.join('')+'</tbody></table>';
- report.textContent='Контакт по 5 пальцам: рядом с цилиндром (±3 мм) — '+near+' вершин, пересечение глубже 2 мм — '+penetration+', образцов — '+samples+'. Классификация по весам привязки, не доказательство правильного хвата.';
- return {samples,near,penetration,minimumDistance:min,digits:results,groups:boneGroups};
+ const gap=surface.minRadialGapM===null?'нет треугольников между дисками':(surface.minRadialGapM*1000).toFixed(2)+' мм';
+ report.textContent='По пяти пальцам: '+near+' вершин в пределах ±3 мм от рукоятки, '+penetration+' глубже 2 мм, всего '+samples+'. По всей сетке кисти: '+surface.penetratingTriangles+' треугольников внутри цилиндра между дисками. Минимальный радиальный зазор: '+gap+'.';
+ return {samples,near,penetration,minimumDistance:min,digits:results,groups:boneGroups,surface};
 }
 function showError(e){console.error(e);$('#error').classList.add('on');$('#error').textContent='Ошибка: '+(e?.message||String(e));hud.textContent='Ошибка загрузки'}
 for(const b of document.querySelectorAll('[data-pose]'))b.addEventListener('click',()=>setStage(Number(b.dataset.pose)));

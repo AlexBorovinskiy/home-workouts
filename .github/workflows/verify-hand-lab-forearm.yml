@@ -5,6 +5,7 @@ on:
       - '.github/workflows/verify-hand-lab-forearm.yml'
       - 'anatomy-rigged/hand-lab-forearm-preview.html'
       - 'anatomy-rigged/forearm-extension.js'
+      - 'anatomy-rigged/handle-surface.js'
   workflow_dispatch:
 permissions:
   contents: read
@@ -38,9 +39,11 @@ jobs:
             if(!await page.evaluate(()=>window.__handLabQA?.isReady()))throw Error('Hand lab did not initialize: '+await page.locator('#error').innerText());
             await page.locator('#viewer').scrollIntoViewIfNeeded();
             const poses=['start','middle','peak'];
+            const surfaceByPose=[];
             for(let i=0;i<3;i++){
               await page.locator('[data-pose="'+i+'"]').click();
               await page.waitForTimeout(500);
+              surfaceByPose.push(await page.evaluate(()=>window.__handLabQA.check().surface));
               await page.locator('canvas').screenshot({path:'screenshots/'+poses[i]+'-front.png'});
               await page.locator('[data-view="side"]').click();
               await page.waitForTimeout(400);
@@ -54,6 +57,12 @@ jobs:
             await page.waitForTimeout(400);
             await page.locator('canvas').screenshot({path:'screenshots/start-back.png'});
             const contact=await page.evaluate(()=>window.__handLabQA.check());
+            const firstSurface=surfaceByPose[0];
+            if(surfaceByPose.some(surface=>!Number.isFinite(surface.minRadialGapM)||
+              surface.trianglesInShaft===0||
+              surface.penetratingTriangles!==firstSurface.penetratingTriangles||
+              Math.abs(surface.minRadialGapM-firstSurface.minRadialGapM)>1e-7))
+              throw Error('Handle surface measurements are missing or vary under rigid rotation');
             const wrist=await page.evaluate(()=>window.__handLabQA.getForearm());
             if(!wrist||wrist.vertices<35)throw Error('Forearm must sample real wrist vertices');
             const digits=['index','middle','ring','pinky','thumb'];
@@ -90,7 +99,7 @@ jobs:
             const reset=await page.locator('[data-value="baseX"]').innerText();
             if(reset!=='-13°')throw Error('Thumb reset did not restore default: '+reset);
             await page.screenshot({path:'screenshots/mobile-page.png',fullPage:true});
-            const report={contact,wrist,hud:await page.locator('#hud').innerText(),thumbChange:changed,thumbReset:reset,errors};
+            const report={contact,surfaceByPose,wrist,hud:await page.locator('#hud').innerText(),thumbChange:changed,thumbReset:reset,errors};
             writeFileSync('screenshots/qa-report.json',JSON.stringify(report,null,2));
             console.log(JSON.stringify(report,null,2));
             if(errors.length||!Number.isFinite(contact.minimumDistance)||contact.samples<100)throw Error('QA returned invalid scene or runtime errors');
