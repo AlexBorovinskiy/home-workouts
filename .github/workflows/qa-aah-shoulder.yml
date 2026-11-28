@@ -11,6 +11,13 @@ jobs:
   test:
     runs-on: ubuntu-24.04
     timeout-minutes: 12
+    strategy:
+      matrix:
+        include:
+          - side: right
+            model: RightArmAndHand_NoMuscles.osim
+          - side: left
+            model: LeftArmAndHand_NoMuscles.osim
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -22,19 +29,19 @@ jobs:
         shell: bash
         run: |
           curl -fL --retry 2 --max-time 90 \
-            'https://raw.githubusercontent.com/nishbo/ms_arm_and_hand/master/AAH%20Model/RightArmAndHand_NoMuscles.osim' \
-            -o /tmp/aah-right.osim
-          test -s /tmp/aah-right.osim
+            'https://raw.githubusercontent.com/nishbo/ms_arm_and_hand/master/AAH%20Model/${{ matrix.model }}' \
+            -o /tmp/aah.osim
+          test -s /tmp/aah.osim
       - name: Run native coordinate assembly and movement tests
         run: |
           mkdir -p qa-aah-shoulder
           python opensim-lab/test_aah_shoulder.py \
-            --model /tmp/aah-right.osim \
+            --model /tmp/aah.osim \
             --output qa-aah-shoulder/diagnostics.json \
-            --side right
+            --side ${{ matrix.side }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: aah-right-arm-and-thumb-opensim-qa
+          name: aah-${{ matrix.side }}-arm-and-thumb-opensim-qa
           path: qa-aah-shoulder/
           retention-days: 7

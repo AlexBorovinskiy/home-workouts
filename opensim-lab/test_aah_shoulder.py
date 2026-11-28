@@ -12,11 +12,11 @@ import opensim as osim
 def xyz(x):
     return [round(float(x[i]),7) for i in range(3)]
 
-def pose(model,state):
+def pose(model,state,prefix):
     model.realizePosition(state)
     bodies=model.getBodySet()
     output={}
-    for name in ("Thorax","RA_clavicle","RA_scapula","RA1H","RA4M1","RA5P1","RA6D1"):
+    for name in ("Thorax", *(prefix+suffix for suffix in ("_clavicle","_scapula","1H","4M1","5P1","6D1"))):
         if not bodies.contains(name): continue
         trans=bodies.get(name).getTransformInGround(state)
         output[name]={"origin":xyz(trans.p()),
@@ -31,17 +31,20 @@ def delta(before,after,key):
 
 def main():
     p=argparse.ArgumentParser()
-    p.add_argument("--model",required=True);p.add_argument("--output",required=True);p.add_argument("--side",default="right")
+    p.add_argument("--model",required=True);p.add_argument("--output",required=True);p.add_argument("--side",choices=("right","left"),default="right")
     args=p.parse_args()
+    prefix="RA" if args.side=="right" else "LA"
+    shoulder_coordinate=prefix.lower()+"_sh_elv"
+    thumb_coordinate=prefix.lower()+"_cmc1_opp"
     model=osim.Model(args.model)
     model.setUseVisualizer(False)
     state=model.initSystem()
     model.assemble(state)
-    baseline=pose(model,state)
+    baseline=pose(model,state,prefix)
     coords=model.getCoordinateSet()
     names=[coords.get(i).getName() for i in range(coords.getSize())]
     tested=[]
-    for coord_name,adjust in (("ra_sh_elv",0.18),("ra_cmc1_opp",0.15)):
+    for coord_name,adjust in ((shoulder_coordinate,0.18),(thumb_coordinate,0.15)):
         if coord_name not in names:
             raise ValueError("Missing intended native AAH coordinate: "+coord_name)
         q=coords.get(coord_name)
@@ -51,17 +54,16 @@ def main():
             raise ValueError("Out of documented range: "+coord_name)
         q.setValue(state,target,False)
         model.assemble(state)
-        updated=pose(model,state)
+        updated=pose(model,state,prefix)
         tested.append({"changedCoordinate":coord_name,"deltaRad":adjust,
-                       "scapula":delta(baseline,updated,"RA_scapula"),
-                       "clavicle":delta(baseline,updated,"RA_clavicle"),
-                       "humerus":delta(baseline,updated,"RA1H"),
-                       "thumbProximal":delta(baseline,updated,"RA4M1"),
-                       "thumbDistal":delta(baseline,updated,"RA6D1")})
+                       "scapula":delta(baseline,updated,prefix+"_scapula"),
+                       "clavicle":delta(baseline,updated,prefix+"_clavicle"),
+                       "humerus":delta(baseline,updated,prefix+"1H"),
+                       "thumbProximal":delta(baseline,updated,prefix+"4M1"),
+                       "thumbDistal":delta(baseline,updated,prefix+"6D1")})
         q.setValue(state,initial,False)
         model.assemble(state)
-    shoulder=next(x for x in tested if x["changedCoordinate"]=="ra_sh_elv")
-    thumb=next(x for x in tested if x["changedCoordinate"]=="ra_cmc1_opp")
+    shoulder,thumb=tested
     assert (shoulder["scapula"]["translationMm"]>.01 or
             shoulder["scapula"]["rotationMatrixDelta"]>1e-5), "Scapula did not move in shoulder test"
     assert (thumb["thumbProximal"]["translationMm"]>.01 or
